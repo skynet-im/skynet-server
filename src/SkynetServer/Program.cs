@@ -8,31 +8,33 @@ namespace SkynetServer
     {
         static void Main(string[] args)
         {
-            using (ChannelContext ctx = new ChannelContext())
+            using (DatabaseContext ctx = new DatabaseContext())
             {
-                //ctx.Database.EnsureDeleted();
+                ctx.Database.EnsureDeleted();
                 ctx.Database.EnsureCreated();
             }
 
-            //using (ChannelContext ctx = new ChannelContext())
-            //{
-            //    ctx.Channels.Add(new Channel() { ChannelId = 153 });
-            //    ctx.SaveChanges();
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                Random random = new Random();
+                Span<byte> value = stackalloc byte[8];
+                random.NextBytes(value);
+                long id = BitConverter.ToInt64(value);
 
-            //    Random random = new Random();
-            //    Span<byte> value = stackalloc byte[8];
-            //    random.NextBytes(value);
-            //    BitConverter.ToInt64(value);
-            //}
+                ctx.Channels.Add(new Channel() { ChannelId = id });
+                ctx.Messages.Add(new Message() { ChannelId = id });
+                ctx.Messages.Add(new Message() { ChannelId = id });
+                ctx.Messages.Add(new Message() { ChannelId = id });
+                ctx.SaveChanges();
+            }
 
-            using (ChannelContext ctx = new ChannelContext())
-            using (MessageContext mtx = new MessageContext())
+            using (DatabaseContext ctx = new DatabaseContext())
             {
                 foreach (Channel c in ctx.Channels)
                 {
                     Console.WriteLine($"Channel with id {c.ChannelId}");
 
-                    foreach (Message m in mtx.Messages.Where(x => x.ChannelId == c.ChannelId))
+                    foreach (Message m in ctx.Messages.Where(x => x.ChannelId == c.ChannelId))
                     {
                         Console.WriteLine($"\tMessage with id {m.MessageId}");
                     }
