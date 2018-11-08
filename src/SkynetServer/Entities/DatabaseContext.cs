@@ -37,24 +37,25 @@ namespace SkynetServer.Entities
         {
             long id = Messages
                 .Where(m => m.ChannelId == message.ChannelId)
-                .OrderByDescending(m => m.MessageId)
-                .FirstOrDefault()?.MessageId ?? 0;
+                .Select(m => m.MessageId)
+                .OrderByDescending(i => i)
+                .FirstOrDefault()
+                + 1;
 
             Exception exception = null;
 
-            for (int i = 0; i < 512; i++)
+            for (int i = 0; i < 512; i++, id++)
             {
                 try
                 {
-                    message.MessageId = id;
-                    Messages.Add(message);
-                    SaveChanges();
-                    return;
+                        message.MessageId = id;
+                        Messages.Add(message);
+                        if (SaveChanges() > 0)
+                            return;
                 }
                 catch (Exception ex)
                 {
                     exception = ex;
-                    id++;
                 }
             }
 

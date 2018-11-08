@@ -29,9 +29,9 @@ namespace SkynetServer
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
-                ctx.AddMessage(new Message() { ChannelId = id });
-                ctx.AddMessage(new Message() { ChannelId = id });
-                ctx.AddMessage(new Message() { ChannelId = id });
+                ctx.AddMessage(new Message() { ChannelId = id, DispatchTime = DateTime.Now });
+                ctx.AddMessage(new Message() { ChannelId = id, DispatchTime = DateTime.Now });
+                ctx.AddMessage(new Message() { ChannelId = id, DispatchTime = DateTime.Now });
             }
 
             using (DatabaseContext ctx = new DatabaseContext())
