@@ -8,6 +8,8 @@ namespace SkynetServer
     {
         static void Main(string[] args)
         {
+            long id;
+
             using (DatabaseContext ctx = new DatabaseContext())
             {
                 ctx.Database.EnsureDeleted();
@@ -19,13 +21,17 @@ namespace SkynetServer
                 Random random = new Random();
                 Span<byte> value = stackalloc byte[8];
                 random.NextBytes(value);
-                long id = BitConverter.ToInt64(value);
+                id = BitConverter.ToInt64(value);
 
                 ctx.Channels.Add(new Channel() { ChannelId = id });
-                ctx.Messages.Add(new Message() { ChannelId = id });
-                ctx.Messages.Add(new Message() { ChannelId = id });
-                ctx.Messages.Add(new Message() { ChannelId = id });
                 ctx.SaveChanges();
+            }
+
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                ctx.AddMessage(new Message() { ChannelId = id });
+                ctx.AddMessage(new Message() { ChannelId = id });
+                ctx.AddMessage(new Message() { ChannelId = id });
             }
 
             using (DatabaseContext ctx = new DatabaseContext())
