@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,28 +32,33 @@ namespace SkynetServer.Entities
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlServer(@"Server=(localdb)\mssqllocaldb;Database=MyDatabase;Trusted_Connection=True;");
+            //optionsBuilder.UseLoggerFactory(new LoggerFactory(new[] { new ConsoleLoggerProvider((category, level) => level >= LogLevel.Information, false) }));
+            optionsBuilder.EnableSensitiveDataLogging();
+            //optionsBuilder.UseSqlServer(@"Server=(localdb)\mssqllocaldb;Database=EFProviders.InMemory;Trusted_Connection=True;ConnectRetryCount=0");
+            optionsBuilder.UseMySql("server=localhost;Port=3306;Database=Skynet;UID=root");
         }
 
-        public void AddMessage(Message message)
+        /*public void AddMessage(Message message)
         {
             long id = Messages
                 .Where(m => m.ChannelId == message.ChannelId)
                 .Select(m => m.MessageId)
                 .OrderByDescending(i => i)
                 .FirstOrDefault()
-                + 1;
+                + 0;
 
             Exception exception = null;
 
-            for (int i = 0; i < 512; i++, id++)
+            for (int i = 0; i < 4; i++, id++)
             {
                 try
                 {
-                        message.MessageId = id;
-                        Messages.Add(message);
-                        if (SaveChanges() > 0)
-                            return;
+                    //message.MessageId = id;
+                    //Messages.Add(message);
+                    Messages.Add(new Message() { MessageId = id, ChannelId = message.ChannelId, DispatchTime = message.DispatchTime });
+
+                    if (SaveChanges() > 0)
+                        return;
                 }
                 catch (Exception ex)
                 {
@@ -59,7 +66,7 @@ namespace SkynetServer.Entities
                 }
             }
 
-            throw exception;
-        }
+            //throw exception;
+        }*/
     }
 }
