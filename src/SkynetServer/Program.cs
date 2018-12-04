@@ -20,13 +20,7 @@ namespace SkynetServer
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
-                Random random = new Random();
-                Span<byte> value = stackalloc byte[8];
-                random.NextBytes(value);
-                id = BitConverter.ToInt64(value);
-
-                ctx.Channels.Add(new Channel() { ChannelId = id });
-                ctx.SaveChanges();
+                id = ctx.AddChannel(new Channel()).ChannelId;
             }
 
             Parallel.For(0, 1000, i =>

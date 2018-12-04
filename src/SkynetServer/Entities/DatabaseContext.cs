@@ -10,7 +10,9 @@ namespace SkynetServer.Entities
 {
     public class DatabaseContext : DbContext
     {
-        public static object MessagesLock = new object();
+        public static readonly object AccountsLock = new object();
+        public static readonly object ChannelsLock = new object();
+        public static readonly object MessagesLock = new object();
 
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Channel> Channels { get; set; }
@@ -39,13 +41,55 @@ namespace SkynetServer.Entities
             optionsBuilder.UseMySql("server=localhost;Port=3306;Database=Skynet;UID=root");
         }
 
+
+        public Account AddAccount(Account account)
+        {
+            lock (AccountsLock)
+            {
+                long id;
+                do
+                {
+                    id = RandomId();
+                } while (Accounts.Any(x => x.AccountId == id));
+                account.AccountId = id;
+                Accounts.Add(account);
+                SaveChanges();
+            }
+            return account;
+        }
+
+        public Channel AddChannel(Channel channel)
+        {
+            lock (ChannelsLock)
+            {
+                long id;
+                do
+                {
+                    id = RandomId();
+                } while (Channels.Any(x => x.ChannelId == id));
+                channel.ChannelId = id;
+                Channels.Add(channel);
+                SaveChanges();
+            }
+            return channel;
+        }
+
         public void AddMessage(Message message)
         {
+            // INSERT INTO Messages (MessageId, DispatchTime, ChannelId) VALUES ((SELECT IFNULL(MAX(MessageId), 0) + 1 FROM Messages WHERE ChannelId = @channelId), NULL, @channelId);
             lock (MessagesLock)
             {
                 Messages.Add(message);
                 SaveChanges();
             }
+        }
+
+        private long RandomId()
+        {
+            Random random = new Random();
+            Span<byte> value = stackalloc byte[8];
+            random.NextBytes(value);
+            return BitConverter.ToInt64(value);
         }
     }
 }
