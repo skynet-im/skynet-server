@@ -1,6 +1,8 @@
-﻿using SkynetServer.Entities;
+﻿using Microsoft.EntityFrameworkCore;
+using SkynetServer.Entities;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SkynetServer
 {
@@ -12,8 +14,8 @@ namespace SkynetServer
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
-                ctx.Database.EnsureDeleted();
-                ctx.Database.EnsureCreated();
+                //ctx.Database.EnsureDeleted();
+                ctx.Database.Migrate();
             }
 
             using (DatabaseContext ctx = new DatabaseContext())
@@ -27,12 +29,15 @@ namespace SkynetServer
                 ctx.SaveChanges();
             }
 
-            using (DatabaseContext ctx = new DatabaseContext())
+            Parallel.For(0, 1000, i =>
             {
-                ctx.Messages.Add(new Message() { ChannelId = id, DispatchTime = DateTime.Now });
-                ctx.Messages.Add(new Message() { ChannelId = id, DispatchTime = DateTime.Now });
-                ctx.Messages.Add(new Message() { ChannelId = id, DispatchTime = DateTime.Now });
-            }
+                using (DatabaseContext ctx = new DatabaseContext())
+                {
+                    ctx.AddMessage(new Message() { ChannelId = id, DispatchTime = DateTime.Now });
+                }
+            });
+
+            Console.WriteLine("Finished saving");
 
             using (DatabaseContext ctx = new DatabaseContext())
             {

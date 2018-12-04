@@ -10,6 +10,8 @@ namespace SkynetServer.Entities
 {
     public class DatabaseContext : DbContext
     {
+        public static object MessagesLock = new object();
+
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Channel> Channels { get; set; }
         public DbSet<Message> Messages { get; set; }
@@ -34,39 +36,16 @@ namespace SkynetServer.Entities
         {
             //optionsBuilder.UseLoggerFactory(new LoggerFactory(new[] { new ConsoleLoggerProvider((category, level) => level >= LogLevel.Information, false) }));
             optionsBuilder.EnableSensitiveDataLogging();
-            //optionsBuilder.UseSqlServer(@"Server=(localdb)\mssqllocaldb;Database=EFProviders.InMemory;Trusted_Connection=True;ConnectRetryCount=0");
             optionsBuilder.UseMySql("server=localhost;Port=3306;Database=Skynet;UID=root");
         }
 
-        /*public void AddMessage(Message message)
+        public void AddMessage(Message message)
         {
-            long id = Messages
-                .Where(m => m.ChannelId == message.ChannelId)
-                .Select(m => m.MessageId)
-                .OrderByDescending(i => i)
-                .FirstOrDefault()
-                + 0;
-
-            Exception exception = null;
-
-            for (int i = 0; i < 4; i++, id++)
+            lock (MessagesLock)
             {
-                try
-                {
-                    //message.MessageId = id;
-                    //Messages.Add(message);
-                    Messages.Add(new Message() { MessageId = id, ChannelId = message.ChannelId, DispatchTime = message.DispatchTime });
-
-                    if (SaveChanges() > 0)
-                        return;
-                }
-                catch (Exception ex)
-                {
-                    exception = ex;
-                }
+                Messages.Add(message);
+                SaveChanges();
             }
-
-            //throw exception;
-        }*/
+        }
     }
 }

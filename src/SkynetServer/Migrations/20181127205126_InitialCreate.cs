@@ -52,18 +52,15 @@ namespace SkynetServer.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.Sql(@"DELIMITER $$
-
-CREATE OR REPLACE TRIGGER MessageIdInsert BEFORE INSERT ON Messages
+            migrationBuilder.Sql(
+@"CREATE OR REPLACE TRIGGER MessageIdInsert BEFORE INSERT ON Messages
 FOR EACH ROW BEGIN
     SET NEW.MessageId = (
         SELECT IFNULL(MAX(MessageId), 0) + 1
         FROM Messages
         WHERE ChannelId = NEW.ChannelId
     );
-END $$
-
-DELIMITER ;");
+END");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
