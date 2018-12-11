@@ -76,7 +76,11 @@ namespace SkynetServer.Entities
 
         public void AddMessage(Message message)
         {
-            // INSERT INTO Messages (MessageId, DispatchTime, ChannelId) VALUES ((SELECT IFNULL(MAX(MessageId), 0) + 1 FROM Messages WHERE ChannelId = @channelId), NULL, @channelId);
+            /*Database.ExecuteSqlCommand($@"BEGIN;
+SELECT @id := IFNULL(MAX(MessageId), 0) + 1 FROM Messages WHERE ChannelId = {message.ChannelId} FOR UPDATE;
+INSERT INTO Messages (MessageId, DispatchTime, ChannelId) 
+VALUES (@id, {message.DispatchTime}, {message.ChannelId});
+COMMIT;");*/
             lock (MessagesLock)
             {
                 Messages.Add(message);
