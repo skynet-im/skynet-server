@@ -19,11 +19,12 @@ namespace SkynetServer.Packets
 
             Packets = new Packet[max + 1];
 
-            foreach ((Type type, PacketAttribute attribute) packet in packets)
+            foreach ((Type type, PacketAttribute attribute) in packets)
             {
-                Packet instance = (Packet)packet.type.GetConstructor(new Type[0]).Invoke(new object[0]);
-                instance.PacketId = packet.attribute.PacketId;
-                instance.PacketPolicy = packet.attribute.PacketPolicy;
+                Activator.CreateInstance(type);
+                Packet instance = (Packet)Activator.CreateInstance(type);
+                instance.PacketId = attribute.PacketId;
+                instance.PacketPolicy = attribute.PacketPolicy;
                 Packets[instance.PacketId] = instance;
             }
         }
