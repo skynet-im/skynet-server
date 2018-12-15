@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SkynetServer.Packets
 {
-   public enum CreateAccountError
+    public enum CreateAccountError
     {
         Success,
         AccountNameTaken,

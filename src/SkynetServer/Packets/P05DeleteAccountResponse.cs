@@ -9,8 +9,8 @@ namespace SkynetServer.Packets
     internal sealed class P05DeleteAccountResponse : Packet
     {
         public DeleteAccountError ErrorCode { get; set; }
-        public override Packet Create() => new P05DeleteAccountResponse().Init(this);
 
+        public override Packet Create() => new P05DeleteAccountResponse().Init(this);
 
         public override void ReadPacket(PacketBuffer buffer)
         {

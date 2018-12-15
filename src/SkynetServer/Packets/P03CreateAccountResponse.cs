@@ -6,10 +6,10 @@ using VSL;
 namespace SkynetServer.Packets
 {
     [Packet(0x03, PacketPolicy.Send)]
-
     internal sealed class P03CreateAccountResponse : Packet
     {
         public CreateAccountError ErrorCode { get; set; }
+
         public override Packet Create() => new P03CreateAccountResponse().Init(this);
 
         public override void ReadPacket(PacketBuffer buffer)
@@ -21,6 +21,5 @@ namespace SkynetServer.Packets
         {
             buffer.WriteByte((byte)ErrorCode);
         }
-
     }
 }

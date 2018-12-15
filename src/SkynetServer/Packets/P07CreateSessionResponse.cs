@@ -5,11 +5,11 @@ using VSL;
 
 namespace SkynetServer.Packets
 {
-    [Packet(0x06, PacketPolicy.Send)]
+    [Packet(0x07, PacketPolicy.Send)]
     internal sealed class P07CreateSessionResponse : Packet
     {
-        public Int64 AccountId { get; set; }
-        public Int64 SessionId { get; set; }
+        public long AccountId { get; set; }
+        public long SessionId { get; set; }
         public CreateSessionError ErrorCode { get; set; }
 
         public override Packet Create() => new P07CreateSessionResponse().Init(this);
@@ -21,8 +21,8 @@ namespace SkynetServer.Packets
 
         public override void WritePacket(PacketBuffer buffer)
         {
-            buffer.WriteLong((Int64)AccountId);
-            buffer.WriteLong((Int64)SessionId);
+            buffer.WriteLong(AccountId);
+            buffer.WriteLong(SessionId);
             buffer.WriteByte((byte)ErrorCode);
         }
     }
