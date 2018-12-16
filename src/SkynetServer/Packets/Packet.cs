@@ -31,11 +31,15 @@ namespace SkynetServer.Packets
 
         public static Packet[] Packets { get; }
 
+        protected IPacketHandler handler;
+
         public byte PacketId { get; set; }
         public PacketPolicy PacketPolicy { get; set; }
+
+        public abstract Packet Create();
+        public abstract void Handle();
         public abstract void ReadPacket(PacketBuffer buffer);
         public abstract void WritePacket(PacketBuffer buffer);
-        public abstract Packet Create();
 
         protected Packet Init(Packet source)
         {

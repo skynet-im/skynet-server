@@ -12,6 +12,8 @@ namespace SkynetServer.Packets
 
         public override Packet Create() => new P05DeleteAccountResponse().Init(this);
 
+        public override void Handle() => handler.Handle(this);
+
         public override void ReadPacket(PacketBuffer buffer)
         {
             throw new NotImplementedException();

@@ -12,6 +12,8 @@ namespace SkynetServer.Packets
 
         public override Packet Create() => new P04DeleteAccount().Init(this);
 
+        public override void Handle() => handler.Handle(this);
+
         public override void ReadPacket(PacketBuffer buffer)
         {
             KeyHash = buffer.ReadByteArray(32);
