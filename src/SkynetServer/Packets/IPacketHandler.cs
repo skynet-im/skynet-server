@@ -22,5 +22,10 @@ namespace SkynetServer.Packets
         void Handle(P0DMessageBlock packet);
         void Handle(P0ERequestMessages packet);
         void Handle(P0FSyncFinished packet);
+        void Handle(P10RealTimeMessage packet);
+        void Handle(P11subscribeChannel packet);
+        void Handle(P12UnsubscribeChannel packet);
+        void Handle(P2DSearchAccount packet);
+        void Handle(P2ESearchAccountResponse packet);
     }
 }
