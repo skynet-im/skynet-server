@@ -16,5 +16,11 @@ namespace SkynetServer.Packets
         void Handle(P07CreateSessionResponse packet);
         void Handle(P08RestoreSession packet);
         void Handle(P09RestoreSessionResponse packet);
+        void Handle(P0ACreateChannel packet);
+        void Handle(P0BChannelMessage packet);
+        void Handle(P0CChannelMessageResponse packet);
+        void Handle(P0DMessageBlock packet);
+        void Handle(P0ERequestMessages packet);
+        void Handle(P0FSyncFinished packet);
     }
 }
