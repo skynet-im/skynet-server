@@ -5,12 +5,12 @@ using VSL;
 
 namespace SkynetServer.Packets
 {
-    [Packet(0x0A, PacketPolicy.Send)]
+    [Packet(0x0A, PacketPolicy.Duplex)]
     internal sealed class P0ACreateChannel : Packet
     {
         public long ChannelId { get; set; }
         public ChannelType ChannelType { get; set; }
-        public //?????
+        public long CounterpartId { get; set; }
 
         public override Packet Create() => new P0ACreateChannel().Init(this);
 
@@ -18,14 +18,18 @@ namespace SkynetServer.Packets
 
         public override void ReadPacket(PacketBuffer buffer)
         {
-            throw new NotImplementedException();
+            ChannelId = buffer.ReadLong();
+            ChannelType = (ChannelType)buffer.ReadByte();
+            if (ChannelType == ChannelType.Direct)
+                CounterpartId = buffer.ReadLong();
         }
 
         public override void WritePacket(PacketBuffer buffer)
         {
             buffer.WriteLong(ChannelId);
             buffer.WriteByte((byte)ChannelType);
-            //?????
+            if (ChannelType == ChannelType.Direct)
+                buffer.WriteLong(CounterpartId);
         }
     }
 }

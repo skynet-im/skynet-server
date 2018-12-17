@@ -19,7 +19,6 @@ namespace SkynetServer.Packets
 
         public override void WritePacket(PacketBuffer buffer)
         {
-            throw new NotImplementedException();
         }
     }
 }

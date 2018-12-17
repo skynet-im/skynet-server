@@ -8,7 +8,7 @@ namespace SkynetServer.Packets
     [Packet(0x0D, PacketPolicy.Receive)]
     internal sealed class P0DMessageBlock : Packet
     {
-        public List<(Byte[] Message)> Messages { get; set; } = new List<(byte[] Message)>(); //???
+        public List<byte[]> Messages { get; set; } = new List<byte[]>();
 
         public override Packet Create() => new P0DMessageBlock().Init(this);
 
@@ -16,9 +16,9 @@ namespace SkynetServer.Packets
 
         public override void ReadPacket(PacketBuffer buffer)
         {
-            for(int i = 0; i< buffer.ReadByte(); i++)
+            for(int i = 0; i < buffer.ReadUShort(); i++)
             {
-                Messages.Add(buffer.ReadByteArray()); //???
+                Messages.Add(buffer.ReadByteArray());
             }
         }
 

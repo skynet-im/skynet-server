@@ -19,7 +19,6 @@ namespace SkynetServer.Packets
 
         public override void Handle(IPacketHandler handler) => handler.Handle(this);
 
-
         public override void ReadPacket(PacketBuffer buffer)
         {
             throw new NotImplementedException();
