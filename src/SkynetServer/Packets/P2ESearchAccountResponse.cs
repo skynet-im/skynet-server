@@ -8,7 +8,7 @@ namespace SkynetServer.Packets
     [Packet(0x2E, PacketPolicy.Send)]
     internal sealed class P2ESearchAccountResponse : Packet
     {
-        public List<(long AccountId, string AccountName, List<(byte PacketId, byte[] PacketContent)> ForwardedPackets)> Result { get; set; } = new List<(long AccountId, string AccountName, List<(byte PacketId, byte[] PacketContent)> ForwardedPackets)>();
+        public List<SearchResult> Result { get; set; } = new List<SearchResult>();
 
         public override Packet Create() => new P2ESearchAccountResponse().Init(this);
 

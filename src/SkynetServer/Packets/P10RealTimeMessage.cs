@@ -20,12 +20,19 @@ namespace SkynetServer.Packets
 
         public override void ReadPacket(PacketBuffer buffer)
         {
-            ChannelId = buffer.ReadLong();                      // TODO: Need help
+            ChannelId = buffer.ReadLong();
+            MessageFlags = (MessageFlags)buffer.ReadByte();
+            ContentPacketId = buffer.ReadByte();
+            ContentPacket = buffer.ReadByteArray();
         }
         
         public override void WritePacket(PacketBuffer buffer)
         {
-            throw new NotImplementedException();
+            buffer.WriteLong(ChannelId);
+            buffer.WriteLong(SenderId);
+            buffer.WriteByte((byte)MessageFlags);
+            buffer.WriteByte(ContentPacketId);
+            buffer.WriteByteArray(ContentPacket, true);
         }
     }
 }

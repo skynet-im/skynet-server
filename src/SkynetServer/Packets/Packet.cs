@@ -23,16 +23,16 @@ namespace SkynetServer.Packets
             {
                 Activator.CreateInstance(type);
                 Packet instance = (Packet)Activator.CreateInstance(type);
-                instance.PacketId = attribute.PacketId;
-                instance.PacketPolicy = attribute.PacketPolicy;
-                Packets[instance.PacketId] = instance;
+                instance.Id = attribute.PacketId;
+                instance.Policy = attribute.PacketPolicy;
+                Packets[instance.Id] = instance;
             }
         }
 
         public static Packet[] Packets { get; }
 
-        public byte PacketId { get; set; }
-        public PacketPolicy PacketPolicy { get; set; }
+        public byte Id { get; set; }
+        public PacketPolicy Policy { get; set; }
 
         public abstract Packet Create();
         public abstract void Handle(IPacketHandler handler);
@@ -41,8 +41,8 @@ namespace SkynetServer.Packets
 
         protected Packet Init(Packet source)
         {
-            PacketId = source.PacketId;
-            PacketPolicy = source.PacketPolicy;
+            Id = source.Id;
+            Policy = source.Policy;
             return this;
         }
     }

@@ -6,12 +6,12 @@ using VSL;
 namespace SkynetServer.Packets
 {
     [Packet(0x11, PacketPolicy.Receive)]
-    internal sealed class P11subscribeChannel : Packet
+    internal sealed class P11SubscribeChannel : Packet
     {
         public long ChannelId { get; set; }
         public byte PacketId { get; set; }
 
-        public override Packet Create() => new P11subscribeChannel().Init(this);
+        public override Packet Create() => new P11SubscribeChannel().Init(this);
 
         public override void Handle(IPacketHandler handler) => handler.Handle(this);
 
