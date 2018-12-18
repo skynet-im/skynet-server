@@ -27,12 +27,42 @@ namespace SkynetServer.Packets
 
         public override void ReadPacket(PacketBuffer buffer)
         {
-            throw new NotImplementedException();
+            PacketVersion = buffer.ReadByte();
+            ChannelId = buffer.ReadLong();
+            MessageId = buffer.ReadLong();
+            MessageFlags = (MessageFlags)buffer.ReadByte();
+            if (MessageFlags.HasFlag(MessageFlags.FileAttached))
+                FileId = buffer.ReadLong();
+            ContentPacketId = buffer.ReadByte();
+            ContentPacketVersion = buffer.ReadByte();
+            ContentPacket = buffer.ReadByteArray();
+            for (int i = 0; i < buffer.ReadUShort(); i++)
+            {
+                Dependencies.Add(new MessageDependency(buffer.ReadLong(), buffer.ReadLong(), buffer.ReadLong()));
+            }
         }
 
         public override void WritePacket(PacketBuffer buffer)
         {
-            throw new NotImplementedException();
+            buffer.WriteByte(PacketVersion);
+            buffer.WriteLong(ChannelId);
+            buffer.WriteLong(SenderId);
+            buffer.WriteLong(MessageId);
+            buffer.WriteLong(SkipCount);
+            buffer.WriteDate(DispatchTime);
+            buffer.WriteByte((byte)MessageFlags);
+            if (MessageFlags.HasFlag(MessageFlags.FileAttached))
+                buffer.WriteLong(FileId);
+            buffer.WriteByte(ContentPacketId);
+            buffer.WriteByte(ContentPacketVersion);
+            buffer.WriteByteArray(ContentPacket, true);
+            buffer.WriteUShort((ushort)Dependencies.Count);
+            foreach (MessageDependency dependency in Dependencies)
+            {
+                buffer.WriteLong(dependency.AccountId);
+                buffer.WriteLong(dependency.ChannelId);
+                buffer.WriteLong(dependency.MessageId);
+            }
         }
     }
 }

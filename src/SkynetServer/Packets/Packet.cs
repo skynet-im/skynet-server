@@ -21,7 +21,6 @@ namespace SkynetServer.Packets
 
             foreach ((Type type, PacketAttribute attribute) in packets)
             {
-                Activator.CreateInstance(type);
                 Packet instance = (Packet)Activator.CreateInstance(type);
                 instance.Id = attribute.PacketId;
                 instance.Policy = attribute.PacketPolicy;
