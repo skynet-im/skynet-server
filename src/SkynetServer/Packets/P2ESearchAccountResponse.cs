@@ -8,7 +8,7 @@ namespace SkynetServer.Packets
     [Packet(0x2E, PacketPolicy.Send)]
     internal sealed class P2ESearchAccountResponse : Packet
     {
-        public List<SearchResult> Result { get; set; } = new List<SearchResult>();
+        public List<SearchResult> Results { get; set; } = new List<SearchResult>();
 
         public override Packet Create() => new P2ESearchAccountResponse().Init(this);
 
@@ -21,7 +21,18 @@ namespace SkynetServer.Packets
 
         public override void WritePacket(PacketBuffer buffer)
         {
-            // TODO: Need help
+            buffer.WriteUShort((ushort)Results.Count);
+            foreach (SearchResult result in Results)
+            {
+                buffer.WriteLong(result.AccountId);
+                buffer.WriteString(result.AccountName);
+                buffer.WriteUShort((ushort)result.ForwardedPackets.Count);
+                foreach (var (PacketId, PacketContent) in result.ForwardedPackets)
+                {
+                    buffer.WriteByte(PacketId);
+                    buffer.WriteByteArray(PacketContent, true);
+                }
+            }
         }
     }
 }
