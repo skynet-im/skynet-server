@@ -30,6 +30,8 @@ namespace SkynetServer.Packets
         void Handle(P14MailAddress packet);
         void Handle(P15PasswordUpdate packet);
         void Handle(P18PublicKeys packet);
+        void Handle(P19DerivationKey packet);
+        void Handle(P1BDirectChannelUpdate packet);
         void Handle(P1EGroupChannelUpdate packet);
 
         void Handle(P2DSearchAccount packet);
