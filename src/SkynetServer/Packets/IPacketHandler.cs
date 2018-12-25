@@ -36,6 +36,10 @@ namespace SkynetServer.Packets
         void Handle(P22MessageReceived packet);
         void Handle(P23MessageRead packet);
         void Handle(P25Nickname packet);
+        void Handle(P26PersonalMessage packet);
+        void Handle(P27ProfileImage packet);
+        void Handle(P28BlockList packet);
+        void Handle(P29DeviceList packet);
 
         void Handle(P2DSearchAccount packet);
         void Handle(P2ESearchAccountResponse packet);
