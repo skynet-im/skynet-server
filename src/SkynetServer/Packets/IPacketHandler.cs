@@ -33,6 +33,9 @@ namespace SkynetServer.Packets
         void Handle(P19DerivationKey packet);
         void Handle(P1BDirectChannelUpdate packet);
         void Handle(P1EGroupChannelUpdate packet);
+        void Handle(P22MessageReceived packet);
+        void Handle(P23MessageRead packet);
+        void Handle(P25Nickname packet);
 
         void Handle(P2DSearchAccount packet);
         void Handle(P2ESearchAccountResponse packet);
