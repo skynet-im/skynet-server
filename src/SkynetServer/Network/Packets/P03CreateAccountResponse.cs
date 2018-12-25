@@ -13,7 +13,7 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P03CreateAccountResponse().Init(this);
 
-        public override void Handle(IPacketHandler handler) => handler.Handle(this);
+        public override void Handle(IPacketHandler handler) => throw new NotImplementedException();
 
         public override void ReadPacket(PacketBuffer buffer)
         {
