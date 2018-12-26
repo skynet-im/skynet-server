@@ -17,6 +17,7 @@ namespace SkynetServer.Entities
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Channel> Channels { get; set; }
         public DbSet<Message> Messages { get; set; }
+        public DbSet<MessageDependency> MessageDependencies { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -32,6 +33,10 @@ namespace SkynetServer.Entities
             message.HasKey(m => new { m.ChannelId, m.MessageId });
             message.HasOne(m => m.Channel).WithMany(c => c.Messages).HasForeignKey(m => m.ChannelId);
             message.Property(m => m.MessageId).ValueGeneratedNever();
+
+            var messageDependency = modelBuilder.Entity<MessageDependency>();
+            messageDependency.HasKey(d => new { d.AccountId, d.ChannelId, d.MessageId });
+            messageDependency.HasOne(d => d.Message).WithMany(m => m.Dependencies).HasForeignKey(d => new { d.ChannelId, d.MessageId });
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

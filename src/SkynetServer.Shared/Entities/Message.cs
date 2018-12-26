@@ -8,8 +8,17 @@ namespace SkynetServer.Entities
     {
         public long MessageId { get; set; }
         public DateTime DispatchTime { get; set; }
+        // TODO: MessageFlags
+        public byte ContentPacketId { get; set; }
+        public byte ContentPacketVersion { get; set; }
+        public byte[] ContentPacket { get; set; }
 
         public long ChannelId { get; set; }
         public Channel Channel { get; set; }
+
+        public long SenderId { get; set; }
+        public Account Sender { get; set; }
+
+        public IEnumerable<MessageDependency> Dependencies { get; set; }
     }
 }

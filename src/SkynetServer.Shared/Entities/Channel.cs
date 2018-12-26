@@ -7,6 +7,7 @@ namespace SkynetServer.Entities
     public class Channel
     {
         public long ChannelId { get; set; }
+
         public IEnumerable<Message> Messages { get; set; }
     }
 }
