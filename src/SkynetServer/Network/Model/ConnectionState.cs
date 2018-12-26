@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace SkynetServer.Packets
+namespace SkynetServer.Network.Model
 {
     public enum ConnectionState
     {

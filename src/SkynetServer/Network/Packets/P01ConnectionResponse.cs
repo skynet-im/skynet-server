@@ -1,9 +1,10 @@
-﻿using System;
+﻿using SkynetServer.Network.Model;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using VSL;
 
-namespace SkynetServer.Packets
+namespace SkynetServer.Network.Packets
 {
     [Packet(0x01, PacketPolicy.Send)]
     internal sealed class P01ConnectionResponse : Packet
@@ -13,6 +14,8 @@ namespace SkynetServer.Packets
         public string LatestVersion { get; set; }
 
         public override Packet Create() => new P01ConnectionResponse().Init(this);
+
+        public override void Handle(IPacketHandler handler) => throw new NotImplementedException();
 
         public override void ReadPacket(PacketBuffer buffer)
         {

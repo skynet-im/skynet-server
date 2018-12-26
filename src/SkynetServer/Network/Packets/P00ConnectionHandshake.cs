@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using VSL;
 
-namespace SkynetServer.Packets
+namespace SkynetServer.Network.Packets
 {
     [Packet(0x00, PacketPolicy.Receive)]
     internal sealed class P00ConnectionHandshake : Packet
@@ -13,6 +13,8 @@ namespace SkynetServer.Packets
         public int VersionCode { get; set; }
 
         public override Packet Create() => new P00ConnectionHandshake().Init(this);
+
+        public override void Handle(IPacketHandler handler) => handler.Handle(this);
 
         public override void ReadPacket(PacketBuffer buffer)
         {
