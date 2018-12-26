@@ -31,10 +31,10 @@ namespace SkynetServer.Network.Packets
         {
             buffer.WriteLong(GroupRevision);
             buffer.WriteUShort((ushort)Members.Count);
-            foreach ((long AccountId, GroupMemberFlags Flags) in Members)
+            foreach ((long accountId, GroupMemberFlags flags) in Members)
             {
-                buffer.WriteLong(AccountId);
-                buffer.WriteByte((byte)Flags);
+                buffer.WriteLong(accountId);
+                buffer.WriteByte((byte)flags);
             }
             buffer.WriteByteArray(KeyHistory, true);
         }

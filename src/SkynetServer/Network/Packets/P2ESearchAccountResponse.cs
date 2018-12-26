@@ -28,10 +28,10 @@ namespace SkynetServer.Network.Packets
                 buffer.WriteLong(result.AccountId);
                 buffer.WriteString(result.AccountName);
                 buffer.WriteUShort((ushort)result.ForwardedPackets.Count);
-                foreach (var (PacketId, PacketContent) in result.ForwardedPackets)
+                foreach ((byte packetId, byte[] packetContent) in result.ForwardedPackets)
                 {
-                    buffer.WriteByte(PacketId);
-                    buffer.WriteByteArray(PacketContent, true);
+                    buffer.WriteByte(packetId);
+                    buffer.WriteByteArray(packetContent, true);
                 }
             }
         }
