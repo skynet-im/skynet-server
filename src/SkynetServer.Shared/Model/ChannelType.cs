@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace SkynetServer.Network.Model
+namespace SkynetServer.Model
 {
-    public enum ChannelType
+    public enum ChannelType : byte
     {
         Loopback,
         Direct,

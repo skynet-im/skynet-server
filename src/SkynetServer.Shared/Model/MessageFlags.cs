@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace SkynetServer.Network.Model
+namespace SkynetServer.Model
 {
-   public enum MessageFlags
+    public enum MessageFlags : byte
     {
         None = 0,
         Loopback = 1,

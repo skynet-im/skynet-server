@@ -15,6 +15,7 @@ namespace SkynetServer.Entities
         public static readonly object MessagesLock = new object();
 
         public DbSet<Account> Accounts { get; set; }
+        public DbSet<Session> Sessions { get; set; }
         public DbSet<Channel> Channels { get; set; }
         public DbSet<Message> Messages { get; set; }
         public DbSet<MessageDependency> MessageDependencies { get; set; }
@@ -25,14 +26,20 @@ namespace SkynetServer.Entities
             account.HasKey(a => a.AccountId);
             account.HasAlternateKey(a => a.AccountName);
 
+            var session = modelBuilder.Entity<Session>();
+            session.HasKey(s => new { s.AccountId, s.SessionId });
+            session.HasOne(s => s.Account).WithMany(a => a.Sessions).HasForeignKey(s => s.AccountId);
+
             var channel = modelBuilder.Entity<Channel>();
             channel.HasKey(c => c.ChannelId);
             channel.Property(c => c.ChannelId).ValueGeneratedNever();
+            channel.Property(c => c.ChannelType).HasConversion<byte>();
 
             var message = modelBuilder.Entity<Message>();
             message.HasKey(m => new { m.ChannelId, m.MessageId });
             message.HasOne(m => m.Channel).WithMany(c => c.Messages).HasForeignKey(m => m.ChannelId);
             message.Property(m => m.MessageId).ValueGeneratedNever();
+            message.Property(m => m.MessageFlags).HasConversion<byte>();
 
             var messageDependency = modelBuilder.Entity<MessageDependency>();
             messageDependency.HasKey(d => new { d.AccountId, d.ChannelId, d.MessageId });

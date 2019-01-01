@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SkynetServer.Model;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -8,7 +9,7 @@ namespace SkynetServer.Entities
     {
         public long MessageId { get; set; }
         public DateTime DispatchTime { get; set; }
-        // TODO: MessageFlags
+        public MessageFlags MessageFlags { get; set; }
         public byte ContentPacketId { get; set; }
         public byte ContentPacketVersion { get; set; }
         public byte[] ContentPacket { get; set; }

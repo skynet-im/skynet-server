@@ -8,5 +8,7 @@ namespace SkynetServer.Entities
     {
         public long AccountId { get; set; }
         public string AccountName { get; set; }
+
+        public IEnumerable<Session> Sessions { get; set; }
     }
 }
