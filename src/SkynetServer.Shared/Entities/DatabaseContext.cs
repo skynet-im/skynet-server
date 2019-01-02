@@ -42,6 +42,13 @@ namespace SkynetServer.Entities
             channel.HasKey(c => c.ChannelId);
             channel.Property(c => c.ChannelId).ValueGeneratedNever();
             channel.Property(c => c.ChannelType).HasConversion<byte>();
+            // TODO: Foreign Key OwnerId
+            // TODO: Optional Foreign Key OtherId
+
+            var groupMember = modelBuilder.Entity<GroupMember>();
+            groupMember.HasKey(m => new { m.ChannelId, m.AccountId });
+            // TODO: Foreign Key ChannelId
+            // TODO: Foreign Key AccountId
 
             var message = modelBuilder.Entity<Message>();
             message.HasKey(m => new { m.ChannelId, m.MessageId });
