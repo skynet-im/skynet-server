@@ -31,10 +31,12 @@ namespace SkynetServer.Entities
             session.HasOne(s => s.Account).WithMany(a => a.Sessions).HasForeignKey(s => s.AccountId);
 
             var blockedAccount = modelBuilder.Entity<BlockedAccount>();
+            blockedAccount.HasKey(b => new { b.OwnerId, b.AccountId });
             blockedAccount.HasOne(b => b.Owner).WithMany(a => a.BlockedAccounts).HasForeignKey(b => b.OwnerId);
             blockedAccount.HasOne(b => b.Account).WithMany(a => a.Blockers).HasForeignKey(b => b.AccountId);
 
             var blockedConv = modelBuilder.Entity<BlockedConversation>();
+            blockedConv.HasKey(b => new { b.OwnerId, b.ChannelId });
             blockedConv.HasOne(b => b.Owner).WithMany(a => a.BlockedConversations).HasForeignKey(b => b.OwnerId);
             blockedConv.HasOne(b => b.Channel).WithMany(c => c.Blockers).HasForeignKey(b => b.ChannelId);
 
@@ -42,8 +44,8 @@ namespace SkynetServer.Entities
             channel.HasKey(c => c.ChannelId);
             channel.Property(c => c.ChannelId).ValueGeneratedNever();
             channel.Property(c => c.ChannelType).HasConversion<byte>();
-            channel.HasOne(c => c.Owner).WithMany(a => a.Channels).HasForeignKey(c => c.OwnerId);
-            channel.HasOne(c => c.Other).WithMany(a => a.Channels).HasForeignKey(c => c.OtherId);
+            channel.HasOne(c => c.Owner).WithMany(a => a.OwnedChannels).HasForeignKey(c => c.OwnerId);
+            channel.HasOne(c => c.Other).WithMany(a => a.OtherChannels).HasForeignKey(c => c.OtherId);
 
             var groupMember = modelBuilder.Entity<GroupMember>();
             groupMember.HasKey(m => new { m.ChannelId, m.AccountId });

@@ -9,11 +9,12 @@ namespace SkynetServer.Entities
         public long AccountId { get; set; }
         public string AccountName { get; set; }
 
-        public IEnumerable<Channel> Channels { get; set; }
         public IEnumerable<Session> Sessions { get; set; }
         public IEnumerable<BlockedAccount> BlockedAccounts { get; set; }
         public IEnumerable<BlockedConversation> BlockedConversations { get; set; }
         public IEnumerable<BlockedAccount> Blockers { get; set; }
+        public IEnumerable<Channel> OwnedChannels { get; set; }
+        public IEnumerable<Channel> OtherChannels { get; set; }
         public IEnumerable<GroupMember> GroupMemberships { get; set; }
         public IEnumerable<MailAddressConfirmation> MailAddressConfirmations { get; set; }
     }
