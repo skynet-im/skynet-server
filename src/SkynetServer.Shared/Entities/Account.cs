@@ -10,5 +10,8 @@ namespace SkynetServer.Entities
         public string AccountName { get; set; }
 
         public IEnumerable<Session> Sessions { get; set; }
+        public IEnumerable<BlockedAccount> BlockedAccounts { get; set; }
+        public IEnumerable<BlockedConversation> BlockedConversations { get; set; }
+        public IEnumerable<BlockedAccount> Blockers { get; set; }
     }
 }

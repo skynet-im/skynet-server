@@ -30,6 +30,14 @@ namespace SkynetServer.Entities
             session.HasKey(s => new { s.AccountId, s.SessionId });
             session.HasOne(s => s.Account).WithMany(a => a.Sessions).HasForeignKey(s => s.AccountId);
 
+            var blockedAccount = modelBuilder.Entity<BlockedAccount>();
+            blockedAccount.HasOne(b => b.Owner).WithMany(a => a.BlockedAccounts).HasForeignKey(b => b.OwnerId);
+            blockedAccount.HasOne(b => b.Account).WithMany(a => a.Blockers).HasForeignKey(b => b.AccountId);
+
+            var blockedConv = modelBuilder.Entity<BlockedConversation>();
+            blockedConv.HasOne(b => b.Owner).WithMany(a => a.BlockedConversations).HasForeignKey(b => b.OwnerId);
+            blockedConv.HasOne(b => b.Channel).WithMany(c => c.Blockers).HasForeignKey(b => b.ChannelId);
+
             var channel = modelBuilder.Entity<Channel>();
             channel.HasKey(c => c.ChannelId);
             channel.Property(c => c.ChannelId).ValueGeneratedNever();
@@ -44,6 +52,11 @@ namespace SkynetServer.Entities
             var messageDependency = modelBuilder.Entity<MessageDependency>();
             messageDependency.HasKey(d => new { d.AccountId, d.ChannelId, d.MessageId });
             messageDependency.HasOne(d => d.Message).WithMany(m => m.Dependencies).HasForeignKey(d => new { d.ChannelId, d.MessageId });
+
+            var mailAddressConfirmation = modelBuilder.Entity<MailAddressConfirmation>();
+            mailAddressConfirmation.HasKey(c => c.MailAddress);
+            mailAddressConfirmation.HasAlternateKey(c => c.Token);
+            // TODO: Foreign Key AccountId
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
