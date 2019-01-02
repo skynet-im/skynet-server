@@ -42,13 +42,13 @@ namespace SkynetServer.Entities
             channel.HasKey(c => c.ChannelId);
             channel.Property(c => c.ChannelId).ValueGeneratedNever();
             channel.Property(c => c.ChannelType).HasConversion<byte>();
-            // TODO: Foreign Key OwnerId
-            // TODO: Optional Foreign Key OtherId
+            channel.HasOne(c => c.Owner).WithMany(a => a.Channels).HasForeignKey(c => c.OwnerId);
+            channel.HasOne(c => c.Other).WithMany(a => a.Channels).HasForeignKey(c => c.OtherId);
 
             var groupMember = modelBuilder.Entity<GroupMember>();
             groupMember.HasKey(m => new { m.ChannelId, m.AccountId });
-            // TODO: Foreign Key ChannelId
-            // TODO: Foreign Key AccountId
+            groupMember.HasOne(m => m.Channel).WithMany(c => c.GroupMembers).HasForeignKey(m => m.ChannelId);
+            groupMember.HasOne(m => m.Account).WithMany(a => a.GroupMemberships).HasForeignKey(m => m.AccountId);
 
             var message = modelBuilder.Entity<Message>();
             message.HasKey(m => new { m.ChannelId, m.MessageId });
@@ -60,10 +60,10 @@ namespace SkynetServer.Entities
             messageDependency.HasKey(d => new { d.AccountId, d.ChannelId, d.MessageId });
             messageDependency.HasOne(d => d.Message).WithMany(m => m.Dependencies).HasForeignKey(d => new { d.ChannelId, d.MessageId });
 
-            var mailAddressConfirmation = modelBuilder.Entity<MailAddressConfirmation>();
-            mailAddressConfirmation.HasKey(c => c.MailAddress);
-            mailAddressConfirmation.HasAlternateKey(c => c.Token);
-            // TODO: Foreign Key AccountId
+            var addressConfirmation = modelBuilder.Entity<MailAddressConfirmation>();
+            addressConfirmation.HasKey(c => c.MailAddress);
+            addressConfirmation.HasAlternateKey(c => c.Token);
+            addressConfirmation.HasOne(c => c.Account).WithMany(a => a.MailAddressConfirmations).HasForeignKey(c => c.AccountId);
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
