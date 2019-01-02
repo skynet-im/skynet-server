@@ -10,7 +10,8 @@ namespace SkynetServer
     {
         static void Main(string[] args)
         {
-            long id;
+            long accountId;
+            long channelId;
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
@@ -20,14 +21,19 @@ namespace SkynetServer
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
-                id = ctx.AddChannel(new Channel()).ChannelId;
+                accountId = ctx.AddAccount(new Account() { AccountName = $"{new Random().Next()}@example.com" }).AccountId;
+            }
+
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                channelId = ctx.AddChannel(new Channel() { OwnerId = accountId }).ChannelId;
             }
 
             Parallel.For(0, 1000, i =>
             {
                 using (DatabaseContext ctx = new DatabaseContext())
                 {
-                    ctx.AddMessage(new Message() { ChannelId = id, DispatchTime = DateTime.Now });
+                    ctx.AddMessage(new Message() { ChannelId = channelId, SenderId = accountId, DispatchTime = DateTime.Now });
                 }
             });
 
