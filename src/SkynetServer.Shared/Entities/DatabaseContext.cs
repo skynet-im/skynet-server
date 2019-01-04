@@ -25,10 +25,12 @@ namespace SkynetServer.Entities
             var account = modelBuilder.Entity<Account>();
             account.HasKey(a => a.AccountId);
             account.HasAlternateKey(a => a.AccountName);
+            account.Property(a => a.KeyHash).IsRequired();
 
             var session = modelBuilder.Entity<Session>();
             session.HasKey(s => new { s.AccountId, s.SessionId });
             session.HasOne(s => s.Account).WithMany(a => a.Sessions).HasForeignKey(s => s.AccountId);
+            session.Property(s => s.ApplicationIdentifier).IsRequired();
 
             var blockedAccount = modelBuilder.Entity<BlockedAccount>();
             blockedAccount.HasKey(b => new { b.OwnerId, b.AccountId });
