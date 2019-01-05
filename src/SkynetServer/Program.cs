@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using SkynetServer.Entities;
 using System;
 using System.Linq;
@@ -6,10 +7,14 @@ using System.Threading.Tasks;
 
 namespace SkynetServer
 {
-    class Program
+    internal static class Program
     {
+        public static IConfiguration Configuration { get; private set; }
+
         static void Main(string[] args)
         {
+            Configuration = new ConfigurationBuilder().Build();
+
             long accountId;
             long channelId;
 
