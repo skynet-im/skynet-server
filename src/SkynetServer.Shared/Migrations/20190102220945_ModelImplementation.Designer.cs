@@ -2,15 +2,17 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SkynetServer.Entities;
 
 namespace SkynetServer.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20190102220945_ModelImplementation")]
+    partial class ModelImplementation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -23,9 +25,6 @@ namespace SkynetServer.Migrations
                         .ValueGeneratedOnAdd();
 
                     b.Property<string>("AccountName")
-                        .IsRequired();
-
-                    b.Property<byte[]>("KeyHash")
                         .IsRequired();
 
                     b.HasKey("AccountId");
@@ -164,8 +163,7 @@ namespace SkynetServer.Migrations
 
                     b.Property<long>("SessionId");
 
-                    b.Property<string>("ApplicationIdentifier")
-                        .IsRequired();
+                    b.Property<string>("ApplicationIdentifier");
 
                     b.Property<DateTime>("CreationTime");
 
