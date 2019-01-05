@@ -4,6 +4,7 @@ using System.Text;
 
 namespace SkynetServer.Model
 {
+    [Flags]
     public enum MessageFlags : byte
     {
         None = 0,
