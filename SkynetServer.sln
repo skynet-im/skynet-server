@@ -15,7 +15,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{B8633C65-A5ED-42
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SkynetServer.Shared", "src\SkynetServer.Shared\SkynetServer.Shared.csproj", "{A1E7C0A1-ECAB-4D42-94BC-5054CDC7F7A4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkynetServer.Web", "src\SkynetServer.Web\SkynetServer.Web.csproj", "{320D2430-F663-46FE-8108-E2F2AE51A25B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SkynetServer.Web", "src\SkynetServer.Web\SkynetServer.Web.csproj", "{320D2430-F663-46FE-8108-E2F2AE51A25B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{851FCDD1-B64A-4BEC-AA13-00AFCAF2C3F3}"
 	ProjectSection(SolutionItems) = preProject
