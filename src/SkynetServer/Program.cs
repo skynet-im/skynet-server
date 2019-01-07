@@ -20,13 +20,15 @@ namespace SkynetServer
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
-                //ctx.Database.EnsureDeleted();
+                ctx.Database.EnsureDeleted();
                 ctx.Database.Migrate();
             }
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
-                accountId = ctx.AddAccount(new Account() { AccountName = $"{new Random().Next()}@example.com" }).AccountId;
+                Account account = new Account() { AccountName = $"{new Random().Next()}@example.com", KeyHash = new byte[0] };
+                accountId = ctx.AddAccount(account).AccountId;
+                MailConfirmation confirmation = ctx.AddMailConfirmation(account, account.AccountName);
             }
 
             using (DatabaseContext ctx = new DatabaseContext())

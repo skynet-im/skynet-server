@@ -13,6 +13,7 @@ namespace SkynetServer.Entities
         public static readonly object AccountsLock = new object();
         public static readonly object ChannelsLock = new object();
         public static readonly object MessagesLock = new object();
+        public static readonly object MailConfirmationsLock = new object();
 
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Session> Sessions { get; set; }
@@ -111,7 +112,7 @@ namespace SkynetServer.Entities
             return channel;
         }
 
-        public void AddMessage(Message message)
+        public Message AddMessage(Message message)
         {
             /*Database.ExecuteSqlCommand($@"BEGIN;
 SELECT @id := IFNULL(MAX(MessageId), 0) + 1 FROM Messages WHERE ChannelId = {message.ChannelId} FOR UPDATE;
@@ -123,6 +124,30 @@ COMMIT;");*/
                 Messages.Add(message);
                 SaveChanges();
             }
+            return message;
+        }
+
+        public MailConfirmation AddMailConfirmation(Account account, string address)
+        {
+            MailConfirmation confirmation = new MailConfirmation()
+            {
+                AccountId = account.AccountId,
+                MailAddress = address,
+                CreationTime = DateTime.Now
+            };
+
+            lock (MailConfirmationsLock)
+            {
+                string token;
+                do
+                {
+                    token = RandomToken(16);
+                } while (MailConfirmations.Any(x => x.Token == token));
+                confirmation.Token = token;
+                MailConfirmations.Add(confirmation);
+                SaveChanges();
+            }
+            return confirmation;
         }
 
         private long RandomId()
@@ -131,6 +156,15 @@ COMMIT;");*/
             Span<byte> value = stackalloc byte[8];
             random.NextBytes(value);
             return BitConverter.ToInt64(value);
+        }
+
+        private string RandomToken(int length)
+        {
+            Random random = new Random();
+            Span<char> value = stackalloc char[length];
+            for (int i = 0; i < length; i++)
+                value[i] = (char)random.Next('a', 'z' + 1);
+            return value.ToString();
         }
     }
 }
