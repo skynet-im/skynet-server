@@ -19,6 +19,7 @@ namespace SkynetServer.Entities
         public DbSet<Channel> Channels { get; set; }
         public DbSet<Message> Messages { get; set; }
         public DbSet<MessageDependency> MessageDependencies { get; set; }
+        public DbSet<MailConfirmation> MailConfirmations { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -64,10 +65,10 @@ namespace SkynetServer.Entities
             messageDependency.HasKey(d => new { d.AccountId, d.ChannelId, d.MessageId });
             messageDependency.HasOne(d => d.Message).WithMany(m => m.Dependencies).HasForeignKey(d => new { d.ChannelId, d.MessageId });
 
-            var addressConfirmation = modelBuilder.Entity<MailAddressConfirmation>();
-            addressConfirmation.HasKey(c => c.MailAddress);
-            addressConfirmation.HasAlternateKey(c => c.Token);
-            addressConfirmation.HasOne(c => c.Account).WithMany(a => a.MailAddressConfirmations).HasForeignKey(c => c.AccountId);
+            var mailConfirmation = modelBuilder.Entity<MailConfirmation>();
+            mailConfirmation.HasKey(c => c.MailAddress);
+            mailConfirmation.HasAlternateKey(c => c.Token);
+            mailConfirmation.HasOne(c => c.Account).WithMany(a => a.AddressConfirmations).HasForeignKey(c => c.AccountId);
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace SkynetServer.Web.Controllers
 {
-    [Route("~/verification")]
-    public class VerificationController : Controller
+    [Route("~/confirm")]
+    public class MailConfirmationController : Controller
     {
         [HttpGet("{token}")]
         public IActionResult Get(string token)
