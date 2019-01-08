@@ -69,7 +69,7 @@ namespace SkynetServer.Entities
             var mailConfirmation = modelBuilder.Entity<MailConfirmation>();
             mailConfirmation.HasKey(c => c.MailAddress);
             mailConfirmation.HasAlternateKey(c => c.Token);
-            mailConfirmation.HasOne(c => c.Account).WithMany(a => a.AddressConfirmations).HasForeignKey(c => c.AccountId);
+            mailConfirmation.HasOne(c => c.Account).WithMany(a => a.MailConfirmations).HasForeignKey(c => c.AccountId);
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

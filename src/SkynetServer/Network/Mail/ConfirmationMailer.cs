@@ -7,9 +7,9 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SkynetServer.Verification
+namespace SkynetServer.Network.Mail
 {
-    internal class VerificationMailer
+    internal class ConfirmationMailer
     {
         public async Task SendMailAsync(string address, string token)
         {
@@ -18,7 +18,7 @@ namespace SkynetServer.Verification
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(config.SenderName, config.SenderAddress));
             message.To.Add(new MailboxAddress(address));
-            message.Subject = "Skynet Messenger mail address verification";
+            message.Subject = "Confirm your email address";
             message.Body = new TextPart()
             {
                 Text = config.ContentTemplate.Replace("$ADDRESS", address).Replace("$TOKEN", token)
