@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using SkynetServer.Entities;
+using SkynetServer.Web.Models;
 
 namespace SkynetServer.Web.Controllers
 {
@@ -24,9 +25,9 @@ namespace SkynetServer.Web.Controllers
             if (confirmation == null)
                 return View("Invalid");
             if (confirmation.ConfirmationTime == default(DateTime))
-                return View("Pending");
+                return View("Pending", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
             else
-                return View("Complete");
+                return View("Confirmed", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
         }
 
         [HttpPost("{token}")]
@@ -39,10 +40,10 @@ namespace SkynetServer.Web.Controllers
             {
                 confirmation.ConfirmationTime = DateTime.Now;
                 _database.SaveChanges();
-                return View("Success");
+                return View("Success", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
             }
             else
-                return View("Complete");
+                return View("Confirmed", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
         }
     }
 }
