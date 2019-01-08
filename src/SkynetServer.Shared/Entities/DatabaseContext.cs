@@ -4,7 +4,9 @@ using Microsoft.Extensions.Logging.Console;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
+using Wiry.Base32;
 
 namespace SkynetServer.Entities
 {
@@ -141,7 +143,7 @@ COMMIT;");*/
                 string token;
                 do
                 {
-                    token = RandomToken(16);
+                    token = RandomToken();
                 } while (MailConfirmations.Any(x => x.Token == token));
                 confirmation.Token = token;
                 MailConfirmations.Add(confirmation);
@@ -152,19 +154,22 @@ COMMIT;");*/
 
         private long RandomId()
         {
-            Random random = new Random();
-            Span<byte> value = stackalloc byte[8];
-            random.NextBytes(value);
-            return BitConverter.ToInt64(value);
+            using (var random = RandomNumberGenerator.Create())
+            {
+                Span<byte> value = stackalloc byte[8];
+                random.GetBytes(value);
+                return BitConverter.ToInt64(value);
+            }
         }
 
-        private string RandomToken(int length)
+        private string RandomToken()
         {
-            Random random = new Random();
-            Span<char> value = stackalloc char[length];
-            for (int i = 0; i < length; i++)
-                value[i] = (char)random.Next('a', 'z' + 1);
-            return value.ToString();
+            using (var random = RandomNumberGenerator.Create())
+            {
+                byte[] value = new byte[10];
+                random.GetBytes(value);
+                return Base32Encoding.Standard.GetString(value).ToLower();
+            }
         }
     }
 }

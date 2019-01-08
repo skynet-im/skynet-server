@@ -21,7 +21,7 @@ namespace SkynetServer.Web.Controllers
         [HttpGet("{token}")]
         public IActionResult Get(string token)
         {
-            MailConfirmation confirmation = _database.MailConfirmations.Where(x => x.Token.Equals(token, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            MailConfirmation confirmation = _database.MailConfirmations.Where(x => x.Token == token).FirstOrDefault();
             if (confirmation == null)
                 return View("Invalid");
             if (confirmation.ConfirmationTime == default(DateTime))
@@ -33,7 +33,7 @@ namespace SkynetServer.Web.Controllers
         [HttpPost("{token}")]
         public IActionResult Post(string token)
         {
-            MailConfirmation confirmation = _database.MailConfirmations.Where(x => x.Token.Equals(token, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            MailConfirmation confirmation = _database.MailConfirmations.Where(x => x.Token == token).FirstOrDefault();
             if (confirmation == null)
                 return View("Invalid");
             if (confirmation.ConfirmationTime == default(DateTime))
