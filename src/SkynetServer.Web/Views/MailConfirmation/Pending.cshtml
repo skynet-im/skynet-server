@@ -1,0 +1,17 @@
+﻿@model MailConfirmationViewModel
+@{
+    ViewData["Title"] = "Confirmation pending";
+}
+
+<h2 class="main-header">Confirmation pending</h2>
+
+<p>The confirmation for your mail address <a href="mailto:@Model.MailAddress">@Model.MailAddress</a> is pending.</p>
+<noscript>
+    <div class="alert alert-warning" role="alert">
+        <p><b>JavaScript disabled:</b> Please click the button to complete the mail address confirmation.</p>
+    </div>
+</noscript>
+
+<form class="auto-submit" method="post">
+    <input type="submit" class="btn btn-primary" value="Complete confirmation" />
+</form>

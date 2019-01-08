@@ -1,0 +1,11 @@
+﻿@model MailConfirmationViewModel
+@{
+    ViewData["Title"] = "Successfully confirmed";
+}
+
+<h2 class="main-header">Successfully confirmed</h2>
+
+<p>
+    Your mail address <a href="mailto:@Model.MailAddress">@Model.MailAddress</a> has been successfully confirmed.
+    Now you can log in for the first time. Enjoy using Skynet!
+</p>

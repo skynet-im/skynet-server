@@ -17,6 +17,6 @@ namespace SkynetServer.Entities
         public IEnumerable<Channel> OwnedChannels { get; set; }
         public IEnumerable<Channel> OtherChannels { get; set; }
         public IEnumerable<GroupMember> GroupMemberships { get; set; }
-        public IEnumerable<MailAddressConfirmation> MailAddressConfirmations { get; set; }
+        public IEnumerable<MailConfirmation> MailConfirmations { get; set; }
     }
 }

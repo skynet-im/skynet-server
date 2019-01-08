@@ -4,7 +4,9 @@ using Microsoft.Extensions.Logging.Console;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
+using Wiry.Base32;
 
 namespace SkynetServer.Entities
 {
@@ -13,12 +15,14 @@ namespace SkynetServer.Entities
         public static readonly object AccountsLock = new object();
         public static readonly object ChannelsLock = new object();
         public static readonly object MessagesLock = new object();
+        public static readonly object MailConfirmationsLock = new object();
 
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Session> Sessions { get; set; }
         public DbSet<Channel> Channels { get; set; }
         public DbSet<Message> Messages { get; set; }
         public DbSet<MessageDependency> MessageDependencies { get; set; }
+        public DbSet<MailConfirmation> MailConfirmations { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -64,10 +68,10 @@ namespace SkynetServer.Entities
             messageDependency.HasKey(d => new { d.AccountId, d.ChannelId, d.MessageId });
             messageDependency.HasOne(d => d.Message).WithMany(m => m.Dependencies).HasForeignKey(d => new { d.ChannelId, d.MessageId });
 
-            var addressConfirmation = modelBuilder.Entity<MailAddressConfirmation>();
-            addressConfirmation.HasKey(c => c.MailAddress);
-            addressConfirmation.HasAlternateKey(c => c.Token);
-            addressConfirmation.HasOne(c => c.Account).WithMany(a => a.MailAddressConfirmations).HasForeignKey(c => c.AccountId);
+            var mailConfirmation = modelBuilder.Entity<MailConfirmation>();
+            mailConfirmation.HasKey(c => c.MailAddress);
+            mailConfirmation.HasAlternateKey(c => c.Token);
+            mailConfirmation.HasOne(c => c.Account).WithMany(a => a.MailConfirmations).HasForeignKey(c => c.AccountId);
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -110,7 +114,7 @@ namespace SkynetServer.Entities
             return channel;
         }
 
-        public void AddMessage(Message message)
+        public Message AddMessage(Message message)
         {
             /*Database.ExecuteSqlCommand($@"BEGIN;
 SELECT @id := IFNULL(MAX(MessageId), 0) + 1 FROM Messages WHERE ChannelId = {message.ChannelId} FOR UPDATE;
@@ -122,14 +126,50 @@ COMMIT;");*/
                 Messages.Add(message);
                 SaveChanges();
             }
+            return message;
+        }
+
+        public MailConfirmation AddMailConfirmation(Account account, string address)
+        {
+            MailConfirmation confirmation = new MailConfirmation()
+            {
+                AccountId = account.AccountId,
+                MailAddress = address,
+                CreationTime = DateTime.Now
+            };
+
+            lock (MailConfirmationsLock)
+            {
+                string token;
+                do
+                {
+                    token = RandomToken();
+                } while (MailConfirmations.Any(x => x.Token == token));
+                confirmation.Token = token;
+                MailConfirmations.Add(confirmation);
+                SaveChanges();
+            }
+            return confirmation;
         }
 
         private long RandomId()
         {
-            Random random = new Random();
-            Span<byte> value = stackalloc byte[8];
-            random.NextBytes(value);
-            return BitConverter.ToInt64(value);
+            using (var random = RandomNumberGenerator.Create())
+            {
+                Span<byte> value = stackalloc byte[8];
+                random.GetBytes(value);
+                return BitConverter.ToInt64(value);
+            }
+        }
+
+        private string RandomToken()
+        {
+            using (var random = RandomNumberGenerator.Create())
+            {
+                byte[] value = new byte[10];
+                random.GetBytes(value);
+                return Base32Encoding.Standard.GetString(value).ToLower();
+            }
         }
     }
 }

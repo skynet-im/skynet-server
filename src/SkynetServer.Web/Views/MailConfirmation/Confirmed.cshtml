@@ -1,0 +1,11 @@
+﻿@model MailConfirmationViewModel
+@{
+    ViewData["Title"] = "Address confirmed";
+}
+
+<h2 class="main-header">Address already confirmed</h2>
+
+<p>
+    Your mail address <a href="mailto:@Model.MailAddress">@Model.MailAddress</a> has already been confirmed before.
+    Simply open the Skynet app and login. Enjoy using Skynet!
+</p>

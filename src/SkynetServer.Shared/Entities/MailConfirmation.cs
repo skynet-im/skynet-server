@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SkynetServer.Entities
 {
-    public class MailAddressConfirmation
+    public class MailConfirmation
     {
         public string MailAddress { get; set; }
         public string Token { get; set; }
