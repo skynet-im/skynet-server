@@ -98,6 +98,12 @@ namespace SkynetServer.Entities
             return account;
         }
 
+        public Session AddSession(Session session)
+        {
+            // TODO: Add id generation
+            return session;
+        }
+
         public Channel AddChannel(Channel channel)
         {
             lock (ChannelsLock)
