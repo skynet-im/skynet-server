@@ -1,12 +1,14 @@
-﻿using System;
+﻿using McMaster.Extensions.CommandLineUtils;
+using SkynetServer.Cli.Commands;
+using System;
 
 namespace SkynetServer.Cli
 {
     internal static class Program
     {
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            return CommandLineApplication.Execute<Skynet>(args);
         }
     }
 }

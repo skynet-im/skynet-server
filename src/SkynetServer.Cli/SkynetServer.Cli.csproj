@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SkynetServer.Shared\SkynetServer.Shared.csproj" />
   </ItemGroup>
 
