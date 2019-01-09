@@ -94,6 +94,7 @@ namespace SkynetServer
         {
             Client client = new Client(socket);
             lock (ClientsLock) Clients = Clients.Add(client);
+            client.Start();
         }
     }
 }
