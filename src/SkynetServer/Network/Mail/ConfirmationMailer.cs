@@ -13,7 +13,7 @@ namespace SkynetServer.Network.Mail
     {
         public async Task SendMailAsync(string address, string token)
         {
-            MailConfig config = Program.Configuration.Get<MailConfig>();
+            MailConfig config = Program.Configuration.Get<SkynetConfig>().MailConfig;
 
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(config.SenderName, config.SenderAddress));

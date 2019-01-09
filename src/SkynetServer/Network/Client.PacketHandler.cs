@@ -12,7 +12,7 @@ namespace SkynetServer.Network
     {
         public void Handle(P00ConnectionHandshake packet)
         {
-            var config = Program.Configuration.Get<ProtocolConfig>();
+            ProtocolConfig config = Program.Configuration.Get<SkynetConfig>().ProtocolConfig;
             var response = Packet.New<P01ConnectionResponse>();
             response.LatestVersion = config.VersionName;
             response.LatestVersionCode = config.VersionCode;

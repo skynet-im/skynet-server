@@ -20,7 +20,10 @@ namespace SkynetServer
 
         static void Main(string[] args)
         {
-            Configuration = new ConfigurationBuilder().Build();
+            Configuration = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .Build();
+
             Clients = ImmutableList.Create<Client>();
             VSLListener listener = CreateListener();
 
@@ -74,7 +77,7 @@ namespace SkynetServer
 
         private static VSLListener CreateListener()
         {
-            VslConfig config = Configuration.Get<VslConfig>();
+            VslConfig config = Configuration.Get<SkynetConfig>().VslConfig;
             IPEndPoint[] endPoints = {
                 new IPEndPoint(IPAddress.Any, config.TcpPort),
                 new IPEndPoint(IPAddress.IPv6Any, config.TcpPort)
