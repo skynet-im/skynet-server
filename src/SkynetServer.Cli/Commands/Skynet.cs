@@ -5,13 +5,13 @@ using System.Text;
 
 namespace SkynetServer.Cli.Commands
 {
-    [Command("skynet")]
-    [Subcommand(typeof(Database))]
+    [Command("skynet", Description = "Skynet Server Management Console")]
+    [Subcommand(typeof(Account), typeof(Database))]
     internal class Skynet : CommandBase
     {
-        private int OnExecute(IConsole console)
+        private int OnExecute(CommandLineApplication app)
         {
-            console.Error.WriteLine("False skynet command");
+            app.ShowHelp();
             return 1;
         }
     }
