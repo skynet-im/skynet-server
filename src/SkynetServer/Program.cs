@@ -1,19 +1,28 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using SkynetServer.Configuration;
 using SkynetServer.Entities;
+using SkynetServer.Network;
 using System;
+using System.Collections.Immutable;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
+using VSL;
 
 namespace SkynetServer
 {
     internal static class Program
     {
         public static IConfiguration Configuration { get; private set; }
+        public static ImmutableList<Client> Clients { get; private set; }
+        public static readonly object ClientsLock = new object();
 
         static void Main(string[] args)
         {
             Configuration = new ConfigurationBuilder().Build();
+            Clients = ImmutableList.Create<Client>();
+            VSLListener listener = CreateListener();
 
             long accountId;
             long channelId;
@@ -61,6 +70,30 @@ namespace SkynetServer
 
             Console.WriteLine("Press any key to exit");
             Console.ReadKey();
+        }
+
+        private static VSLListener CreateListener()
+        {
+            VslConfig config = Configuration.Get<VslConfig>();
+            IPEndPoint[] endPoints = {
+                new IPEndPoint(IPAddress.Any, config.TcpPort),
+                new IPEndPoint(IPAddress.IPv6Any, config.TcpPort)
+            };
+
+            SocketSettings settings = new SocketSettings()
+            {
+                LatestProductVersion = config.LatestProductVersion,
+                OldestProductVersion = config.OldestProductVersion,
+                RsaXmlKey = config.RsaXmlKey
+            };
+
+            return new VSLListener(endPoints, settings, AcceptClient);
+        }
+
+        private static void AcceptClient(VSLServer socket)
+        {
+            Client client = new Client(socket);
+            lock (ClientsLock) Clients = Clients.Add(client);
         }
     }
 }
