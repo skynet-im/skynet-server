@@ -4,12 +4,13 @@ using MySql.Data.MySqlClient;
 using SkynetServer.Entities;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace SkynetServer.Cli.Commands
 {
     [Command("account")]
-    [Subcommand(typeof(Create))]
+    [Subcommand(typeof(Create), typeof(Confirm))]
     internal class Account : CommandBase
     {
         [Command("create")]
@@ -18,7 +19,7 @@ namespace SkynetServer.Cli.Commands
             [Argument(0)]
             public string AccountName { get; set; }
 
-            private void OnExecute(IConsole console)
+            private int OnExecute(IConsole console)
             {
                 console.Out.WriteLine("WARNING: Argon2 hash is currently not supported!");
 
@@ -30,6 +31,7 @@ namespace SkynetServer.Cli.Commands
                         console.Out.WriteLine($"Created account with ID {account.AccountId}");
                         var confirmation = context.AddMailConfirmation(account, AccountName);
                         console.Out.WriteLine($"Visit https://api.skynet-messenger.com/confirm/{confirmation.Token} to activate it");
+                        return 0;
                     }
                     catch (DbUpdateException ex)
                     {
@@ -41,6 +43,40 @@ namespace SkynetServer.Cli.Commands
                         {
                             console.Error.WriteLine(ex);
                         }
+                        return 1;
+                    }
+                }
+            }
+        }
+
+        [Command("confirm")]
+        internal class Confirm : CommandBase
+        {
+            [Argument(0)]
+            public string MailAddress { get; set; }
+
+            private int OnExecute(IConsole console)
+            {
+                using (DatabaseContext context = new DatabaseContext())
+                {
+                    MailConfirmation confirmation = context.MailConfirmations.SingleOrDefault(c => c.MailAddress == MailAddress);
+                    if (confirmation != null)
+                    {
+                        if (confirmation.ConfirmationTime == default(DateTime))
+                        {
+                            confirmation.ConfirmationTime = DateTime.Now;
+                            context.SaveChanges();
+                        }
+                        else
+                        {
+                            console.Out.WriteLine($"The address {MailAddress} has already been confirmed on {confirmation.ConfirmationTime}");
+                        }
+                        return 0;
+                    }
+                    else
+                    {
+                        console.Error.WriteLine($"There is no confirmation pending for {MailAddress}");
+                        return 1;
                     }
                 }
             }
