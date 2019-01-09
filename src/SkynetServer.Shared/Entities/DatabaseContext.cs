@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
 using Wiry.Base32;
 
 namespace SkynetServer.Entities
@@ -13,6 +12,7 @@ namespace SkynetServer.Entities
     public class DatabaseContext : DbContext
     {
         public static readonly object AccountsLock = new object();
+        public static readonly object SessionsLock = new object();
         public static readonly object ChannelsLock = new object();
         public static readonly object MessagesLock = new object();
         public static readonly object MailConfirmationsLock = new object();
@@ -100,7 +100,17 @@ namespace SkynetServer.Entities
 
         public Session AddSession(Session session)
         {
-            // TODO: Add id generation
+            lock (SessionsLock)
+            {
+                long id;
+                do
+                {
+                    id = RandomId();
+                } while (Sessions.Any(x => x.AccountId == session.AccountId && x.SessionId == id));
+                session.SessionId = id;
+                Sessions.Add(session);
+                SaveChanges();
+            }
             return session;
         }
 
