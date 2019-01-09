@@ -30,6 +30,11 @@ namespace SkynetServer.Network
 
         public static Packet[] Packets { get; }
 
+        public static T New<T>() where T : Packet
+        {
+            return Packets.Where(p => p is T).Select(packet => (T) packet.Create()).FirstOrDefault();
+        }
+
         public byte Id { get; set; }
         public PacketPolicy Policy { get; set; }
 

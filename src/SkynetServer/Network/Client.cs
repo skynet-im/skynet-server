@@ -25,6 +25,15 @@ namespace SkynetServer.Network
             socket.Start();
         }
 
+        public void SendPacket(Packet packet)
+        {
+            using (var buffer = PacketBuffer.CreateDynamic())
+            {
+                packet.WritePacket(buffer);
+                socket.SendPacketAsync(packet.Id, buffer.ToArray());
+            }
+        }
+
         private void Socket_ConnectionEstablished(object sender, EventArgs e)
         {
 
@@ -35,7 +44,7 @@ namespace SkynetServer.Network
             Packet packet;
             if (e.Id > 0x31)
             {
-                socket.CloseConnection("Invalid packet Id", null);
+                socket.CloseConnection("Invalid packet id", null);
                 return;
             }
 
@@ -48,11 +57,11 @@ namespace SkynetServer.Network
 
             if (session == null && !packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
             {
-                socket.CloseConnection("Unauthenticated packet", null);
+                socket.CloseConnection("Unauthorized", null);
                 return;
             }
 
-            using (PacketBuffer buffer = PacketBuffer.CreateStatic(e.Content))
+            using (var buffer = PacketBuffer.CreateStatic(e.Content))
             {
                 packet.ReadPacket(buffer);
             }
