@@ -5,7 +5,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x08, PacketPolicy.Receive)]
+    [Packet(0x08, PacketPolicy.Receive | PacketPolicy.Unauthenticated)]
     internal sealed class P08RestoreSession : Packet
     {
         public long AccountId { get; set; }

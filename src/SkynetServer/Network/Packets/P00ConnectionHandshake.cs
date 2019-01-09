@@ -5,7 +5,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x00, PacketPolicy.Receive)]
+    [Packet(0x00, PacketPolicy.Receive | PacketPolicy.Unauthenticated)]
     internal sealed class P00ConnectionHandshake : Packet
     {
         public int ProtocolVersion { get; set; }
