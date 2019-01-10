@@ -1,11 +1,10 @@
 ﻿using SkynetServer.Network.Packets;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Microsoft.Extensions.Configuration;
 using SkynetServer.Configuration;
 using SkynetServer.Entities;
+using SkynetServer.Model;
 using SkynetServer.Network.Mail;
 using SkynetServer.Network.Model;
 using VSL.BinaryTools;
@@ -123,7 +122,65 @@ namespace SkynetServer.Network
 
         public void Handle(P0ACreateChannel packet)
         {
-            throw new NotImplementedException();
+            using (var ctx = new DatabaseContext())
+            {
+                Channel channel = null;
+                var response = Packet.New<P2FCreateChannelResponse>();
+                switch (packet.ChannelType)
+                {
+                    case ChannelType.Direct:
+                        var counterpart = ctx.Accounts.SingleOrDefault(acc => acc.AccountId == packet.CounterpartId);
+                        if (counterpart == null)
+                        {
+                            // TODO: What's the error code for that?
+                        }
+                        else if (counterpart.BlockedAccounts.Any(acc => acc.AccountId == account.AccountId)
+                                 || account.BlockedAccounts.Any(acc => acc.AccountId == packet.CounterpartId))
+                            response.ErrorCode = CreateChannelError.Blocked;
+                        else
+                        {
+                            channel = ctx.AddChannel(new Channel
+                            {
+                                Owner = account,
+                                Other = counterpart,
+                                ChannelType = packet.ChannelType
+                            });
+                            response.ErrorCode = CreateChannelError.Success;
+                        }
+                        break;
+                    case ChannelType.Group:
+                        channel = ctx.AddChannel(new Channel
+                        {
+                            Owner = account,
+                            ChannelType = packet.ChannelType
+                        });
+                        response.ErrorCode = CreateChannelError.Success;
+                        break;
+                    case ChannelType.ProfileData:
+                    case ChannelType.Loopback:
+                        if (account.OwnedChannels.Any(c => c.ChannelType == packet.ChannelType))
+                            response.ErrorCode = CreateChannelError.AlreadyExists;
+                        else
+                        {
+                            channel = ctx.AddChannel(new Channel
+                            {
+                                Owner = account,
+                                ChannelType = packet.ChannelType
+                            });
+                            response.ErrorCode = CreateChannelError.Success;
+                        }
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                if (channel != null)
+                {
+                    response.ChannelId = channel.ChannelId;
+                    response.TempChannelId = packet.ChannelId;
+                }
+                SendPacket(response);
+            }
         }
 
         public void Handle(P0BChannelMessage packet)

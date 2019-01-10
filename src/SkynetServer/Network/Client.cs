@@ -41,14 +41,13 @@ namespace SkynetServer.Network
 
         private void Socket_PacketReceived(object sender, PacketReceivedEventArgs e)
         {
-            Packet packet;
             if (e.Id > 0x31)
             {
                 socket.CloseConnection("Invalid packet id", null);
                 return;
             }
 
-            packet = Packet.Packets[e.Id];
+            var packet = Packet.Packets[e.Id];
             if (packet == null || !packet.Policy.HasFlag(PacketPolicy.Receive))
             {
                 socket.CloseConnection("Invalid packet", null);
@@ -58,6 +57,12 @@ namespace SkynetServer.Network
             if (session == null && !packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
             {
                 socket.CloseConnection("Unauthorized", null);
+                return;
+            }
+
+            if (session != null && packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
+            {
+                socket.CloseConnection("Packet not allowed in current state", null);
                 return;
             }
 
