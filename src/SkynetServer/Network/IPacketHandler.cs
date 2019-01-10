@@ -44,5 +44,7 @@ namespace SkynetServer.Network
 
         void Handle(P2DSearchAccount packet);
         //void Handle(P2ESearchAccountResponse packet);
+        void Handle(P30FileUpload packet);
+        //void Handle(P31FileUploadResponse packet);
     }
 }

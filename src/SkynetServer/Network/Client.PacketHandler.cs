@@ -132,7 +132,7 @@ namespace SkynetServer.Network
                         var counterpart = ctx.Accounts.SingleOrDefault(acc => acc.AccountId == packet.CounterpartId);
                         if (counterpart == null)
                         {
-                            // TODO: What's the error code for that?
+                            response.ErrorCode = CreateChannelError.InvalidCounterpart;
                         }
                         else if (counterpart.BlockedAccounts.Any(acc => acc.AccountId == account.AccountId)
                                  || account.BlockedAccounts.Any(acc => acc.AccountId == packet.CounterpartId))
@@ -264,6 +264,11 @@ namespace SkynetServer.Network
         }
 
         public void Handle(P2DSearchAccount packet)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Handle(P30FileUpload packet)
         {
             throw new NotImplementedException();
         }
