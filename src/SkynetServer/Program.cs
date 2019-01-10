@@ -15,8 +15,7 @@ namespace SkynetServer
     internal static class Program
     {
         public static IConfiguration Configuration { get; private set; }
-        public static ImmutableList<Client> Clients { get; private set; }
-        public static readonly object ClientsLock = new object();
+        public static ImmutableList<Client> Clients;
 
         static void Main(string[] args)
         {
@@ -90,14 +89,7 @@ namespace SkynetServer
                 RsaXmlKey = config.RsaXmlKey
             };
 
-            return new VSLListener(endPoints, settings, AcceptClient);
-        }
-
-        private static void AcceptClient(VSLServer socket)
-        {
-            Client client = new Client(socket);
-            lock (ClientsLock) Clients = Clients.Add(client);
-            client.Start();
+            return new VSLListener(endPoints, settings, () => new Client());
         }
     }
 }

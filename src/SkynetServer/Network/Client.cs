@@ -1,81 +1,74 @@
 ﻿using SkynetServer.Entities;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Text;
+using System.Threading.Tasks;
 using VSL;
 
 namespace SkynetServer.Network
 {
-    internal partial class Client : IPacketHandler
+    internal partial class Client : IVSLCallback, IPacketHandler
     {
-        private readonly VSLServer socket;
+        private VSLServer socket;
         private Account account;
         private Session session;
 
-        public Client(VSLServer socket)
-        {
-            this.socket = socket;
-            socket.ConnectionEstablished += Socket_ConnectionEstablished;
-            socket.PacketReceived += Socket_PacketReceived;
-            socket.ConnectionClosed += Socket_ConnectionClosed;
-        }
-
-        public void Start()
-        {
-            socket.Start();
-        }
-
-        public void SendPacket(Packet packet)
+        public Task SendPacket(Packet packet)
         {
             using (var buffer = PacketBuffer.CreateDynamic())
             {
                 packet.WritePacket(buffer);
-                socket.SendPacketAsync(packet.Id, buffer.ToArray());
+                return socket.SendPacketAsync(packet.Id, buffer.ToArray());
             }
         }
 
-        private void Socket_ConnectionEstablished(object sender, EventArgs e)
+        public void OnInstanceCreated(VSLSocket socket)
         {
-
+            this.socket = (VSLServer)socket;
+            ImmutableInterlocked.Update(ref Program.Clients, x => x.Add(this));
         }
 
-        private void Socket_PacketReceived(object sender, PacketReceivedEventArgs e)
+        public Task OnConnectionEstablished() => Task.CompletedTask;
+
+        public async Task OnPacketReceived(byte id, byte[] content)
         {
-            if (e.Id > 0x31)
+            if (id > 0x31)
             {
-                socket.CloseConnection("Invalid packet id", null);
+                socket.CloseConnection("Invalid packet id");
                 return;
             }
 
-            var packet = Packet.Packets[e.Id];
+            var packet = Packet.Packets[id];
             if (packet == null || !packet.Policy.HasFlag(PacketPolicy.Receive))
             {
-                socket.CloseConnection("Invalid packet", null);
+                socket.CloseConnection("Invalid packet");
                 return;
             }
 
             if (session == null && !packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
             {
-                socket.CloseConnection("Unauthorized", null);
+                socket.CloseConnection("Unauthorized");
                 return;
             }
 
             if (session != null && packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
             {
-                socket.CloseConnection("Packet not allowed in current state", null);
+                socket.CloseConnection("Packet not allowed in current state");
                 return;
             }
 
-            using (var buffer = PacketBuffer.CreateStatic(e.Content))
+            using (var buffer = PacketBuffer.CreateStatic(content))
             {
                 packet.ReadPacket(buffer);
             }
 
-            packet.Handle(this);
+            await packet.Handle(this);
         }
 
-        private void Socket_ConnectionClosed(object sender, ConnectionClosedEventArgs e)
+        public void OnConnectionClosed(ConnectionCloseReason reason, string message, Exception exception)
         {
+            ImmutableInterlocked.Update(ref Program.Clients, x => x.Remove(this));
             socket.Dispose();
         }
     }

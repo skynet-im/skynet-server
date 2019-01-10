@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using VSL;
 
 namespace SkynetServer.Network.Packets
@@ -15,7 +16,7 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P1EGroupChannelUpdate().Init(this);
 
-        public override void Handle(IPacketHandler handler) => handler.Handle(this);
+        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
 
         public override void ReadPacket(PacketBuffer buffer)
         {

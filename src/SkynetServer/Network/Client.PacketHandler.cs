@@ -1,12 +1,13 @@
-﻿using SkynetServer.Network.Packets;
-using System;
-using System.Linq;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using SkynetServer.Configuration;
 using SkynetServer.Entities;
 using SkynetServer.Model;
 using SkynetServer.Network.Mail;
 using SkynetServer.Network.Model;
+using SkynetServer.Network.Packets;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 using VSL.BinaryTools;
 
 namespace SkynetServer.Network
@@ -16,7 +17,7 @@ namespace SkynetServer.Network
         private string applicationIdentifier;
         private int versionCode;
 
-        public void Handle(P00ConnectionHandshake packet)
+        public Task Handle(P00ConnectionHandshake packet)
         {
             ProtocolConfig config = Program.Configuration.Get<SkynetConfig>().ProtocolConfig;
             var response = Packet.New<P01ConnectionResponse>();
@@ -32,10 +33,10 @@ namespace SkynetServer.Network
             applicationIdentifier = packet.ApplicationIdentifier;
             versionCode = packet.VersionCode;
 
-            SendPacket(response);
+            return SendPacket(response);
         }
 
-        public void Handle(P02CreateAccount packet)
+        public Task Handle(P02CreateAccount packet)
         {
             using (var ctx = new DatabaseContext())
             {
@@ -54,17 +55,17 @@ namespace SkynetServer.Network
                     });
                     response.ErrorCode = CreateAccountError.Success;
                 }
-                SendPacket(response);
+                return SendPacket(response);
                 // TODO: Create channels
             }
         }
 
-        public void Handle(P04DeleteAccount packet)
+        public Task Handle(P04DeleteAccount packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P06CreateSession packet)
+        public Task Handle(P06CreateSession packet)
         {
             using (var ctx = new DatabaseContext())
             {
@@ -89,12 +90,12 @@ namespace SkynetServer.Network
                 }
                 else
                     response.ErrorCode = CreateSessionError.InvalidCredentials;
-                SendPacket(response);
+                return SendPacket(response);
                 // TODO: Send messages
             }
         }
 
-        public void Handle(P08RestoreSession packet)
+        public Task Handle(P08RestoreSession packet)
         {
             using (var ctx = new DatabaseContext())
             {
@@ -115,12 +116,12 @@ namespace SkynetServer.Network
                 }
                 else
                     response.ErrorCode = RestoreSessionError.InvalidCredentials;
-                SendPacket(response);
+                return SendPacket(response);
                 // TODO: Send messages
             }
         }
 
-        public void Handle(P0ACreateChannel packet)
+        public Task Handle(P0ACreateChannel packet)
         {
             using (var ctx = new DatabaseContext())
             {
@@ -179,96 +180,96 @@ namespace SkynetServer.Network
                     response.ChannelId = channel.ChannelId;
                     response.TempChannelId = packet.ChannelId;
                 }
-                SendPacket(response);
+                return SendPacket(response);
             }
         }
 
-        public void Handle(P0BChannelMessage packet)
+        public Task Handle(P0BChannelMessage packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P0DMessageBlock packet)
+        public Task Handle(P0DMessageBlock packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P0ERequestMessages packet)
+        public Task Handle(P0ERequestMessages packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P10RealTimeMessage packet)
+        public Task Handle(P10RealTimeMessage packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P11SubscribeChannel packet)
+        public Task Handle(P11SubscribeChannel packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P12UnsubscribeChannel packet)
+        public Task Handle(P12UnsubscribeChannel packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P13QueueMailAddressChange packet)
+        public Task Handle(P13QueueMailAddressChange packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P15PasswordUpdate packet)
+        public Task Handle(P15PasswordUpdate packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P18PublicKeys packet)
+        public Task Handle(P18PublicKeys packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P1EGroupChannelUpdate packet)
+        public Task Handle(P1EGroupChannelUpdate packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P22MessageReceived packet)
+        public Task Handle(P22MessageReceived packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P23MessageRead packet)
+        public Task Handle(P23MessageRead packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P25Nickname packet)
+        public Task Handle(P25Nickname packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P26PersonalMessage packet)
+        public Task Handle(P26PersonalMessage packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P27ProfileImage packet)
+        public Task Handle(P27ProfileImage packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P28BlockList packet)
+        public Task Handle(P28BlockList packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P2DSearchAccount packet)
+        public Task Handle(P2DSearchAccount packet)
         {
             throw new NotImplementedException();
         }
 
-        public void Handle(P30FileUpload packet)
+        public Task Handle(P30FileUpload packet)
         {
             throw new NotImplementedException();
         }

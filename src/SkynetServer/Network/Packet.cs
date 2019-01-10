@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
+using System.Threading.Tasks;
 using VSL;
 
 namespace SkynetServer.Network
@@ -46,7 +46,7 @@ namespace SkynetServer.Network
         public PacketPolicy Policy { get; set; }
 
         public abstract Packet Create();
-        public abstract void Handle(IPacketHandler handler);
+        public abstract Task Handle(IPacketHandler handler);
         public abstract void ReadPacket(PacketBuffer buffer);
         public abstract void WritePacket(PacketBuffer buffer);
 
