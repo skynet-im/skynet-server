@@ -26,7 +26,7 @@ namespace SkynetServer.Network
         public void OnInstanceCreated(VSLSocket socket)
         {
             this.socket = (VSLServer)socket;
-            ImmutableInterlocked.Update(ref Program.Clients, x => x.Add(this));
+            ImmutableInterlocked.Update(ref Program.Clients, list => llist.Add(this));
         }
 
         public Task OnConnectionEstablished() => Task.CompletedTask;

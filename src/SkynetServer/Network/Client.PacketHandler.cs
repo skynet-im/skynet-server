@@ -299,7 +299,19 @@ namespace SkynetServer.Network
 
         public Task Handle(P2DSearchAccount packet)
         {
-            throw new NotImplementedException();
+            using (var ctx = new DatabaseContext())
+            {
+                var results = ctx.Accounts.Where(acc => acc.AccountName.Contains(packet.Query)).Take(100); // Limit to 100 entries
+                var response = Packet.New<P2ESearchAccountResponse>();
+                foreach(var result in results)
+                    response.Results.Add(new SearchResult
+                    {
+                        AccountId = result.AccountId,
+                        AccountName = result.AccountName
+                        // TODO: Which packets should be contained in the ForwardedPackets list?
+                    });
+                return SendPacket(response);
+            }
         }
 
         public Task Handle(P30FileUpload packet)
