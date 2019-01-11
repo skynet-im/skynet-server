@@ -36,7 +36,7 @@ namespace SkynetServer.Network
             return SendPacket(response);
         }
 
-        public Task Handle(P02CreateAccount packet)
+        public async Task Handle(P02CreateAccount packet)
         {
             using (var ctx = new DatabaseContext())
             {
@@ -53,9 +53,10 @@ namespace SkynetServer.Network
                         AccountName = packet.AccountName,
                         KeyHash = packet.KeyHash
                     });
+                    await ctx.SaveChangesAsync();
                     response.ErrorCode = CreateAccountError.Success;
                 }
-                return SendPacket(response);
+                await SendPacket(response);
                 // TODO: Create channels
             }
         }
@@ -65,7 +66,7 @@ namespace SkynetServer.Network
             throw new NotImplementedException();
         }
 
-        public Task Handle(P06CreateSession packet)
+        public async Task Handle(P06CreateSession packet)
         {
             using (var ctx = new DatabaseContext())
             {
@@ -82,6 +83,7 @@ namespace SkynetServer.Network
                         LastVersionCode = versionCode,
                         FcmToken = packet.FcmRegistrationToken
                     });
+                    await ctx.SaveChangesAsync();
                     account = accountCandidate;
 
                     response.AccountId = account.AccountId;
@@ -90,7 +92,7 @@ namespace SkynetServer.Network
                 }
                 else
                     response.ErrorCode = CreateSessionError.InvalidCredentials;
-                return SendPacket(response);
+                await SendPacket(response);
                 // TODO: Send messages
             }
         }
@@ -121,7 +123,7 @@ namespace SkynetServer.Network
             }
         }
 
-        public Task Handle(P0ACreateChannel packet)
+        public async Task Handle(P0ACreateChannel packet)
         {
             using (var ctx = new DatabaseContext())
             {
@@ -146,6 +148,7 @@ namespace SkynetServer.Network
                                 Other = counterpart,
                                 ChannelType = packet.ChannelType
                             });
+                            await ctx.SaveChangesAsync();
                             response.ErrorCode = CreateChannelError.Success;
                         }
                         break;
@@ -155,6 +158,7 @@ namespace SkynetServer.Network
                             Owner = account,
                             ChannelType = packet.ChannelType
                         });
+                        await ctx.SaveChangesAsync();
                         response.ErrorCode = CreateChannelError.Success;
                         break;
                     case ChannelType.ProfileData:
@@ -168,6 +172,7 @@ namespace SkynetServer.Network
                                 Owner = account,
                                 ChannelType = packet.ChannelType
                             });
+                            await ctx.SaveChangesAsync();
                             response.ErrorCode = CreateChannelError.Success;
                         }
                         break;
@@ -180,7 +185,7 @@ namespace SkynetServer.Network
                     response.ChannelId = channel.ChannelId;
                     response.TempChannelId = packet.ChannelId;
                 }
-                return SendPacket(response);
+                await SendPacket(response);
             }
         }
 
