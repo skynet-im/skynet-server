@@ -143,6 +143,7 @@ namespace SkynetServer.Network
                             response.ErrorCode = CreateChannelError.Blocked;
                         else
                         {
+                            // TODO: Check whether a direct channel exists before and after inserting
                             channel = ctx.AddChannel(new Channel
                             {
                                 Owner = account,
@@ -254,16 +255,19 @@ namespace SkynetServer.Network
 
         public Task Handle(P15PasswordUpdate packet)
         {
+            // TODO: Inject dependency to LoopbackKeyNotify packet
             throw new NotImplementedException();
         }
 
         public Task Handle(P18PublicKeys packet)
         {
+            // TODO: Save message in loopback channel and forward to all direct channels
             throw new NotImplementedException();
         }
 
         public Task Handle(P1EGroupChannelUpdate packet)
         {
+            // TODO: Check for concurrency issues before insert
             throw new NotImplementedException();
         }
 
@@ -303,12 +307,12 @@ namespace SkynetServer.Network
             {
                 var results = ctx.Accounts.Where(acc => acc.AccountName.Contains(packet.Query)).Take(100); // Limit to 100 entries
                 var response = Packet.New<P2ESearchAccountResponse>();
-                foreach(var result in results)
+                foreach (var result in results)
                     response.Results.Add(new SearchResult
                     {
                         AccountId = result.AccountId,
                         AccountName = result.AccountName
-                        // TODO: Which packets should be contained in the ForwardedPackets list?
+                        // Forward public packets to fully implement the Skynet protocol v5
                     });
                 return SendPacket(response);
             }
