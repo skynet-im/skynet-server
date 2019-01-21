@@ -30,7 +30,7 @@ namespace SkynetServer.Cli.Commands
                         var account = context.AddAccount(new Entities.Account() { AccountName = AccountName, KeyHash = new byte[0] });
                         console.Out.WriteLine($"Created account with ID {account.AccountId}");
                         var confirmation = context.AddMailConfirmation(account, AccountName);
-                        console.Out.WriteLine($"Visit https://api.skynet-messenger.com/confirm/{confirmation.Token} to activate it");
+                        console.Out.WriteLine($"Visit https://api.skynet-messenger.com/confirm/{confirmation.Token} to confirm the mail address");
                         return 0;
                     }
                     catch (DbUpdateException ex)
