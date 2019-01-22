@@ -17,7 +17,8 @@ namespace SkynetServer.Network.Packets
 
         public override void ReadPacket(PacketBuffer buffer)
         {
-            for(int i = 0; i < buffer.ReadUShort(); i++)
+            ushort length = buffer.ReadUShort();
+            for (int i = 0; i < length; i++)
             {
                 Messages.Add(buffer.ReadByteArray());
             }

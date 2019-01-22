@@ -31,7 +31,8 @@ namespace SkynetServer.Network.Packets
             ContentPacketId = buffer.ReadByte();
             ContentPacketVersion = buffer.ReadByte();
             ContentPacket = buffer.ReadByteArray();
-            for (int i = 0; i < buffer.ReadUShort(); i++)
+            ushort length = buffer.ReadUShort();
+            for (int i = 0; i < length; i++)
             {
                 Dependencies.Add(new MessageDependency(buffer.ReadLong(), buffer.ReadLong(), buffer.ReadLong()));
             }

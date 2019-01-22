@@ -18,12 +18,14 @@ namespace SkynetServer.Network.Packets
 
         public override void ReadPacket(PacketBuffer buffer)
         {
-            for (int i = 0; i < buffer.ReadUShort(); i++)
+            ushort length = buffer.ReadUShort();
+            for (int i = 0; i < length; i++)
             {
                 BlockedAccounts.Add(buffer.ReadLong());
             }
 
-            for (int i = 0; i < buffer.ReadUShort(); i++)
+            length = buffer.ReadUShort();
+            for (int i = 0; i < length; i++)
             {
                 BlockedConversations.Add(buffer.ReadLong());
             }

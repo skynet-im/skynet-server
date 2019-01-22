@@ -23,7 +23,8 @@ namespace SkynetServer.Network.Packets
             AccountId = buffer.ReadLong();
             KeyHash = buffer.ReadByteArray(32);
             SessionId = buffer.ReadLong();
-            for (int i = 0; i < buffer.ReadUShort(); i++)
+            ushort length = buffer.ReadUShort();
+            for (int i = 0; i < length; i++)
             {
                 Channels.Add((buffer.ReadLong(), buffer.ReadLong()));
             }
