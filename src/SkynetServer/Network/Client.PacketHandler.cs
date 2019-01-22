@@ -25,9 +25,9 @@ namespace SkynetServer.Network
             var response = Packet.New<P01ConnectionResponse>();
             response.LatestVersion = config.VersionName;
             response.LatestVersionCode = config.VersionCode;
-            if (packet.ProtocolVersion != config.ProtocolVersion || packet.VersionCode <= config.ForceUpdateThreshold)
+            if (packet.ProtocolVersion != config.ProtocolVersion || packet.VersionCode < config.ForceUpdateThreshold)
                 response.ConnectionState = ConnectionState.MustUpgrade;
-            else if (packet.VersionCode <= config.RecommendUpdateThreshold)
+            else if (packet.VersionCode < config.RecommendUpdateThreshold)
                 response.ConnectionState = ConnectionState.CanUpgrade;
             else
                 response.ConnectionState = ConnectionState.Valid;
@@ -60,6 +60,8 @@ namespace SkynetServer.Network
                         ChannelType = ChannelType.Loopback,
                         OwnerId = account.AccountId
                     });
+                    // TODO: Send password update packet
+                    // TODO: Send confirmation mail
                     response.ErrorCode = CreateAccountError.Success;
                 }
                 await SendPacket(response);
@@ -137,12 +139,12 @@ namespace SkynetServer.Network
                 {
                     if (!currentState.Any(s => s.channelId == channel.ChannelId))
                     {
-                        await SendPacket(new P0ACreateChannel()
-                        {
-                            ChannelId = channel.ChannelId,
-                            ChannelType = channel.ChannelType,
-                            CounterpartId = channel.OtherId ?? 0
-                        });
+                        var packet = Packet.New<P0ACreateChannel>();
+                        packet.ChannelId = channel.ChannelId;
+                        packet.ChannelType = channel.ChannelType;
+                        packet.OwnerId = channel.OwnerId;
+                        packet.CounterpartId = channel.OtherId ?? 0;
+                        await SendPacket(packet);
                         currentState.Add((channel.ChannelId, 0));
                     }
                 }
@@ -151,6 +153,8 @@ namespace SkynetServer.Network
                 {
                     // TODO: Send messages in the correct order and respect message flags and dependencies
                 }
+
+                await SendPacket(Packet.New<P0FSyncFinished>());
             }
         }
 
