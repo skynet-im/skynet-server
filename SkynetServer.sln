@@ -25,9 +25,10 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{267569CE-CC4E-49D5-ACDA-C8287418F1E3}"
 	ProjectSection(SolutionItems) = preProject
 		tools\database.ps1 = tools\database.ps1
+		tools\skynet.bat = tools\skynet.bat
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkynetServer.Cli", "src\SkynetServer.Cli\SkynetServer.Cli.csproj", "{179DB560-A20E-4A17-AC87-60D2DE11FE21}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SkynetServer.Cli", "src\SkynetServer.Cli\SkynetServer.Cli.csproj", "{179DB560-A20E-4A17-AC87-60D2DE11FE21}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
