@@ -12,6 +12,7 @@ namespace SkynetServer.Network.Packets
     {
         public long ChannelId { get; set; }
         public ChannelType ChannelType { get; set; }
+        public long OwnerId { get; set; }
         public long CounterpartId { get; set; }
 
         public override Packet Create() => new P0ACreateChannel().Init(this);
@@ -22,6 +23,7 @@ namespace SkynetServer.Network.Packets
         {
             ChannelId = buffer.ReadLong();
             ChannelType = (ChannelType)buffer.ReadByte();
+            OwnerId = buffer.ReadLong();
             if (ChannelType == ChannelType.Direct)
                 CounterpartId = buffer.ReadLong();
         }
@@ -30,6 +32,7 @@ namespace SkynetServer.Network.Packets
         {
             buffer.WriteLong(ChannelId);
             buffer.WriteByte((byte)ChannelType);
+            buffer.WriteLong(OwnerId);
             if (ChannelType == ChannelType.Direct)
                 buffer.WriteLong(CounterpartId);
         }
