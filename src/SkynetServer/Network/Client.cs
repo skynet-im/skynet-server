@@ -14,12 +14,14 @@ namespace SkynetServer.Network
         private Account account;
         private Session session;
 
-        public Task SendPacket(Packet packet)
+        public async Task SendPacket(Packet packet)
         {
             using (var buffer = PacketBuffer.CreateDynamic())
             {
                 packet.WritePacket(buffer);
-                return socket.SendPacketAsync(packet.Id, buffer.ToArray());
+                bool success = await socket.SendPacketAsync(packet.Id, buffer.ToArray());
+                if (!success)
+                    Console.WriteLine($"Failed to send packet {packet.Id}");
             }
         }
 
@@ -34,29 +36,17 @@ namespace SkynetServer.Network
         public async Task OnPacketReceived(byte id, byte[] content)
         {
             if (id > 0x31)
-            {
-                socket.CloseConnection("Invalid packet id");
-                return;
-            }
+                throw new ProtocolException($"Invalid packet ID {id}");
 
             var packet = Packet.Packets[id];
             if (packet == null || !packet.Policy.HasFlag(PacketPolicy.Receive))
-            {
-                socket.CloseConnection("Invalid packet");
-                return;
-            }
+                throw new ProtocolException($"Cannot receive packet {id}");
 
             if (session == null && !packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
-            {
-                socket.CloseConnection("Unauthorized");
-                return;
-            }
+                throw new ProtocolException($"Unauthorized packet {id}");
 
             if (session != null && packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
-            {
-                socket.CloseConnection("Packet not allowed in current state");
-                return;
-            }
+                throw new ProtocolException($"Authorized clients cannot send packet {id}");
 
             using (var buffer = PacketBuffer.CreateStatic(content))
             {
@@ -69,6 +59,7 @@ namespace SkynetServer.Network
         public void OnConnectionClosed(ConnectionCloseReason reason, string message, Exception exception)
         {
             ImmutableInterlocked.Update(ref Program.Clients, list => list.Remove(this));
+            Console.WriteLine("Connection closed: {0} {1}", message, exception);
             socket.Dispose();
         }
     }

@@ -25,53 +25,10 @@ namespace SkynetServer
 
             Clients = ImmutableList.Create<Client>();
             VSLListener listener = CreateListener();
+            listener.Start();
 
-            long accountId;
-            long channelId;
-
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                ctx.Database.EnsureDeleted();
-                ctx.Database.Migrate();
-            }
-
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                Account account = new Account() { AccountName = $"{new Random().Next()}@example.com", KeyHash = new byte[0] };
-                accountId = ctx.AddAccount(account).AccountId;
-                MailConfirmation confirmation = ctx.AddMailConfirmation(account, account.AccountName);
-            }
-
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                channelId = ctx.AddChannel(new Channel() { OwnerId = accountId }).ChannelId;
-            }
-
-            Parallel.For(0, 1000, i =>
-            {
-                using (DatabaseContext ctx = new DatabaseContext())
-                {
-                    ctx.AddMessage(new Message() { ChannelId = channelId, SenderId = accountId, DispatchTime = DateTime.Now });
-                }
-            });
-
-            Console.WriteLine("Finished saving");
-
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                foreach (Channel c in ctx.Channels)
-                {
-                    Console.WriteLine($"Channel with id {c.ChannelId}");
-
-                    foreach (Message m in ctx.Messages.Where(x => x.ChannelId == c.ChannelId))
-                    {
-                        Console.WriteLine($"\tMessage with id {m.MessageId}");
-                    }
-                }
-            }
-
-            Console.WriteLine("Press any key to exit");
-            Console.ReadKey();
+            Console.WriteLine("Press Enter to exit");
+            Console.ReadLine();
         }
 
         private static VSLListener CreateListener()
@@ -86,7 +43,8 @@ namespace SkynetServer
             {
                 LatestProductVersion = config.LatestProductVersion,
                 OldestProductVersion = config.OldestProductVersion,
-                RsaXmlKey = config.RsaXmlKey
+                RsaXmlKey = config.RsaXmlKey,
+                CatchApplicationExceptions = false
             };
 
             return new VSLListener(endPoints, settings, () => new Client());
