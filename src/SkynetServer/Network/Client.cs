@@ -26,7 +26,7 @@ namespace SkynetServer.Network
         public void OnInstanceCreated(VSLSocket socket)
         {
             this.socket = (VSLServer)socket;
-            ImmutableInterlocked.Update(ref Program.Clients, list => llist.Add(this));
+            ImmutableInterlocked.Update(ref Program.Clients, list => list.Add(this));
         }
 
         public Task OnConnectionEstablished() => Task.CompletedTask;
@@ -68,7 +68,7 @@ namespace SkynetServer.Network
 
         public void OnConnectionClosed(ConnectionCloseReason reason, string message, Exception exception)
         {
-            ImmutableInterlocked.Update(ref Program.Clients, x => x.Remove(this));
+            ImmutableInterlocked.Update(ref Program.Clients, list => list.Remove(this));
             socket.Dispose();
         }
     }

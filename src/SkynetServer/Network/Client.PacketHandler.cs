@@ -6,6 +6,7 @@ using SkynetServer.Network.Mail;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using VSL;
@@ -49,12 +50,16 @@ namespace SkynetServer.Network
                     response.ErrorCode = CreateAccountError.AccountNameTaken;
                 else
                 {
-                    ctx.AddAccount(new Account
+                    var account = ctx.AddAccount(new Account
                     {
                         AccountName = packet.AccountName,
                         KeyHash = packet.KeyHash
                     });
-                    await ctx.SaveChangesAsync();
+                    ctx.AddChannel(new Channel()
+                    {
+                        ChannelType = ChannelType.Loopback,
+                        OwnerId = account.AccountId
+                    });
                     response.ErrorCode = CreateAccountError.Success;
                 }
                 await SendPacket(response);
@@ -94,11 +99,11 @@ namespace SkynetServer.Network
                 else
                     response.ErrorCode = CreateSessionError.InvalidCredentials;
                 await SendPacket(response);
-                // TODO: Send messages
+                await SendMessages(new List<(long channelId, long messageId)>());
             }
         }
 
-        public Task Handle(P08RestoreSession packet)
+        public async Task Handle(P08RestoreSession packet)
         {
             using (var ctx = new DatabaseContext())
             {
@@ -119,8 +124,33 @@ namespace SkynetServer.Network
                 }
                 else
                     response.ErrorCode = RestoreSessionError.InvalidCredentials;
-                return SendPacket(response);
-                // TODO: Send messages
+                await SendPacket(response);
+                await SendMessages(packet.Channels);
+            }
+        }
+
+        public async Task SendMessages(List<(long channelId, long messageId)> currentState)
+        {
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                foreach (Channel channel in ctx.Channels) // TODO: Get all of the account's channels
+                {
+                    if (!currentState.Any(s => s.channelId == channel.ChannelId))
+                    {
+                        await SendPacket(new P0ACreateChannel()
+                        {
+                            ChannelId = channel.ChannelId,
+                            ChannelType = channel.ChannelType,
+                            CounterpartId = channel.OtherId ?? 0
+                        });
+                        currentState.Add((channel.ChannelId, 0));
+                    }
+                }
+
+                foreach (Message message in ctx.Messages) // TODO: Get the account's channel's messages
+                {
+                    // TODO: Send messages in the correct order and respect message flags and dependencies
+                }
             }
         }
 
