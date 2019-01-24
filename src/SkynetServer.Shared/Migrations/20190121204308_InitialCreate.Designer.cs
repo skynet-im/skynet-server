@@ -9,8 +9,8 @@ using SkynetServer.Entities;
 namespace SkynetServer.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    [Migration("20190104102651_AddKeyHash")]
-    partial class AddKeyHash
+    [Migration("20190121204308_InitialCreate")]
+    partial class InitialCreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -69,6 +69,9 @@ namespace SkynetServer.Migrations
 
                     b.Property<byte>("ChannelType");
 
+                    b.Property<long>("MessageIdCounter")
+                        .IsConcurrencyToken();
+
                     b.Property<long?>("OtherId");
 
                     b.Property<long>("OwnerId");
@@ -97,7 +100,7 @@ namespace SkynetServer.Migrations
                     b.ToTable("GroupMember");
                 });
 
-            modelBuilder.Entity("SkynetServer.Entities.MailAddressConfirmation", b =>
+            modelBuilder.Entity("SkynetServer.Entities.MailConfirmation", b =>
                 {
                     b.Property<string>("MailAddress")
                         .ValueGeneratedOnAdd();
@@ -117,7 +120,7 @@ namespace SkynetServer.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.ToTable("MailAddressConfirmation");
+                    b.ToTable("MailConfirmations");
                 });
 
             modelBuilder.Entity("SkynetServer.Entities.Message", b =>
@@ -231,10 +234,10 @@ namespace SkynetServer.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
-            modelBuilder.Entity("SkynetServer.Entities.MailAddressConfirmation", b =>
+            modelBuilder.Entity("SkynetServer.Entities.MailConfirmation", b =>
                 {
                     b.HasOne("SkynetServer.Entities.Account", "Account")
-                        .WithMany("MailAddressConfirmations")
+                        .WithMany("MailConfirmations")
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade);
                 });

@@ -67,6 +67,9 @@ namespace SkynetServer.Migrations
 
                     b.Property<byte>("ChannelType");
 
+                    b.Property<long>("MessageIdCounter")
+                        .IsConcurrencyToken();
+
                     b.Property<long?>("OtherId");
 
                     b.Property<long>("OwnerId");
@@ -232,7 +235,7 @@ namespace SkynetServer.Migrations
             modelBuilder.Entity("SkynetServer.Entities.MailConfirmation", b =>
                 {
                     b.HasOne("SkynetServer.Entities.Account", "Account")
-                        .WithMany("AddressConfirmations")
+                        .WithMany("MailConfirmations")
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
