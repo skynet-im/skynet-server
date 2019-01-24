@@ -55,17 +55,17 @@ namespace SkynetServer.Network
                         AccountName = packet.AccountName,
                         KeyHash = packet.KeyHash
                     });
-                    ctx.AddChannel(new Channel()
+                    var channel = ctx.AddChannel(new Channel()
                     {
                         ChannelType = ChannelType.Loopback,
                         OwnerId = account.AccountId
                     });
+                    var confirmation = ctx.AddMailConfirmation(account, packet.AccountName);
                     // TODO: Send password update packet
-                    // TODO: Send confirmation mail
+                    await new ConfirmationMailer().SendMailAsync(confirmation.MailAddress, confirmation.Token);
                     response.ErrorCode = CreateAccountError.Success;
                 }
                 await SendPacket(response);
-                // TODO: Create channels
             }
         }
 
@@ -289,7 +289,7 @@ namespace SkynetServer.Network
 
         public Task Handle(P15PasswordUpdate packet)
         {
-            // TODO: Inject dependency to LoopbackKeyNotify packet
+            // TODO: Inject dependency from previous PasswordUpdate to latest LoopbackKeyNotify packet
             throw new NotImplementedException();
         }
 
@@ -332,6 +332,7 @@ namespace SkynetServer.Network
 
         public Task Handle(P28BlockList packet)
         {
+            // TODO: What happens with existing channels?
             throw new NotImplementedException();
         }
 
