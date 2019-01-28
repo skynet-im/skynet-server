@@ -21,7 +21,7 @@ namespace SkynetServer
             using (DatabaseContext ctx = new DatabaseContext())
             {
                 ctx.Database.EnsureDeleted();
-                ctx.Database.Migrate();
+                ctx.Database.EnsureCreated();
             }
 
             using (DatabaseContext ctx = new DatabaseContext())

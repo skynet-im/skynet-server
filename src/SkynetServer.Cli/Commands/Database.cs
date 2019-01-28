@@ -8,7 +8,7 @@ using System.Text;
 namespace SkynetServer.Cli.Commands
 {
     [Command("database")]
-    [Subcommand(typeof(Migrate), typeof(Delete))]
+    [Subcommand(typeof(Create), typeof(Delete))]
     internal class Database : CommandBase
     {
         private int OnExecute(CommandLineApplication app)
@@ -17,14 +17,14 @@ namespace SkynetServer.Cli.Commands
             return 1;
         }
 
-        [Command("migrate")]
-        internal class Migrate : CommandBase
+        [Command("create")]
+        internal class Create : CommandBase
         {
             private void OnExecute()
             {
                 using (DatabaseContext context = new DatabaseContext())
                 {
-                    context.Database.Migrate();
+                    context.Database.EnsureCreated();
                 }
             }
         }
