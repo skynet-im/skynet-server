@@ -9,7 +9,7 @@ namespace SkynetServer.Cli.Commands
 {
     [Command("database")]
     [Subcommand(typeof(Create), typeof(Delete))]
-    internal class Database : CommandBase
+    internal class DatabaseCommand : CommandBase
     {
         private int OnExecute(CommandLineApplication app)
         {
