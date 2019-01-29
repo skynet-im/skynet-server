@@ -17,7 +17,7 @@ namespace SkynetServer.Entities
         public long ChannelId { get; set; }
         public Channel Channel { get; set; }
 
-        public long SenderId { get; set; }
+        public long? SenderId { get; set; }
         public Account Sender { get; set; }
 
         public IEnumerable<MessageDependency> Dependencies { get; set; }
