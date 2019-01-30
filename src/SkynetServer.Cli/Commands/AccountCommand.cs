@@ -11,7 +11,7 @@ namespace SkynetServer.Cli.Commands
 {
     [Command("account")]
     [Subcommand(typeof(Create), typeof(Confirm))]
-    internal class Account : CommandBase
+    internal class AccountCommand : CommandBase
     {
         [Command("create")]
         internal class Create : CommandBase

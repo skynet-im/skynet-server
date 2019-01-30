@@ -34,7 +34,7 @@ function Install-DbServer {
 function Start-DbServer {
 	$execPath = AssertExistsAndNotRunning mysqld.exe
 	if ($execPath) {
-		Start-Process -FilePath $execPath -ArgumentList "--standalone"
+		Start-Process -FilePath $execPath -ArgumentList "--standalone","--transaction-isolation=READ-COMMITTED"
 	}
 }
 

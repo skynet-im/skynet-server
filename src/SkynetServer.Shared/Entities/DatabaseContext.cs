@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using Wiry.Base32;
 
 namespace SkynetServer.Entities
@@ -14,7 +15,6 @@ namespace SkynetServer.Entities
     {
         public static readonly object AccountsLock = new object();
         public static readonly object ChannelsLock = new object();
-        public static readonly object MessagesLock = new object();
         public static readonly object MailConfirmationsLock = new object();
 
         public DbSet<Account> Accounts { get; set; }
@@ -29,11 +29,13 @@ namespace SkynetServer.Entities
             var account = modelBuilder.Entity<Account>();
             account.HasKey(a => a.AccountId);
             account.HasAlternateKey(a => a.AccountName);
+            account.Property(a => a.AccountId).ValueGeneratedNever();
             account.Property(a => a.KeyHash).IsRequired();
 
             var session = modelBuilder.Entity<Session>();
             session.HasKey(s => new { s.AccountId, s.SessionId });
             session.HasOne(s => s.Account).WithMany(a => a.Sessions).HasForeignKey(s => s.AccountId);
+            session.Property(s => s.SessionId).ValueGeneratedNever();
             session.Property(s => s.ApplicationIdentifier).IsRequired();
 
             var blockedAccount = modelBuilder.Entity<BlockedAccount>();
@@ -50,6 +52,7 @@ namespace SkynetServer.Entities
             channel.HasKey(c => c.ChannelId);
             channel.Property(c => c.ChannelId).ValueGeneratedNever();
             channel.Property(c => c.ChannelType).HasConversion<byte>();
+            channel.Property(c => c.MessageIdCounter).IsConcurrencyToken();
             channel.HasOne(c => c.Owner).WithMany(a => a.OwnedChannels).HasForeignKey(c => c.OwnerId);
             channel.HasOne(c => c.Other).WithMany(a => a.OtherChannels).HasForeignKey(c => c.OtherId);
 
@@ -114,18 +117,44 @@ namespace SkynetServer.Entities
             return channel;
         }
 
+        private long GetMessageId(long channelId)
+        {
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                bool saved = false;
+                Channel channel = ctx.Channels.Single(c => c.ChannelId == channelId);
+                long messageId = ++channel.MessageIdCounter;
+                int retried = 0;
+                do
+                {
+                    try
+                    {
+                        ctx.SaveChanges();
+                        saved = true;
+                    }
+                    catch (DbUpdateConcurrencyException ex)
+                    {
+                        var entry = ex.Entries.Single();    
+                        var proposedValues = entry.CurrentValues;
+                        var databaseValues = entry.GetDatabaseValues();
+                        const string name = nameof(Channel.MessageIdCounter);
+                        Console.WriteLine("ProposedValue: {0} DatabaseValue: {1} Thread: {2}", proposedValues[name], databaseValues[name], Thread.CurrentThread.ManagedThreadId);
+                        proposedValues[name] = messageId = (long)databaseValues[name] + 1;
+                        entry.OriginalValues.SetValues(databaseValues);
+                        retried++;
+                    }
+
+                } while (!saved);
+                Console.WriteLine("ChangedTo: {0} Thread: {1} Retries: {2}", messageId, Thread.CurrentThread.ManagedThreadId, retried);
+                return messageId;
+            }
+        }
+
         public Message AddMessage(Message message)
         {
-            /*Database.ExecuteSqlCommand($@"BEGIN;
-SELECT @id := IFNULL(MAX(MessageId), 0) + 1 FROM Messages WHERE ChannelId = {message.ChannelId} FOR UPDATE;
-INSERT INTO Messages (MessageId, DispatchTime, ChannelId) 
-VALUES (@id, {message.DispatchTime}, {message.ChannelId});
-COMMIT;");*/
-            lock (MessagesLock)
-            {
-                Messages.Add(message);
-                SaveChanges();
-            }
+            message.MessageId = GetMessageId(message.ChannelId);
+            Messages.Add(message);
+            SaveChanges();
             return message;
         }
 

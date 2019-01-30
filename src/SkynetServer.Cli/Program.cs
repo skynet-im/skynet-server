@@ -1,6 +1,7 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using SkynetServer.Cli.Commands;
 using System;
+using System.Diagnostics;
 
 namespace SkynetServer.Cli
 {
@@ -8,7 +9,15 @@ namespace SkynetServer.Cli
     {
         static int Main(string[] args)
         {
-            return CommandLineApplication.Execute<Skynet>(args);
+            if (Debugger.IsAttached)
+            {
+                args = new string[] { };
+                int result = CommandLineApplication.Execute<SkynetCommand>(args);
+                Console.WriteLine("Press any key to exit...");
+                Console.ReadKey(true);
+                return result;
+            }
+            else return CommandLineApplication.Execute<SkynetCommand>(args);
         }
     }
 }
