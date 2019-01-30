@@ -9,8 +9,9 @@ namespace SkynetServer.Entities
     {
         public long ChannelId { get; set; }
         public ChannelType ChannelType { get; set; }
+        public long MessageIdCounter { get; set; }
 
-        public long OwnerId { get; set; }
+        public long? OwnerId { get; set; }
         public Account Owner { get; set; }
 
         public long? OtherId { get; set; }

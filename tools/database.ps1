@@ -32,19 +32,50 @@ function Install-DbServer {
 }
 
 function Start-DbServer {
-	$process = Get-Process -Name "mysqld" -ErrorAction SilentlyContinue
-	if ($process) {
-		Write-Host "A MariaDB server is already running on this system."
-	} else {
-		Start-Process -FilePath (Join-Path $binPath mysqld.exe) -ArgumentList "--standalone"
+	$execPath = AssertExistsAndNotRunning mysqld.exe
+	if ($execPath) {
+		Start-Process -FilePath $execPath -ArgumentList "--standalone","--transaction-isolation=READ-COMMITTED"
 	}
 }
 
 function Stop-DbServer {
-	Start-Process -FilePath (Join-Path $binPath mysqladmin.exe) -ArgumentList "-u root","shutdown"
+	$execPath = AssertExistsAndRunning mysqladmin.exe
+	if ($execPath) {
+		Start-Process -FilePath $execPath -ArgumentList "-u root","shutdown"
+	}
 }
 
 function Start-DbCli {
-	$mysql = Join-Path $binPath mysql.exe
-	Start-Process -FilePath "cmd.exe" -ArgumentList "/c ""$mysql"" -u root Skynet" -WindowStyle Normal
+	$execPath = AssertExistsAndRunning mysql.exe
+	if ($execPath) {
+		Start-Process -FilePath "cmd.exe" -ArgumentList "/c ""$execPath"" -u root Skynet" -WindowStyle Normal
+	}
+}
+
+function AssertExistsAndRunning($execName) {
+	$execPath = Join-Path $binPath $execName
+	if (Test-Path -Path $execPath -PathType Leaf) {
+		$process = Get-Process -Name "mysqld" -ErrorAction SilentlyContinue
+		if ($process) {
+			return $execPath
+		} else {
+			Write-Host "No MariaDB server is currently running on this system."
+		}
+	} else {
+		Write-Host "Could not find executable at ""$execPath""."
+	}
+}
+
+function AssertExistsAndNotRunning($execName) {
+		$execPath = Join-Path $binPath $execName
+	if (Test-Path -Path $execPath -PathType Leaf) {
+		$process = Get-Process -Name "mysqld" -ErrorAction SilentlyContinue
+		if ($process) {
+			Write-Host "A MariaDB server is already running on this system."
+		} else {
+			return $execPath
+		}
+	} else {
+		Write-Host "Could not find executable at ""$execPath""."
+	}
 }
