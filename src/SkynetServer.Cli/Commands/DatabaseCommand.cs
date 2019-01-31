@@ -4,8 +4,10 @@ using SkynetServer.Entities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Wiry.Base32;
 
 namespace SkynetServer.Cli.Commands
 {
@@ -49,16 +51,42 @@ namespace SkynetServer.Cli.Commands
         [Command("benchmark")]
         internal class Benchmark : CommandBase
         {
+            [Option(CommandOptionType.SingleValue, Description = "Count of accounts to insert")]
+            public int AccountCount { get; set; } = 50;
+
             [Option(CommandOptionType.SingleValue, Description = "Count of messages to insert")]
             public int MessageCount { get; set; } = 100;
 
             private void OnExecute(IConsole console)
             {
                 long accountId, channelId;
+                Stopwatch stopwatch = new Stopwatch();
+
+                if (AccountCount > 0)
+                {
+                    console.Out.WriteLine($"Inserting {AccountCount} accounts...");
+                    stopwatch.Start();
+
+                    //Parallel.For(0, AccountCount, i =>
+                    //{
+                    for (int i = 0; i < AccountCount; i++)
+                    {
+                        using (DatabaseContext ctx = new DatabaseContext())
+                        {
+                            Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
+                            ctx.AddAccount(account);
+                        }
+                    }
+                    //});
+
+                    stopwatch.Stop();
+                    console.Out.WriteLine($"Finished saving {AccountCount} accounts after {stopwatch.ElapsedMilliseconds}ms");
+                    stopwatch.Reset();
+                }
 
                 using (DatabaseContext ctx = new DatabaseContext())
                 {
-                    Account account = new Account() { AccountName = $"{new Random().Next()}@example.com", KeyHash = new byte[0] };
+                    Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
                     accountId = ctx.AddAccount(account).AccountId;
                     console.Out.WriteLine($"Created account {account.AccountName} with ID {accountId}");
                     MailConfirmation confirmation = ctx.AddMailConfirmation(account, account.AccountName);
@@ -71,19 +99,33 @@ namespace SkynetServer.Cli.Commands
                     console.Out.WriteLine($"Created channel {channelId} with owner {channelId}");
                 }
 
-                console.Out.WriteLine($"Inserting {MessageCount} messages to channel {channelId}...");
-                Stopwatch stopwatch = Stopwatch.StartNew();
-
-                Parallel.For(0, MessageCount, i =>
+                if (MessageCount > 0)
                 {
-                    using (DatabaseContext ctx = new DatabaseContext())
-                    {
-                        ctx.AddMessage(new Message() { ChannelId = channelId, SenderId = accountId, DispatchTime = DateTime.Now });
-                    }
-                });
+                    console.Out.WriteLine($"Inserting {MessageCount} messages to channel {channelId}...");
+                    stopwatch.Start();
 
-                stopwatch.Stop();
-                console.Out.WriteLine($"Finished saving {MessageCount} messages after {stopwatch.ElapsedMilliseconds}ms");
+                    Parallel.For(0, MessageCount, i =>
+                    {
+                        using (DatabaseContext ctx = new DatabaseContext())
+                        {
+                            ctx.AddMessage(new Message() { ChannelId = channelId, SenderId = accountId, DispatchTime = DateTime.Now });
+                        }
+                    });
+
+                    stopwatch.Stop();
+                    console.Out.WriteLine($"Finished saving {MessageCount} messages after {stopwatch.ElapsedMilliseconds}ms");
+                    stopwatch.Reset();
+                }
+            }
+
+            private string RandomAddress()
+            {
+                using (var random = RandomNumberGenerator.Create())
+                {
+                    byte[] value = new byte[10];
+                    random.GetBytes(value);
+                    return Base32Encoding.Standard.GetString(value).ToLower();
+                }
             }
         }
     }

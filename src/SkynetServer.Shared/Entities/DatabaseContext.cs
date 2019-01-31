@@ -5,15 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading;
 using Wiry.Base32;
 
 namespace SkynetServer.Entities
 {
     public class DatabaseContext : DbContext
     {
-        public static readonly object AccountsLock = new object();
         public static readonly object ChannelsLock = new object();
         public static readonly object MailConfirmationsLock = new object();
 
@@ -87,18 +84,26 @@ namespace SkynetServer.Entities
 
         public Account AddAccount(Account account)
         {
-            lock (AccountsLock)
+            using (DatabaseContext ctx = new DatabaseContext())
             {
-                long id;
+                bool saved = false;
                 do
                 {
-                    id = RandomId();
-                } while (Accounts.Any(x => x.AccountId == id));
-                account.AccountId = id;
-                Accounts.Add(account);
-                SaveChanges();
+                    try
+                    {
+                        long id = RandomId() & 0xf;
+                        account.AccountId = id;
+                        Accounts.Add(account);
+                        SaveChanges();
+                    }
+                    catch (DbUpdateException)
+                    {
+                        var list = ctx.ChangeTracker.Entries().ToList();
+                        Console.WriteLine(string.Join(' ', list));
+                    }
+                } while (!saved);
+                return account;
             }
-            return account;
         }
 
         public Channel AddChannel(Channel channel)
@@ -124,7 +129,6 @@ namespace SkynetServer.Entities
                 bool saved = false;
                 Channel channel = ctx.Channels.Single(c => c.ChannelId == channelId);
                 long messageId = ++channel.MessageIdCounter;
-                int retried = 0;
                 do
                 {
                     try
@@ -138,14 +142,11 @@ namespace SkynetServer.Entities
                         var proposedValues = entry.CurrentValues;
                         var databaseValues = entry.GetDatabaseValues();
                         const string name = nameof(Channel.MessageIdCounter);
-                        Console.WriteLine("ProposedValue: {0} DatabaseValue: {1} Thread: {2}", proposedValues[name], databaseValues[name], Thread.CurrentThread.ManagedThreadId);
                         proposedValues[name] = messageId = (long)databaseValues[name] + 1;
                         entry.OriginalValues.SetValues(databaseValues);
-                        retried++;
                     }
 
                 } while (!saved);
-                Console.WriteLine("ChangedTo: {0} Thread: {1} Retries: {2}", messageId, Thread.CurrentThread.ManagedThreadId, retried);
                 return messageId;
             }
         }
