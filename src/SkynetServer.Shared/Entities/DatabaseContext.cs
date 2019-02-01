@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
+using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -95,11 +96,11 @@ namespace SkynetServer.Entities
                         account.AccountId = id;
                         Accounts.Add(account);
                         SaveChanges();
+                        saved = true;
                     }
-                    catch (DbUpdateException)
+                    catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
                     {
-                        var list = ctx.ChangeTracker.Entries().ToList();
-                        Console.WriteLine(string.Join(' ', list));
+                        // TODO: Throw if unique constraint violation is caused by AccountName
                     }
                 } while (!saved);
                 return account;
@@ -138,7 +139,7 @@ namespace SkynetServer.Entities
                     }
                     catch (DbUpdateConcurrencyException ex)
                     {
-                        var entry = ex.Entries.Single();    
+                        var entry = ex.Entries.Single();
                         var proposedValues = entry.CurrentValues;
                         var databaseValues = entry.GetDatabaseValues();
                         const string name = nameof(Channel.MessageIdCounter);
