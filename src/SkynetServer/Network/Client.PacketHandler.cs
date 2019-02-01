@@ -142,7 +142,7 @@ namespace SkynetServer.Network
                         var packet = Packet.New<P0ACreateChannel>();
                         packet.ChannelId = channel.ChannelId;
                         packet.ChannelType = channel.ChannelType;
-                        packet.OwnerId = channel.OwnerId;
+                        packet.OwnerId = channel.OwnerId ?? 0;
                         packet.CounterpartId = channel.OtherId ?? 0;
                         await SendPacket(packet);
                         currentState.Add((channel.ChannelId, 0));
@@ -259,11 +259,13 @@ namespace SkynetServer.Network
 
         public Task Handle(P0DMessageBlock packet)
         {
+            // TODO: Implement transaction system for password changes
             throw new NotImplementedException();
         }
 
         public Task Handle(P0ERequestMessages packet)
         {
+            // TODO: Send messages using a similar pattern like SendMessages()
             throw new NotImplementedException();
         }
 
