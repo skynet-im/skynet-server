@@ -5,7 +5,7 @@ using System.Text;
 
 namespace SkynetServer.Cli.Commands
 {
-    [HelpOption("--help")]
+    [HelpOption("-?|--help")]
     internal abstract class CommandBase
     {
         

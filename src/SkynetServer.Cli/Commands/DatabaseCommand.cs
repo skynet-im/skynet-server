@@ -67,17 +67,14 @@ namespace SkynetServer.Cli.Commands
                     console.Out.WriteLine($"Inserting {AccountCount} accounts...");
                     stopwatch.Start();
 
-                    //Parallel.For(0, AccountCount, i =>
-                    //{
-                    for (int i = 0; i < AccountCount; i++)
+                    Parallel.For(0, AccountCount, i =>
                     {
                         using (DatabaseContext ctx = new DatabaseContext())
                         {
                             Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
                             ctx.AddAccount(account);
                         }
-                    }
-                    //});
+                    });
 
                     stopwatch.Stop();
                     console.Out.WriteLine($"Finished saving {AccountCount} accounts after {stopwatch.ElapsedMilliseconds}ms");

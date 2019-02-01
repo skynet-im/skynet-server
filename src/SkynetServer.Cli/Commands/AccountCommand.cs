@@ -16,6 +16,9 @@ namespace SkynetServer.Cli.Commands
         [Command("create")]
         internal class Create : CommandBase
         {
+            [Option("--id", CommandOptionType.SingleValue)]
+            public long AccountId { get; set; }
+
             [Argument(0)]
             public string AccountName { get; set; }
 
@@ -23,13 +26,24 @@ namespace SkynetServer.Cli.Commands
             {
                 console.Out.WriteLine("WARNING: Argon2 hash is currently not supported!");
 
-                using (DatabaseContext context = new DatabaseContext())
+                using (DatabaseContext ctx = new DatabaseContext())
                 {
+                    var account = new Account() { AccountName = AccountName, KeyHash = new byte[0] };
+
                     try
                     {
-                        var account = context.AddAccount(new Entities.Account() { AccountName = AccountName, KeyHash = new byte[0] });
+                        if (AccountId != 0)
+                        {
+                            account.AccountId = AccountId;
+                            ctx.Accounts.Add(account);
+                            ctx.SaveChanges();
+                        }
+                        else
+                        {
+                            account = ctx.AddAccount(account);
+                        }
                         console.Out.WriteLine($"Created account with ID {account.AccountId}");
-                        var confirmation = context.AddMailConfirmation(account, AccountName);
+                        var confirmation = ctx.AddMailConfirmation(account, AccountName);
                         console.Out.WriteLine($"Visit https://api.skynet-messenger.com/confirm/{confirmation.Token} to confirm the mail address");
                         return 0;
                     }
