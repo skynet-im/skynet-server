@@ -1,7 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using SkynetServer.Configuration;
-using SkynetServer.Entities;
 using SkynetServer.Network;
 using System;
 using System.Collections.Immutable;
@@ -19,6 +17,8 @@ namespace SkynetServer
 
         static void Main(string[] args)
         {
+            // The appsettings.json file contained in this repository lacks some secrets that are necessary for production usage.
+            // Our debug keypair "<Modulus>jKoWxmIf..." should be used in all client applications to connect to development servers.
             Configuration = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
