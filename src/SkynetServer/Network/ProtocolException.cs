@@ -6,7 +6,7 @@ namespace SkynetServer.Network
 {
     internal class ProtocolException : Exception
     {
-        public ProtocolException() : this("Client violation of Skynet Protocol rules caused an exception") { }
+        public ProtocolException() : this("Client violation of Skynet Protocol rules") { }
 
         public ProtocolException(string message) : base(message) { }
     }
