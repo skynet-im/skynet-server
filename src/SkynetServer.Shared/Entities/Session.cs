@@ -9,6 +9,7 @@ namespace SkynetServer.Entities
         public long SessionId { get; set; }
         public DateTime CreationTime { get; set; }
         public string ApplicationIdentifier { get; set; }
+        public string FcmToken { get; set; }
 
         public DateTime LastConnected { get; set; }
         public int LastVersionCode { get; set; }

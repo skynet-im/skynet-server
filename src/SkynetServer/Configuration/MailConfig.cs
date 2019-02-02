@@ -12,8 +12,8 @@ namespace SkynetServer.Configuration
         public string SmtpUsername { get; set; }
         public string SmtpPassword { get; set; }
         public bool UseSsl { get; set; }
-        public ushort SmtpPort { get; set; }
         public string SmtpHost { get; set; }
+        public ushort SmtpPort { get; set; }
 
         public string ContentTemplate { get; set; }
     }

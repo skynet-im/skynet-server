@@ -3,6 +3,7 @@ using SkynetServer.Network.Model;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using VSL;
 
 namespace SkynetServer.Network.Packets
@@ -17,7 +18,7 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P0BChannelMessage().Init(this);
 
-        public override void Handle(IPacketHandler handler) => handler.Handle(this);
+        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
 
         public override void ReadPacket(PacketBuffer buffer)
         {
@@ -30,7 +31,8 @@ namespace SkynetServer.Network.Packets
             ContentPacketId = buffer.ReadByte();
             ContentPacketVersion = buffer.ReadByte();
             ContentPacket = buffer.ReadByteArray();
-            for (int i = 0; i < buffer.ReadUShort(); i++)
+            ushort length = buffer.ReadUShort();
+            for (int i = 0; i < length; i++)
             {
                 Dependencies.Add(new MessageDependency(buffer.ReadLong(), buffer.ReadLong(), buffer.ReadLong()));
             }
