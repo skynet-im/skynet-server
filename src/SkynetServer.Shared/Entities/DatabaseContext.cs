@@ -12,6 +12,7 @@ namespace SkynetServer.Entities
 {
     public class DatabaseContext : DbContext
     {
+        public static readonly object SessionsLock = new object();
         public static readonly object ChannelsLock = new object();
         public static readonly object MailConfirmationsLock = new object();
 
@@ -105,6 +106,22 @@ namespace SkynetServer.Entities
                 } while (!saved);
                 return account;
             }
+        }
+
+        public Session AddSession(Session session)
+        {
+            lock (SessionsLock)
+            {
+                long id;
+                do
+                {
+                    id = RandomId();
+                } while (Sessions.Any(x => x.AccountId == session.AccountId && x.SessionId == id));
+                session.SessionId = id;
+                Sessions.Add(session);
+                SaveChanges();
+            }
+            return session;
         }
 
         public Channel AddChannel(Channel channel)

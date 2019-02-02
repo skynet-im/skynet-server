@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x00, PacketPolicy.Receive)]
+    [Packet(0x00, PacketPolicy.Receive | PacketPolicy.Unauthenticated)]
     internal sealed class P00ConnectionHandshake : Packet
     {
         public int ProtocolVersion { get; set; }
@@ -14,7 +15,7 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P00ConnectionHandshake().Init(this);
 
-        public override void Handle(IPacketHandler handler) => handler.Handle(this);
+        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
 
         public override void ReadPacket(PacketBuffer buffer)
         {

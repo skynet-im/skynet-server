@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using VSL;
 
 namespace SkynetServer.Network.Packets
@@ -13,16 +14,18 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P28BlockList().Init(this);
 
-        public override void Handle(IPacketHandler handler) => handler.Handle(this);
+        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
 
         public override void ReadPacket(PacketBuffer buffer)
         {
-            for (int i = 0; i < buffer.ReadUShort(); i++)
+            ushort length = buffer.ReadUShort();
+            for (int i = 0; i < length; i++)
             {
                 BlockedAccounts.Add(buffer.ReadLong());
             }
 
-            for (int i = 0; i < buffer.ReadUShort(); i++)
+            length = buffer.ReadUShort();
+            for (int i = 0; i < length; i++)
             {
                 BlockedConversations.Add(buffer.ReadLong());
             }
