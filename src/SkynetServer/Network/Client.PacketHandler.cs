@@ -83,6 +83,8 @@ namespace SkynetServer.Network
                 var confirmation = ctx.MailConfirmations.SingleOrDefault(c => c.MailAddress == packet.AccountName);
                 if (confirmation == null)
                     response.ErrorCode = CreateSessionError.InvalidCredentials;
+                else if (confirmation.ConfirmationTime == default)
+                    response.ErrorCode = CreateSessionError.UnconfirmedAccount;
                 else if (packet.KeyHash.SafeEquals(confirmation.Account.KeyHash))
                 {
                     session = await DatabaseHelper.AddSession(new Session
@@ -352,7 +354,10 @@ namespace SkynetServer.Network
         {
             using (var ctx = new DatabaseContext())
             {
-                var results = ctx.MailConfirmations.Where(c => c.MailAddress.Contains(packet.Query)).Take(100); // Limit to 100 entries
+                var results = ctx.MailConfirmations
+                    .Where(c => c.MailAddress.Contains(packet.Query) 
+                        && c.ConfirmationTime != default) // Exclude unconfirmed accounts
+                    .Take(100); // Limit to 100 entries
                 var response = Packet.New<P2ESearchAccountResponse>();
                 foreach (var result in results)
                     response.Results.Add(new SearchResult
