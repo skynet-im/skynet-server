@@ -22,7 +22,7 @@ namespace SkynetServer
                 {
                     try
                     {
-                        long id = RandomId() & 0xf;
+                        long id = RandomId();
                         account.AccountId = id;
                         ctx.Accounts.Add(account);
                         ctx.SaveChanges();
@@ -46,7 +46,7 @@ namespace SkynetServer
                 {
                     try
                     {
-                        long id = RandomId() & 0xf;
+                        long id = RandomId();
                         session.SessionId = id;
                         ctx.Sessions.Add(session);
                         ctx.SaveChanges();
@@ -70,7 +70,7 @@ namespace SkynetServer
                 {
                     try
                     {
-                        long id = RandomId() & 0xf;
+                        long id = RandomId();
                         channel.ChannelId = id;
                         ctx.Channels.Add(channel);
                         ctx.SaveChanges();
@@ -155,9 +155,15 @@ namespace SkynetServer
         {
             using (var random = RandomNumberGenerator.Create())
             {
-                Span<byte> value = stackalloc byte[8];
-                random.GetBytes(value);
-                return BitConverter.ToInt64(value);
+                long result;
+                do
+                {
+                    Span<byte> value = stackalloc byte[8];
+                    random.GetBytes(value);
+                    result = BitConverter.ToInt64(value);
+
+                } while (result == 0);
+                return result;
             }
         }
 
