@@ -1,6 +1,4 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
-using Microsoft.EntityFrameworkCore;
-using MySql.Data.MySqlClient;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using System;
@@ -18,9 +16,6 @@ namespace SkynetServer.Cli.Commands
         [Command("create")]
         internal class Create : CommandBase
         {
-            [Option("--id", CommandOptionType.SingleValue)]
-            public long AccountId { get; set; }
-
             [Argument(0)]
             public string AccountName { get; set; }
 
@@ -30,35 +25,16 @@ namespace SkynetServer.Cli.Commands
 
                 using (DatabaseContext ctx = new DatabaseContext())
                 {
-                    var account = new Account() { AccountName = AccountName, KeyHash = new byte[0] };
-
-                    try
+                    (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount(AccountName, new byte[0]);
+                    if (success)
                     {
-                        if (AccountId != 0)
-                        {
-                            account.AccountId = AccountId;
-                            ctx.Accounts.Add(account);
-                            await ctx.SaveChangesAsync();
-                        }
-                        else
-                        {
-                            account = await DatabaseHelper.AddAccount(account);
-                        }
                         console.Out.WriteLine($"Created account with ID {account.AccountId}");
-                        var confirmation = await DatabaseHelper.AddMailConfirmation(account, AccountName);
                         console.Out.WriteLine($"Visit https://api.skynet-messenger.com/confirm/{confirmation.Token} to confirm the mail address");
                         return 0;
                     }
-                    catch (DbUpdateException ex)
+                    else
                     {
-                        if (ex.InnerException is MySqlException inner && inner.Number == 1062)
-                        {
-                            console.Error.WriteLine($"The AccountName {AccountName} already exists!");
-                        }
-                        else
-                        {
-                            console.Error.WriteLine(ex);
-                        }
+                        console.Error.WriteLine($"The AccountName {AccountName} already exists!");
                         return 1;
                     }
                 }

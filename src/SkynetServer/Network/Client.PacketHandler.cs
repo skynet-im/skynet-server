@@ -44,29 +44,26 @@ namespace SkynetServer.Network
             using (var ctx = new DatabaseContext())
             {
                 var response = Packet.New<P03CreateAccountResponse>();
-                // TODO: Concurrency
                 if (!ConfirmationMailer.IsValidEmail(packet.AccountName))
                     response.ErrorCode = CreateAccountError.InvalidAccountName;
-                else if (ctx.Accounts.Any(acc => acc.AccountName == packet.AccountName))
-                    response.ErrorCode = CreateAccountError.AccountNameTaken;
                 else
                 {
-                    Account account = await DatabaseHelper.AddAccount(new Account
+                    (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount(packet.AccountName, packet.KeyHash);
+                    if (!success)
+                        response.ErrorCode = CreateAccountError.AccountNameTaken;
+                    else
                     {
-                        AccountName = packet.AccountName,
-                        KeyHash = packet.KeyHash
-                    });
-                    Channel channel = await DatabaseHelper.AddChannel(new Channel()
-                    {
-                        ChannelType = ChannelType.Loopback,
-                        OwnerId = account.AccountId
-                    });
-                    ctx.ChannelMembers.Add(new ChannelMember { Channel = channel, Account = account });
-                    await ctx.SaveChangesAsync();
-                    MailConfirmation confirmation = await DatabaseHelper.AddMailConfirmation(account, packet.AccountName);
-                    // TODO: Send password update packet
-                    await new ConfirmationMailer().SendMailAsync(confirmation.MailAddress, confirmation.Token);
-                    response.ErrorCode = CreateAccountError.Success;
+                        Channel channel = await DatabaseHelper.AddChannel(new Channel()
+                        {
+                            ChannelType = ChannelType.Loopback,
+                            OwnerId = account.AccountId
+                        });
+                        ctx.ChannelMembers.Add(new ChannelMember { Channel = channel, Account = account });
+                        await ctx.SaveChangesAsync();
+                        // TODO: Send password update packet
+                        await new ConfirmationMailer().SendMailAsync(confirmation.MailAddress, confirmation.Token);
+                        response.ErrorCode = CreateAccountError.Success;
+                    }
                 }
                 await SendPacket(response);
             }
@@ -81,13 +78,16 @@ namespace SkynetServer.Network
         {
             using (var ctx = new DatabaseContext())
             {
-                var accountCandidate = ctx.Accounts.Single(acc => acc.AccountName == packet.AccountName);
                 var response = Packet.New<P07CreateSessionResponse>();
-                if (packet.KeyHash.SafeEquals(accountCandidate.KeyHash))
+
+                var confirmation = ctx.MailConfirmations.SingleOrDefault(c => c.MailAddress == packet.AccountName);
+                if (confirmation == null)
+                    response.ErrorCode = CreateSessionError.InvalidCredentials;
+                else if (packet.KeyHash.SafeEquals(confirmation.Account.KeyHash))
                 {
                     session = await DatabaseHelper.AddSession(new Session
                     {
-                        Account = accountCandidate,
+                        Account = confirmation.Account,
                         ApplicationIdentifier = applicationIdentifier,
                         CreationTime = DateTime.Now,
                         LastConnected = DateTime.Now,
@@ -95,7 +95,7 @@ namespace SkynetServer.Network
                         FcmToken = packet.FcmRegistrationToken
                     });
 
-                    account = accountCandidate;
+                    account = confirmation.Account;
 
                     response.AccountId = account.AccountId;
                     response.SessionId = session.SessionId;
@@ -352,13 +352,13 @@ namespace SkynetServer.Network
         {
             using (var ctx = new DatabaseContext())
             {
-                var results = ctx.Accounts.Where(acc => acc.AccountName.Contains(packet.Query)).Take(100); // Limit to 100 entries
+                var results = ctx.MailConfirmations.Where(c => c.MailAddress.Contains(packet.Query)).Take(100); // Limit to 100 entries
                 var response = Packet.New<P2ESearchAccountResponse>();
                 foreach (var result in results)
                     response.Results.Add(new SearchResult
                     {
                         AccountId = result.AccountId,
-                        AccountName = result.AccountName
+                        AccountName = result.MailAddress
                         // Forward public packets to fully implement the Skynet protocol v5
                     });
                 return SendPacket(response);

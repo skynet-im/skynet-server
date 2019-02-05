@@ -12,8 +12,11 @@ namespace SkynetServer.Database
 {
     public static class DatabaseHelper
     {
-        public static async Task<Account> AddAccount(Account account)
+        public static async Task<(Account, MailConfirmation, bool)> AddAccount(string mailAddress, byte[] keyHash)
         {
+            Account account = new Account { KeyHash = keyHash };
+            MailConfirmation confirmation = new MailConfirmation { Account = account, MailAddress = mailAddress, CreationTime = DateTime.Now };
+
             using (DatabaseContext ctx = new DatabaseContext())
             {
                 bool saved = false;
@@ -22,17 +25,24 @@ namespace SkynetServer.Database
                     try
                     {
                         long id = RandomId();
+                        string token = RandomToken();
                         account.AccountId = id;
+                        confirmation.Token = token;
                         ctx.Accounts.Add(account);
+                        ctx.MailConfirmations.Add(confirmation);
                         await ctx.SaveChangesAsync();
                         saved = true;
                     }
                     catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
                     {
-                        // TODO: Throw if unique constraint violation is caused by AccountName
+                        // Return false if unique constraint violation is caused by the mail address
+                        // An example for mex.Message is "Duplicate entry 'concurrency@unit.test' for key 'PRIMARY'"
+
+                        if (mex.Message.Contains('@'))
+                            return (null, null, false);
                     }
                 } while (!saved);
-                return account;
+                return (account, confirmation, true);
             }
         }
 
@@ -124,38 +134,6 @@ namespace SkynetServer.Database
                 ctx.Messages.Add(message);
                 await ctx.SaveChangesAsync();
                 return message;
-            }
-        }
-
-        public static async Task<MailConfirmation> AddMailConfirmation(Account account, string address)
-        {
-            MailConfirmation confirmation = new MailConfirmation()
-            {
-                AccountId = account.AccountId,
-                MailAddress = address,
-                CreationTime = DateTime.Now
-            };
-
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                bool saved = false;
-                do
-                {
-                    try
-                    {
-                        string token = RandomToken();
-                        confirmation.Token = token;
-                        ctx.MailConfirmations.Add(confirmation);
-                        await ctx.SaveChangesAsync();
-                        saved = true;
-                    }
-                    catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
-                    {
-                        // TODO: Throw if unique constraint violation is caused by MailAddress
-                    }
-
-                } while (!saved);
-                return confirmation;
             }
         }
 

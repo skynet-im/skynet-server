@@ -71,8 +71,7 @@ namespace SkynetServer.Cli.Commands
 
                     await AsyncParallel.ForAsync(0, AccountCount, i =>
                     {
-                        Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
-                        return DatabaseHelper.AddAccount(account);
+                        return DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", new byte[0]);
                     });
 
                     stopwatch.Stop();
@@ -81,10 +80,9 @@ namespace SkynetServer.Cli.Commands
                 }
 
                 {
-                    Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
-                    accountId = (await DatabaseHelper.AddAccount(account)).AccountId;
-                    console.Out.WriteLine($"Created account {account.AccountName} with ID {accountId}");
-                    MailConfirmation confirmation = await DatabaseHelper.AddMailConfirmation(account, account.AccountName);
+                    (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", new byte[0]);
+                    accountId = account.AccountId;
+                    console.Out.WriteLine($"Created account {confirmation.MailAddress} with ID {accountId}");
                     console.Out.WriteLine($"Created mail confirmation for {confirmation.MailAddress} with token {confirmation.Token}");
                 }
                 {

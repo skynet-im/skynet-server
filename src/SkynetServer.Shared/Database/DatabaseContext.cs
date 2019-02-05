@@ -21,7 +21,6 @@ namespace SkynetServer.Database
         {
             var account = modelBuilder.Entity<Account>();
             account.HasKey(a => a.AccountId);
-            account.HasAlternateKey(a => a.AccountName);
             account.Property(a => a.AccountId).ValueGeneratedNever();
             account.Property(a => a.KeyHash).IsRequired();
 

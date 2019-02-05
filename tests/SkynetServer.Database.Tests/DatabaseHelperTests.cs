@@ -17,23 +17,20 @@ namespace SkynetServer.Database.Tests
         [TestMethod]
         public async Task TestAddAccount()
         {
-            await AsyncParallel.ForAsync(0, 500, i =>
+            await AsyncParallel.ForAsync(0, 500, async i =>
             {
-                Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
-                return DatabaseHelper.AddAccount(account);
+                (_, _, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", new byte[0]);
+                Assert.IsTrue(success);
             });
         }
 
         [TestMethod]
-        public async Task TaskAddAccountAndConfirm()
+        public async Task TestAddExistingAccount()
         {
-            await AsyncParallel.ForAsync(0, 500, async i =>
-            {
-                Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
-                await DatabaseHelper.AddAccount(account);
-
-                MailConfirmation confirmation = await DatabaseHelper.AddMailConfirmation(account, account.AccountName);
-            });
+            const string address = "concurrency@unit.test";
+            await DatabaseHelper.AddAccount(address, new byte[0]);
+            (_, _, bool success) = await DatabaseHelper.AddAccount(address, new byte[0]);
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
@@ -41,8 +38,8 @@ namespace SkynetServer.Database.Tests
         {
             await AsyncParallel.ForAsync(0, 100, async i =>
             {
-                Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
-                await DatabaseHelper.AddAccount(account);
+                (var account, _, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", new byte[0]);
+                Assert.IsTrue(success);
 
                 await AsyncParallel.ForAsync(0, 10, j =>
                 {
