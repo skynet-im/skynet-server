@@ -40,10 +40,10 @@ namespace SkynetServer.Cli.Commands
                         }
                         else
                         {
-                            account = ctx.AddAccount(account);
+                            account = DatabaseHelper.AddAccount(account);
                         }
                         console.Out.WriteLine($"Created account with ID {account.AccountId}");
-                        var confirmation = ctx.AddMailConfirmation(account, AccountName);
+                        var confirmation = DatabaseHelper.AddMailConfirmation(account, AccountName);
                         console.Out.WriteLine($"Visit https://api.skynet-messenger.com/confirm/{confirmation.Token} to confirm the mail address");
                         return 0;
                     }

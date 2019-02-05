@@ -69,11 +69,8 @@ namespace SkynetServer.Cli.Commands
 
                     Parallel.For(0, AccountCount, i =>
                     {
-                        using (DatabaseContext ctx = new DatabaseContext())
-                        {
-                            Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
-                            ctx.AddAccount(account);
-                        }
+                        Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
+                        DatabaseHelper.AddAccount(account);
                     });
 
                     stopwatch.Stop();
@@ -81,18 +78,15 @@ namespace SkynetServer.Cli.Commands
                     stopwatch.Reset();
                 }
 
-                using (DatabaseContext ctx = new DatabaseContext())
                 {
                     Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
-                    accountId = ctx.AddAccount(account).AccountId;
+                    accountId = DatabaseHelper.AddAccount(account).AccountId;
                     console.Out.WriteLine($"Created account {account.AccountName} with ID {accountId}");
-                    MailConfirmation confirmation = ctx.AddMailConfirmation(account, account.AccountName);
+                    MailConfirmation confirmation = DatabaseHelper.AddMailConfirmation(account, account.AccountName);
                     console.Out.WriteLine($"Created mail confirmation for {confirmation.MailAddress} with token {confirmation.Token}");
                 }
-
-                using (DatabaseContext ctx = new DatabaseContext())
                 {
-                    channelId = ctx.AddChannel(new Channel() { OwnerId = accountId }).ChannelId;
+                    channelId = DatabaseHelper.AddChannel(new Channel() { OwnerId = accountId }).ChannelId;
                     console.Out.WriteLine($"Created channel {channelId} with owner {channelId}");
                 }
 
@@ -103,10 +97,7 @@ namespace SkynetServer.Cli.Commands
 
                     Parallel.For(0, MessageCount, i =>
                     {
-                        using (DatabaseContext ctx = new DatabaseContext())
-                        {
-                            ctx.AddMessage(new Message() { ChannelId = channelId, SenderId = accountId, DispatchTime = DateTime.Now });
-                        }
+                        DatabaseHelper.AddMessage(new Message() { ChannelId = channelId, SenderId = accountId, DispatchTime = DateTime.Now });
                     });
 
                     stopwatch.Stop();

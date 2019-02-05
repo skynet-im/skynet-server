@@ -50,17 +50,17 @@ namespace SkynetServer.Network
                     response.ErrorCode = CreateAccountError.AccountNameTaken;
                 else
                 {
-                    var account = ctx.AddAccount(new Account
+                    var account = DatabaseHelper.AddAccount(new Account
                     {
                         AccountName = packet.AccountName,
                         KeyHash = packet.KeyHash
                     });
-                    var channel = ctx.AddChannel(new Channel()
+                    var channel = DatabaseHelper.AddChannel(new Channel()
                     {
                         ChannelType = ChannelType.Loopback,
                         OwnerId = account.AccountId
                     });
-                    var confirmation = ctx.AddMailConfirmation(account, packet.AccountName);
+                    var confirmation = DatabaseHelper.AddMailConfirmation(account, packet.AccountName);
                     // TODO: Send password update packet
                     await new ConfirmationMailer().SendMailAsync(confirmation.MailAddress, confirmation.Token);
                     response.ErrorCode = CreateAccountError.Success;
@@ -82,7 +82,7 @@ namespace SkynetServer.Network
                 var response = Packet.New<P07CreateSessionResponse>();
                 if (packet.KeyHash.SafeEquals(accountCandidate.KeyHash))
                 {
-                    session = ctx.AddSession(new Session
+                    session = DatabaseHelper.AddSession(new Session
                     {
                         Account = accountCandidate,
                         ApplicationIdentifier = applicationIdentifier,
@@ -91,7 +91,7 @@ namespace SkynetServer.Network
                         LastVersionCode = versionCode,
                         FcmToken = packet.FcmRegistrationToken
                     });
-                    await ctx.SaveChangesAsync();
+
                     account = accountCandidate;
 
                     response.AccountId = account.AccountId;
@@ -178,7 +178,7 @@ namespace SkynetServer.Network
                         else
                         {
                             // TODO: Check whether a direct channel exists before and after inserting
-                            channel = ctx.AddChannel(new Channel
+                            channel = DatabaseHelper.AddChannel(new Channel
                             {
                                 Owner = account,
                                 Other = counterpart,
@@ -189,7 +189,7 @@ namespace SkynetServer.Network
                         }
                         break;
                     case ChannelType.Group:
-                        channel = ctx.AddChannel(new Channel
+                        channel = DatabaseHelper.AddChannel(new Channel
                         {
                             Owner = account,
                             ChannelType = packet.ChannelType
@@ -203,7 +203,7 @@ namespace SkynetServer.Network
                             response.ErrorCode = CreateChannelError.AlreadyExists;
                         else
                         {
-                            channel = ctx.AddChannel(new Channel
+                            channel = DatabaseHelper.AddChannel(new Channel
                             {
                                 Owner = account,
                                 ChannelType = packet.ChannelType
