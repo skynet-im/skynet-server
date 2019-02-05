@@ -61,6 +61,8 @@ namespace SkynetServer.Network
                         ChannelType = ChannelType.Loopback,
                         OwnerId = account.AccountId
                     });
+                    ctx.ChannelMembers.Add(new ChannelMember { Channel = channel, Account = account });
+                    await ctx.SaveChangesAsync();
                     MailConfirmation confirmation = await DatabaseHelper.AddMailConfirmation(account, packet.AccountName);
                     // TODO: Send password update packet
                     await new ConfirmationMailer().SendMailAsync(confirmation.MailAddress, confirmation.Token);
@@ -144,7 +146,8 @@ namespace SkynetServer.Network
                         packet.ChannelId = channel.ChannelId;
                         packet.ChannelType = channel.ChannelType;
                         packet.OwnerId = channel.OwnerId ?? 0;
-                        packet.CounterpartId = channel.OtherId ?? 0;
+                        if (packet.ChannelType == ChannelType.Direct)
+                            packet.CounterpartId = channel.ChannelMembers.Single(m => m.AccountId != channel.OwnerId).AccountId;
                         await SendPacket(packet);
                         currentState.Add((channel.ChannelId, 0));
                     }
@@ -182,9 +185,12 @@ namespace SkynetServer.Network
                             channel = await DatabaseHelper.AddChannel(new Channel
                             {
                                 Owner = account,
-                                Other = counterpart,
-                                ChannelType = packet.ChannelType
+                                ChannelType = ChannelType.Direct
                             });
+
+                            ctx.ChannelMembers.Add(new ChannelMember { Channel = channel, Account = account });
+                            ctx.ChannelMembers.Add(new ChannelMember { Channel = channel, AccountId = packet.CounterpartId });
+                            await ctx.SaveChangesAsync();
 
                             response.ErrorCode = CreateChannelError.Success;
                         }
@@ -209,6 +215,9 @@ namespace SkynetServer.Network
                                 Owner = account,
                                 ChannelType = packet.ChannelType
                             });
+
+                            ctx.ChannelMembers.Add(new ChannelMember { Channel = channel, Account = account });
+                            await ctx.SaveChangesAsync();
 
                             response.ErrorCode = CreateChannelError.Success;
                         }

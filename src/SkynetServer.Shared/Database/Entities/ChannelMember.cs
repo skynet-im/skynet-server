@@ -5,7 +5,7 @@ using System.Text;
 
 namespace SkynetServer.Database.Entities
 {
-    public class GroupMember
+    public class ChannelMember
     {
         public GroupMemberFlags Flags { get; set; }
 

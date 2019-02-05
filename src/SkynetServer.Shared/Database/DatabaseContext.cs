@@ -12,6 +12,7 @@ namespace SkynetServer.Database
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Session> Sessions { get; set; }
         public DbSet<Channel> Channels { get; set; }
+        public DbSet<ChannelMember> ChannelMembers { get; set; }
         public DbSet<Message> Messages { get; set; }
         public DbSet<MessageDependency> MessageDependencies { get; set; }
         public DbSet<MailConfirmation> MailConfirmations { get; set; }
@@ -46,12 +47,11 @@ namespace SkynetServer.Database
             channel.Property(c => c.ChannelType).HasConversion<byte>();
             channel.Property(c => c.MessageIdCounter).IsConcurrencyToken();
             channel.HasOne(c => c.Owner).WithMany(a => a.OwnedChannels).HasForeignKey(c => c.OwnerId);
-            channel.HasOne(c => c.Other).WithMany(a => a.OtherChannels).HasForeignKey(c => c.OtherId);
 
-            var groupMember = modelBuilder.Entity<GroupMember>();
-            groupMember.HasKey(m => new { m.ChannelId, m.AccountId });
-            groupMember.HasOne(m => m.Channel).WithMany(c => c.GroupMembers).HasForeignKey(m => m.ChannelId);
-            groupMember.HasOne(m => m.Account).WithMany(a => a.GroupMemberships).HasForeignKey(m => m.AccountId);
+            var channelMember = modelBuilder.Entity<ChannelMember>();
+            channelMember.HasKey(m => new { m.ChannelId, m.AccountId });
+            channelMember.HasOne(m => m.Channel).WithMany(c => c.ChannelMembers).HasForeignKey(m => m.ChannelId);
+            channelMember.HasOne(m => m.Account).WithMany(a => a.ChannelMemberships).HasForeignKey(m => m.AccountId);
 
             var message = modelBuilder.Entity<Message>();
             message.HasKey(m => new { m.ChannelId, m.MessageId });
