@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using SkynetServer.Entities;
+using SkynetServer.Database;
+using SkynetServer.Database.Entities;
 using SkynetServer.Web.Models;
 
 namespace SkynetServer.Web.Controllers

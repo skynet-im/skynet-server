@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using SkynetServer.Configuration;
-using SkynetServer.Entities;
+using SkynetServer.Database;
+using SkynetServer.Database.Entities;
 using SkynetServer.Model;
 using SkynetServer.Network.Mail;
 using SkynetServer.Network.Model;

@@ -1,11 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
-using SkynetServer.Entities;
+using SkynetServer.Database.Entities;
 using System;
 using System.Collections.Generic;
 
-namespace SkynetServer
+namespace SkynetServer.Database
 {
     public class DatabaseContext : DbContext
     {

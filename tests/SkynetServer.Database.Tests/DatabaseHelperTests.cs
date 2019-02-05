@@ -1,5 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using SkynetServer.Entities;
+using SkynetServer.Database.Entities;
 using SkynetServer.Model;
 using SkynetServer.Threading;
 using System;

@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MySql.Data.MySqlClient;
-using SkynetServer.Entities;
+using SkynetServer.Database.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +8,7 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Wiry.Base32;
 
-namespace SkynetServer
+namespace SkynetServer.Database
 {
     public static class DatabaseHelper
     {

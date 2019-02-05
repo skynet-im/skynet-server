@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace SkynetServer.Entities
+namespace SkynetServer.Database.Entities
 {
     public class Message
     {

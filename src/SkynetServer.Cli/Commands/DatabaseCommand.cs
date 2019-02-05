@@ -1,6 +1,7 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using Microsoft.EntityFrameworkCore;
-using SkynetServer.Entities;
+using SkynetServer.Database;
+using SkynetServer.Database.Entities;
 using SkynetServer.Threading;
 using System;
 using System.Collections.Generic;

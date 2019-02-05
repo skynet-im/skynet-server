@@ -1,7 +1,8 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using Microsoft.EntityFrameworkCore;
 using MySql.Data.MySqlClient;
-using SkynetServer.Entities;
+using SkynetServer.Database;
+using SkynetServer.Database.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
