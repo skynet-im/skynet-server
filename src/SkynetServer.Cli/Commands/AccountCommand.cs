@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace SkynetServer.Cli.Commands
 {
@@ -22,7 +23,7 @@ namespace SkynetServer.Cli.Commands
             [Argument(0)]
             public string AccountName { get; set; }
 
-            private int OnExecute(IConsole console)
+            private async Task<int> OnExecute(IConsole console)
             {
                 console.Out.WriteLine("WARNING: Argon2 hash is currently not supported!");
 
@@ -36,11 +37,11 @@ namespace SkynetServer.Cli.Commands
                         {
                             account.AccountId = AccountId;
                             ctx.Accounts.Add(account);
-                            ctx.SaveChanges();
+                            await ctx.SaveChangesAsync();
                         }
                         else
                         {
-                            account = DatabaseHelper.AddAccount(account);
+                            account = await DatabaseHelper.AddAccount(account);
                         }
                         console.Out.WriteLine($"Created account with ID {account.AccountId}");
                         var confirmation = DatabaseHelper.AddMailConfirmation(account, AccountName);
@@ -69,7 +70,7 @@ namespace SkynetServer.Cli.Commands
             [Argument(0)]
             public string MailAddress { get; set; }
 
-            private int OnExecute(IConsole console)
+            private async Task<int> OnExecute(IConsole console)
             {
                 using (DatabaseContext context = new DatabaseContext())
                 {
@@ -79,7 +80,7 @@ namespace SkynetServer.Cli.Commands
                         if (confirmation.ConfirmationTime == default(DateTime))
                         {
                             confirmation.ConfirmationTime = DateTime.Now;
-                            context.SaveChanges();
+                            await context.SaveChangesAsync();
                         }
                         else
                         {

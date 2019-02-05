@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SkynetServer.Entities;
 using SkynetServer.Model;
+using SkynetServer.Threading;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
@@ -14,24 +15,24 @@ namespace SkynetServer.Database.Tests
     public class DatabaseHelperTests
     {
         [TestMethod]
-        public void TestAddAccount()
+        public async Task TestAddAccount()
         {
-            Parallel.For(0, 500, i =>
+            await AsyncParallel.ForAsync(0, 500, i =>
             {
                 Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
-                DatabaseHelper.AddAccount(account);
+                return DatabaseHelper.AddAccount(account);
             });
         }
 
         [TestMethod]
-        public void TestAddAccountAndSession()
+        public async Task TestAddAccountAndSession()
         {
-            Parallel.For(0, 100, i =>
+            await AsyncParallel.ForAsync(0, 100, async i =>
             {
                 Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
-                DatabaseHelper.AddAccount(account);
+                await DatabaseHelper.AddAccount(account);
 
-                Parallel.For(0, 10, j =>
+                await AsyncParallel.ForAsync(0, 10, j =>
                 {
                     Session session = new Session()
                     {
@@ -39,33 +40,33 @@ namespace SkynetServer.Database.Tests
                         ApplicationIdentifier = "windows/SkynetServer.Database.Tests",
                         CreationTime = DateTime.Now
                     };
-                    DatabaseHelper.AddSession(session);
+                    return DatabaseHelper.AddSession(session);
                 });
             });
         }
 
         [TestMethod]
-        public void TestAddChannel()
+        public async Task TestAddChannel()
         {
-            Parallel.For(0, 500, i =>
+            await AsyncParallel.ForAsync(0, 500, i =>
             {
                 Channel channel = new Channel() { ChannelType = ChannelType.Loopback };
-                DatabaseHelper.AddChannel(channel);
+                return DatabaseHelper.AddChannel(channel);
             });
         }
 
         [TestMethod]
-        public void TestAddChannelAndMessage()
+        public async Task TestAddChannelAndMessage()
         {
-            Parallel.For(0, 50, i =>
+            await AsyncParallel.ForAsync(0, 5, async i =>
             {
                 Channel channel = new Channel() { ChannelType = ChannelType.Loopback };
-                DatabaseHelper.AddChannel(channel);
+                await DatabaseHelper.AddChannel(channel);
 
-                Parallel.For(0, 500, j =>
+                await AsyncParallel.ForAsync(0, 100, j =>
                 {
                     Message message = new Message() { ChannelId = channel.ChannelId, DispatchTime = DateTime.Now };
-                    DatabaseHelper.AddMessage(message);
+                    return DatabaseHelper.AddMessage(message);
                 });
             });
         }

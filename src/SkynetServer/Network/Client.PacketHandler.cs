@@ -50,12 +50,12 @@ namespace SkynetServer.Network
                     response.ErrorCode = CreateAccountError.AccountNameTaken;
                 else
                 {
-                    var account = DatabaseHelper.AddAccount(new Account
+                    Account account = await DatabaseHelper.AddAccount(new Account
                     {
                         AccountName = packet.AccountName,
                         KeyHash = packet.KeyHash
                     });
-                    var channel = DatabaseHelper.AddChannel(new Channel()
+                    Channel channel = await DatabaseHelper.AddChannel(new Channel()
                     {
                         ChannelType = ChannelType.Loopback,
                         OwnerId = account.AccountId
@@ -82,7 +82,7 @@ namespace SkynetServer.Network
                 var response = Packet.New<P07CreateSessionResponse>();
                 if (packet.KeyHash.SafeEquals(accountCandidate.KeyHash))
                 {
-                    session = DatabaseHelper.AddSession(new Session
+                    session = await DatabaseHelper.AddSession(new Session
                     {
                         Account = accountCandidate,
                         ApplicationIdentifier = applicationIdentifier,
@@ -178,23 +178,23 @@ namespace SkynetServer.Network
                         else
                         {
                             // TODO: Check whether a direct channel exists before and after inserting
-                            channel = DatabaseHelper.AddChannel(new Channel
+                            channel = await DatabaseHelper.AddChannel(new Channel
                             {
                                 Owner = account,
                                 Other = counterpart,
                                 ChannelType = packet.ChannelType
                             });
-                            await ctx.SaveChangesAsync();
+
                             response.ErrorCode = CreateChannelError.Success;
                         }
                         break;
                     case ChannelType.Group:
-                        channel = DatabaseHelper.AddChannel(new Channel
+                        channel = await DatabaseHelper.AddChannel(new Channel
                         {
                             Owner = account,
                             ChannelType = packet.ChannelType
                         });
-                        await ctx.SaveChangesAsync();
+
                         response.ErrorCode = CreateChannelError.Success;
                         break;
                     case ChannelType.ProfileData:
@@ -203,12 +203,12 @@ namespace SkynetServer.Network
                             response.ErrorCode = CreateChannelError.AlreadyExists;
                         else
                         {
-                            channel = DatabaseHelper.AddChannel(new Channel
+                            channel = await DatabaseHelper.AddChannel(new Channel
                             {
                                 Owner = account,
                                 ChannelType = packet.ChannelType
                             });
-                            await ctx.SaveChangesAsync();
+
                             response.ErrorCode = CreateChannelError.Success;
                         }
                         break;

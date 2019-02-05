@@ -1,6 +1,7 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using Microsoft.EntityFrameworkCore;
 using SkynetServer.Entities;
+using SkynetServer.Threading;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -57,7 +58,7 @@ namespace SkynetServer.Cli.Commands
             [Option(CommandOptionType.SingleValue, Description = "Count of messages to insert")]
             public int MessageCount { get; set; } = 100;
 
-            private void OnExecute(IConsole console)
+            private async Task OnExecute(IConsole console)
             {
                 long accountId, channelId;
                 Stopwatch stopwatch = new Stopwatch();
@@ -67,10 +68,10 @@ namespace SkynetServer.Cli.Commands
                     console.Out.WriteLine($"Inserting {AccountCount} accounts...");
                     stopwatch.Start();
 
-                    Parallel.For(0, AccountCount, i =>
+                    await AsyncParallel.ForAsync(0, AccountCount, i =>
                     {
                         Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
-                        DatabaseHelper.AddAccount(account);
+                        return DatabaseHelper.AddAccount(account);
                     });
 
                     stopwatch.Stop();
@@ -80,13 +81,13 @@ namespace SkynetServer.Cli.Commands
 
                 {
                     Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
-                    accountId = DatabaseHelper.AddAccount(account).AccountId;
+                    accountId = (await DatabaseHelper.AddAccount(account)).AccountId;
                     console.Out.WriteLine($"Created account {account.AccountName} with ID {accountId}");
                     MailConfirmation confirmation = DatabaseHelper.AddMailConfirmation(account, account.AccountName);
                     console.Out.WriteLine($"Created mail confirmation for {confirmation.MailAddress} with token {confirmation.Token}");
                 }
                 {
-                    channelId = DatabaseHelper.AddChannel(new Channel() { OwnerId = accountId }).ChannelId;
+                    channelId = (await DatabaseHelper.AddChannel(new Channel() { OwnerId = accountId })).ChannelId;
                     console.Out.WriteLine($"Created channel {channelId} with owner {channelId}");
                 }
 
@@ -95,9 +96,9 @@ namespace SkynetServer.Cli.Commands
                     console.Out.WriteLine($"Inserting {MessageCount} messages to channel {channelId}...");
                     stopwatch.Start();
 
-                    Parallel.For(0, MessageCount, i =>
+                    await AsyncParallel.ForAsync(0, MessageCount, i =>
                     {
-                        DatabaseHelper.AddMessage(new Message() { ChannelId = channelId, SenderId = accountId, DispatchTime = DateTime.Now });
+                        return DatabaseHelper.AddMessage(new Message() { ChannelId = channelId, SenderId = accountId, DispatchTime = DateTime.Now });
                     });
 
                     stopwatch.Stop();
