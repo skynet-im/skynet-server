@@ -12,8 +12,6 @@ namespace SkynetServer.Entities
 {
     public class DatabaseContext : DbContext
     {
-        public static readonly object SessionsLock = new object();
-        public static readonly object ChannelsLock = new object();
         public static readonly object MailConfirmationsLock = new object();
 
         public DbSet<Account> Accounts { get; set; }
@@ -110,34 +108,50 @@ namespace SkynetServer.Entities
 
         public Session AddSession(Session session)
         {
-            lock (SessionsLock)
+            using (DatabaseContext ctx = new DatabaseContext())
             {
-                long id;
+                bool saved = false;
                 do
                 {
-                    id = RandomId();
-                } while (Sessions.Any(x => x.AccountId == session.AccountId && x.SessionId == id));
-                session.SessionId = id;
-                Sessions.Add(session);
-                SaveChanges();
+                    try
+                    {
+                        long id = RandomId() & 0xf;
+                        session.SessionId = id;
+                        Sessions.Add(session);
+                        SaveChanges();
+                        saved = true;
+                    }
+                    catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
+                    {
+
+                    }
+                } while (!saved);
+                return session;
             }
-            return session;
         }
 
         public Channel AddChannel(Channel channel)
         {
-            lock (ChannelsLock)
+            using (DatabaseContext ctx = new DatabaseContext())
             {
-                long id;
+                bool saved = false;
                 do
                 {
-                    id = RandomId();
-                } while (Channels.Any(x => x.ChannelId == id));
-                channel.ChannelId = id;
-                Channels.Add(channel);
-                SaveChanges();
+                    try
+                    {
+                        long id = RandomId() & 0xf;
+                        channel.ChannelId = id;
+                        Channels.Add(channel);
+                        SaveChanges();
+                        saved = true;
+                    }
+                    catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
+                    {
+
+                    }
+                } while (!saved);
+                return channel;
             }
-            return channel;
         }
 
         private long GetMessageId(long channelId)
