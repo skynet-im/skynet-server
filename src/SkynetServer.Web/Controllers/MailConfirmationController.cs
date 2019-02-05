@@ -39,6 +39,11 @@ namespace SkynetServer.Web.Controllers
                 return View("Invalid");
             if (confirmation.ConfirmationTime == default(DateTime))
             {
+                // Remove confirmations that have become obsolete due to an address change
+                // TODO: Add protocol interaction to inform clients about a suceeded address change
+                _database.MailConfirmations.RemoveRange(
+                    _database.MailConfirmations.Where(c => c.AccountId == confirmation.AccountId && c.Token != token));
+
                 confirmation.ConfirmationTime = DateTime.Now;
                 _database.SaveChanges();
                 return View("Success", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
