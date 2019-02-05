@@ -60,7 +60,7 @@ namespace SkynetServer.Network
                         ChannelType = ChannelType.Loopback,
                         OwnerId = account.AccountId
                     });
-                    var confirmation = DatabaseHelper.AddMailConfirmation(account, packet.AccountName);
+                    MailConfirmation confirmation = await DatabaseHelper.AddMailConfirmation(account, packet.AccountName);
                     // TODO: Send password update packet
                     await new ConfirmationMailer().SendMailAsync(confirmation.MailAddress, confirmation.Token);
                     response.ErrorCode = CreateAccountError.Success;

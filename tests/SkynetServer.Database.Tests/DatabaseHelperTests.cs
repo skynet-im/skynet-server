@@ -25,6 +25,18 @@ namespace SkynetServer.Database.Tests
         }
 
         [TestMethod]
+        public async Task TaskAddAccountAndConfirm()
+        {
+            await AsyncParallel.ForAsync(0, 500, async i =>
+            {
+                Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
+                await DatabaseHelper.AddAccount(account);
+
+                MailConfirmation confirmation = await DatabaseHelper.AddMailConfirmation(account, account.AccountName);
+            });
+        }
+
+        [TestMethod]
         public async Task TestAddAccountAndSession()
         {
             await AsyncParallel.ForAsync(0, 100, async i =>

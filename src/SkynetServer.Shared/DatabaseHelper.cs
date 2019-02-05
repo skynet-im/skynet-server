@@ -12,8 +12,6 @@ namespace SkynetServer
 {
     public static class DatabaseHelper
     {
-        public static readonly object MailConfirmationsLock = new object();
-
         public static async Task<Account> AddAccount(Account account)
         {
             using (DatabaseContext ctx = new DatabaseContext())
@@ -55,7 +53,6 @@ namespace SkynetServer
                     }
                     catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
                     {
-
                     }
                 } while (!saved);
                 return session;
@@ -79,7 +76,6 @@ namespace SkynetServer
                     }
                     catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
                     {
-
                     }
                 } while (!saved);
                 return channel;
@@ -131,28 +127,34 @@ namespace SkynetServer
             }
         }
 
-        public static MailConfirmation AddMailConfirmation(Account account, string address)
+        public static async Task<MailConfirmation> AddMailConfirmation(Account account, string address)
         {
+            MailConfirmation confirmation = new MailConfirmation()
+            {
+                AccountId = account.AccountId,
+                MailAddress = address,
+                CreationTime = DateTime.Now
+            };
+
             using (DatabaseContext ctx = new DatabaseContext())
             {
-                MailConfirmation confirmation = new MailConfirmation()
+                bool saved = false;
+                do
                 {
-                    AccountId = account.AccountId,
-                    MailAddress = address,
-                    CreationTime = DateTime.Now
-                };
-
-                lock (MailConfirmationsLock)
-                {
-                    string token;
-                    do
+                    try
                     {
-                        token = RandomToken();
-                    } while (ctx.MailConfirmations.Any(x => x.Token == token));
-                    confirmation.Token = token;
-                    ctx.MailConfirmations.Add(confirmation);
-                    ctx.SaveChanges();
-                }
+                        string token = RandomToken();
+                        confirmation.Token = token;
+                        ctx.MailConfirmations.Add(confirmation);
+                        await ctx.SaveChangesAsync();
+                        saved = true;
+                    }
+                    catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
+                    {
+                        // TODO: Throw if unique constraint violation is caused by MailAddress
+                    }
+
+                } while (!saved);
                 return confirmation;
             }
         }

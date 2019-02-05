@@ -44,7 +44,7 @@ namespace SkynetServer.Cli.Commands
                             account = await DatabaseHelper.AddAccount(account);
                         }
                         console.Out.WriteLine($"Created account with ID {account.AccountId}");
-                        var confirmation = DatabaseHelper.AddMailConfirmation(account, AccountName);
+                        var confirmation = await DatabaseHelper.AddMailConfirmation(account, AccountName);
                         console.Out.WriteLine($"Visit https://api.skynet-messenger.com/confirm/{confirmation.Token} to confirm the mail address");
                         return 0;
                     }

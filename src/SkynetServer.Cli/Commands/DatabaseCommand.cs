@@ -83,7 +83,7 @@ namespace SkynetServer.Cli.Commands
                     Account account = new Account() { AccountName = $"{RandomAddress()}@example.com", KeyHash = new byte[0] };
                     accountId = (await DatabaseHelper.AddAccount(account)).AccountId;
                     console.Out.WriteLine($"Created account {account.AccountName} with ID {accountId}");
-                    MailConfirmation confirmation = DatabaseHelper.AddMailConfirmation(account, account.AccountName);
+                    MailConfirmation confirmation = await DatabaseHelper.AddMailConfirmation(account, account.AccountName);
                     console.Out.WriteLine($"Created mail confirmation for {confirmation.MailAddress} with token {confirmation.Token}");
                 }
                 {
