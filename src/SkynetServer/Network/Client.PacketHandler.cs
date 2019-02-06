@@ -140,10 +140,13 @@ namespace SkynetServer.Network
         {
             using (DatabaseContext ctx = new DatabaseContext())
             {
-                foreach (Channel channel in ctx.Channels) // TODO: Get all of the account's channels
+                Channel[] channels = account.ChannelMemberships.Select(m => m.Channel).ToArray();
+
+                foreach (Channel channel in channels)
                 {
                     if (!currentState.Any(s => s.channelId == channel.ChannelId))
                     {
+                        // Notify client about new channels
                         var packet = Packet.New<P0ACreateChannel>();
                         packet.ChannelId = channel.ChannelId;
                         packet.ChannelType = channel.ChannelType;
@@ -155,9 +158,46 @@ namespace SkynetServer.Network
                     }
                 }
 
-                foreach (Message message in ctx.Messages) // TODO: Get the account's channel's messages
+                // Send messages from loopback channel
+                Channel loopback = channels.Single(c => c.ChannelType == ChannelType.Loopback);
+                long lastLoopbackMessage = currentState.Single(s => s.channelId == loopback.ChannelId).messageId;
+                foreach (Message message in loopback.Messages.Where(m => m.MessageId > lastLoopbackMessage))
                 {
-                    // TODO: Send messages in the correct order and respect message flags and dependencies
+                    var packet = Packet.New<P0BChannelMessage>();
+                    packet.ChannelId = loopback.ChannelId;
+                    packet.SenderId = message.SenderId ?? 0;
+                    packet.MessageId = message.MessageId;
+                    packet.SkipCount = 0; // TODO: Implement flags and skip count
+                    packet.DispatchTime = message.DispatchTime;
+                    packet.MessageFlags = message.MessageFlags;
+                    packet.FileId = 0; // Files are not implemented yet
+                                       // TODO: Implement dependencies
+                    packet.ContentPacketId = message.ContentPacketId;
+                    packet.ContentPacketVersion = message.ContentPacketVersion;
+                    packet.ContentPacket = message.ContentPacket;
+                    await SendPacket(packet);
+                }
+
+                // Send messages from direct channels
+                foreach (Channel channel in account.ChannelMemberships.Select(m => m.Channel).Where(c => c.ChannelType == ChannelType.Direct))
+                {
+                    long lastMessage = currentState.Single(s => s.channelId == channel.ChannelId).messageId;
+                    foreach (Message message in channel.Messages.Where(m => m.MessageId > lastMessage))
+                    {
+                        var packet = Packet.New<P0BChannelMessage>();
+                        packet.ChannelId = loopback.ChannelId;
+                        packet.SenderId = message.SenderId ?? 0;
+                        packet.MessageId = message.MessageId;
+                        packet.SkipCount = 0; // TODO: Implement flags and skip count
+                        packet.DispatchTime = message.DispatchTime;
+                        packet.MessageFlags = message.MessageFlags;
+                        packet.FileId = 0; // Files are not implemented yet
+                                           // TODO: Implement dependencies
+                        packet.ContentPacketId = message.ContentPacketId;
+                        packet.ContentPacketVersion = message.ContentPacketVersion;
+                        packet.ContentPacket = message.ContentPacket;
+                        await SendPacket(packet);
+                    }
                 }
 
                 await SendPacket(Packet.New<P0FSyncFinished>());
