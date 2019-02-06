@@ -53,6 +53,7 @@ namespace SkynetServer.Network
                         response.ErrorCode = CreateAccountError.AccountNameTaken;
                     else
                     {
+                        Task mail = new ConfirmationMailer().SendMailAsync(confirmation.MailAddress, confirmation.Token);
                         Channel channel = await DatabaseHelper.AddChannel(new Channel()
                         {
                             ChannelType = ChannelType.Loopback,
@@ -60,8 +61,27 @@ namespace SkynetServer.Network
                         });
                         ctx.ChannelMembers.Add(new ChannelMember { Channel = channel, Account = account });
                         await ctx.SaveChangesAsync();
-                        // TODO: Send password update packet
-                        await new ConfirmationMailer().SendMailAsync(confirmation.MailAddress, confirmation.Token);
+
+                        // Send password update packet
+                        var passwordUpdate = Packet.New<P15PasswordUpdate>();
+                        passwordUpdate.KeyHash = packet.KeyHash;
+                        using (PacketBuffer buffer = PacketBuffer.CreateDynamic())
+                        {
+                            packet.WritePacket(buffer);
+                            ctx.Messages.Add(new Message()
+                            {
+                                Channel = channel,
+                                Sender = account,
+                                DispatchTime = DateTime.Now,
+                                MessageFlags = MessageFlags.Unencrypted,
+                                ContentPacketId = packet.Id,
+                                ContentPacketVersion = 0,
+                                ContentPacket = buffer.ToArray()
+                            });
+                            await ctx.SaveChangesAsync();
+                        }
+
+                        await mail;
                         response.ErrorCode = CreateAccountError.Success;
                     }
                 }
@@ -395,7 +415,7 @@ namespace SkynetServer.Network
             using (var ctx = new DatabaseContext())
             {
                 var results = ctx.MailConfirmations
-                    .Where(c => c.MailAddress.Contains(packet.Query) 
+                    .Where(c => c.MailAddress.Contains(packet.Query)
                         && c.ConfirmationTime != default) // Exclude unconfirmed accounts
                     .Take(100); // Limit to 100 entries
                 var response = Packet.New<P2ESearchAccountResponse>();
