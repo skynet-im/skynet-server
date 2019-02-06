@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace SkynetServer.Entities
+namespace SkynetServer.Database.Entities
 {
-    public class GroupMember
+    public class ChannelMember
     {
         public GroupMemberFlags Flags { get; set; }
 

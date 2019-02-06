@@ -1,11 +1,11 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
-using Microsoft.EntityFrameworkCore;
-using MySql.Data.MySqlClient;
-using SkynetServer.Entities;
+using SkynetServer.Database;
+using SkynetServer.Database.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace SkynetServer.Cli.Commands
 {
@@ -19,30 +19,22 @@ namespace SkynetServer.Cli.Commands
             [Argument(0)]
             public string AccountName { get; set; }
 
-            private int OnExecute(IConsole console)
+            private async Task<int> OnExecute(IConsole console)
             {
                 console.Out.WriteLine("WARNING: Argon2 hash is currently not supported!");
 
-                using (DatabaseContext context = new DatabaseContext())
+                using (DatabaseContext ctx = new DatabaseContext())
                 {
-                    try
+                    (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount(AccountName, new byte[0]);
+                    if (success)
                     {
-                        var account = context.AddAccount(new Entities.Account() { AccountName = AccountName, KeyHash = new byte[0] });
                         console.Out.WriteLine($"Created account with ID {account.AccountId}");
-                        var confirmation = context.AddMailConfirmation(account, AccountName);
                         console.Out.WriteLine($"Visit https://api.skynet-messenger.com/confirm/{confirmation.Token} to confirm the mail address");
                         return 0;
                     }
-                    catch (DbUpdateException ex)
+                    else
                     {
-                        if (ex.InnerException is MySqlException inner && inner.Number == 1062)
-                        {
-                            console.Error.WriteLine($"The AccountName {AccountName} already exists!");
-                        }
-                        else
-                        {
-                            console.Error.WriteLine(ex);
-                        }
+                        console.Error.WriteLine($"The AccountName {AccountName} already exists!");
                         return 1;
                     }
                 }
@@ -55,17 +47,17 @@ namespace SkynetServer.Cli.Commands
             [Argument(0)]
             public string MailAddress { get; set; }
 
-            private int OnExecute(IConsole console)
+            private async Task<int> OnExecute(IConsole console)
             {
-                using (DatabaseContext context = new DatabaseContext())
+                using (DatabaseContext ctx = new DatabaseContext())
                 {
-                    MailConfirmation confirmation = context.MailConfirmations.SingleOrDefault(c => c.MailAddress == MailAddress);
+                    MailConfirmation confirmation = ctx.MailConfirmations.SingleOrDefault(c => c.MailAddress == MailAddress);
                     if (confirmation != null)
                     {
                         if (confirmation.ConfirmationTime == default(DateTime))
                         {
                             confirmation.ConfirmationTime = DateTime.Now;
-                            context.SaveChanges();
+                            await ctx.SaveChangesAsync();
                         }
                         else
                         {

@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace SkynetServer.Entities
+namespace SkynetServer.Database.Entities
 {
     public class Account
     {
         public long AccountId { get; set; }
-        public string AccountName { get; set; }
         public byte[] KeyHash { get; set; }
 
         public IEnumerable<Session> Sessions { get; set; }
@@ -15,8 +14,7 @@ namespace SkynetServer.Entities
         public IEnumerable<BlockedConversation> BlockedConversations { get; set; }
         public IEnumerable<BlockedAccount> Blockers { get; set; }
         public IEnumerable<Channel> OwnedChannels { get; set; }
-        public IEnumerable<Channel> OtherChannels { get; set; }
-        public IEnumerable<GroupMember> GroupMemberships { get; set; }
+        public IEnumerable<ChannelMember> ChannelMemberships { get; set; }
         public IEnumerable<MailConfirmation> MailConfirmations { get; set; }
     }
 }

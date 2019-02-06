@@ -8,6 +8,7 @@ namespace SkynetServer.Network.Model
     {
         Success,
         InvalidCredentials,
-        InvalidFcmRegistrationToken
+        InvalidFcmRegistrationToken,
+        UnconfirmedAccount
     }
 }

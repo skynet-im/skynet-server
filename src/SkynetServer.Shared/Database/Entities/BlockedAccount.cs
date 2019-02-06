@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace SkynetServer.Entities
+namespace SkynetServer.Database.Entities
 {
-    public class BlockedConversation
+    public class BlockedAccount
     {
-        public long ChannelId { get; set; }
-        public Channel Channel { get; set; }
+        public long AccountId { get; set; }
+        public Account Account { get; set; }
 
         public long OwnerId { get; set; }
         public Account Owner { get; set; }

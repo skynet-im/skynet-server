@@ -30,6 +30,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{267569CE
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SkynetServer.Cli", "src\SkynetServer.Cli\SkynetServer.Cli.csproj", "{179DB560-A20E-4A17-AC87-60D2DE11FE21}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{3252B458-BDDD-4BD8-9277-BD253264D4BC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkynetServer.Database.Tests", "tests\SkynetServer.Database.Tests\SkynetServer.Database.Tests.csproj", "{8C5F66CA-EEE8-4223-AE44-601B076CC167}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -52,6 +56,10 @@ Global
 		{179DB560-A20E-4A17-AC87-60D2DE11FE21}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{179DB560-A20E-4A17-AC87-60D2DE11FE21}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{179DB560-A20E-4A17-AC87-60D2DE11FE21}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C5F66CA-EEE8-4223-AE44-601B076CC167}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C5F66CA-EEE8-4223-AE44-601B076CC167}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C5F66CA-EEE8-4223-AE44-601B076CC167}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C5F66CA-EEE8-4223-AE44-601B076CC167}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -61,6 +69,7 @@ Global
 		{A1E7C0A1-ECAB-4D42-94BC-5054CDC7F7A4} = {AF56B7E7-849C-43B1-92B5-6753710BB539}
 		{320D2430-F663-46FE-8108-E2F2AE51A25B} = {AF56B7E7-849C-43B1-92B5-6753710BB539}
 		{179DB560-A20E-4A17-AC87-60D2DE11FE21} = {AF56B7E7-849C-43B1-92B5-6753710BB539}
+		{8C5F66CA-EEE8-4223-AE44-601B076CC167} = {3252B458-BDDD-4BD8-9277-BD253264D4BC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CCD70523-67AD-4A9B-BAF1-4BDA67255B27}

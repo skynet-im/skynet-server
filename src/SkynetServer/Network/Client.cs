@@ -1,4 +1,4 @@
-﻿using SkynetServer.Entities;
+﻿using SkynetServer.Database.Entities;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
