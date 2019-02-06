@@ -12,17 +12,17 @@ namespace SkynetServer.Web.Controllers
     [Route("~/confirm")]
     public class MailConfirmationController : Controller
     {
-        private readonly DatabaseContext _database;
+        private readonly DatabaseContext ctx;
 
         public MailConfirmationController(DatabaseContext database)
         {
-            _database = database;
+            ctx = database;
         }
 
         [HttpGet("{token}")]
         public IActionResult Get(string token)
         {
-            MailConfirmation confirmation = _database.MailConfirmations.Where(x => x.Token == token).FirstOrDefault();
+            MailConfirmation confirmation = ctx.MailConfirmations.Where(x => x.Token == token).FirstOrDefault();
             if (confirmation == null)
                 return View("Invalid");
             if (confirmation.ConfirmationTime == default(DateTime))
@@ -34,18 +34,18 @@ namespace SkynetServer.Web.Controllers
         [HttpPost("{token}")]
         public IActionResult Post(string token)
         {
-            MailConfirmation confirmation = _database.MailConfirmations.Where(x => x.Token == token).FirstOrDefault();
+            MailConfirmation confirmation = ctx.MailConfirmations.Where(x => x.Token == token).FirstOrDefault();
             if (confirmation == null)
                 return View("Invalid");
             if (confirmation.ConfirmationTime == default(DateTime))
             {
                 // Remove confirmations that have become obsolete due to an address change
                 // TODO: Add protocol interaction to inform clients about a suceeded address change
-                _database.MailConfirmations.RemoveRange(
-                    _database.MailConfirmations.Where(c => c.AccountId == confirmation.AccountId && c.Token != token));
+                ctx.MailConfirmations.RemoveRange(
+                    ctx.MailConfirmations.Where(c => c.AccountId == confirmation.AccountId && c.Token != token));
 
                 confirmation.ConfirmationTime = DateTime.Now;
-                _database.SaveChanges();
+                ctx.SaveChanges();
                 return View("Success", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
             }
             else

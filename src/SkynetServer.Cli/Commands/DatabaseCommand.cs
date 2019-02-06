@@ -28,9 +28,9 @@ namespace SkynetServer.Cli.Commands
         {
             private void OnExecute()
             {
-                using (DatabaseContext context = new DatabaseContext())
+                using (DatabaseContext ctx = new DatabaseContext())
                 {
-                    context.Database.EnsureCreated();
+                    ctx.Database.EnsureCreated();
                 }
             }
         }
@@ -42,9 +42,9 @@ namespace SkynetServer.Cli.Commands
             {
                 if (Prompt.GetYesNo("Do you really want to delete the Skynet database?", false))
                 {
-                    using (DatabaseContext context = new DatabaseContext())
+                    using (DatabaseContext ctx = new DatabaseContext())
                     {
-                        context.Database.EnsureDeleted();
+                        ctx.Database.EnsureDeleted();
                     }
                 }
             }

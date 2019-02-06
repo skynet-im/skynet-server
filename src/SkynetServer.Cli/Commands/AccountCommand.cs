@@ -49,15 +49,15 @@ namespace SkynetServer.Cli.Commands
 
             private async Task<int> OnExecute(IConsole console)
             {
-                using (DatabaseContext context = new DatabaseContext())
+                using (DatabaseContext ctx = new DatabaseContext())
                 {
-                    MailConfirmation confirmation = context.MailConfirmations.SingleOrDefault(c => c.MailAddress == MailAddress);
+                    MailConfirmation confirmation = ctx.MailConfirmations.SingleOrDefault(c => c.MailAddress == MailAddress);
                     if (confirmation != null)
                     {
                         if (confirmation.ConfirmationTime == default(DateTime))
                         {
                             confirmation.ConfirmationTime = DateTime.Now;
-                            await context.SaveChangesAsync();
+                            await ctx.SaveChangesAsync();
                         }
                         else
                         {
