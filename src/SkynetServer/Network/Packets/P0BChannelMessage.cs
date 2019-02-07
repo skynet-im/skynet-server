@@ -9,9 +9,10 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Packet(0x0B, PacketPolicy.Duplex)]
-    internal sealed class P0BChannelMessage : ChannelMessage
+    internal class P0BChannelMessage : ChannelMessage
     {
         public byte PacketVersion { get; set; }
+        public PacketPolicy ContentPacketPolicy { get; set; }
         public byte ContentPacketId { get; set; }
         public byte ContentPacketVersion { get; set; }
         public byte[] ContentPacket { get; set; }
@@ -20,7 +21,7 @@ namespace SkynetServer.Network.Packets
 
         public override Task Handle(IPacketHandler handler) => handler.Handle(this);
 
-        public override void ReadPacket(PacketBuffer buffer)
+        public sealed override void ReadPacket(PacketBuffer buffer)
         {
             PacketVersion = buffer.ReadByte();
             ChannelId = buffer.ReadLong();
@@ -38,7 +39,7 @@ namespace SkynetServer.Network.Packets
             }
         }
 
-        public override void WritePacket(PacketBuffer buffer)
+        public sealed override void WritePacket(PacketBuffer buffer)
         {
             buffer.WriteByte(PacketVersion);
             buffer.WriteLong(ChannelId);
@@ -59,6 +60,16 @@ namespace SkynetServer.Network.Packets
                 buffer.WriteLong(dependency.ChannelId);
                 buffer.WriteLong(dependency.MessageId);
             }
+        }
+
+        public virtual void ReadMessage(PacketBuffer buffer)
+        {
+
+        }
+
+        public virtual void WriteMessage(PacketBuffer buffer)
+        {
+
         }
     }
 }
