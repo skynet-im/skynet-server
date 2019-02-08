@@ -304,7 +304,7 @@ namespace SkynetServer.Network
 
             if (packet.MessageFlags.HasFlag(MessageFlags.Unencrypted))
             {
-                if (!(Packet.Packets[packet.ContentPacketId] is ChannelMessage message) || !message.Policy.HasFlag(PacketPolicy.Receive))
+                if (!(Packet.Packets[packet.ContentPacketId] is P0BChannelMessage message) || !message.Policy.HasFlag(PacketPolicy.Receive))
                     throw new ProtocolException("Content packet is no receivable channel message");
 
                 message.ChannelId = packet.ChannelId;
@@ -356,55 +356,55 @@ namespace SkynetServer.Network
             throw new NotImplementedException();
         }
 
-        public Task Handle(P13QueueMailAddressChange packet)
+        public Task<MessageSendError> Handle(P13QueueMailAddressChange packet)
         {
             throw new NotImplementedException();
         }
 
-        public Task Handle(P15PasswordUpdate packet)
+        public Task<MessageSendError> Handle(P15PasswordUpdate packet)
         {
             // TODO: Inject dependency from previous PasswordUpdate to latest LoopbackKeyNotify packet
             throw new NotImplementedException();
         }
 
-        public Task Handle(P18PublicKeys packet)
+        public Task<MessageSendError> Handle(P18PublicKeys packet)
         {
             // TODO: Save message in loopback channel and forward to all direct channels
             throw new NotImplementedException();
         }
 
-        public Task Handle(P1EGroupChannelUpdate packet)
+        public Task<MessageSendError> Handle(P1EGroupChannelUpdate packet)
         {
             // TODO: Check for concurrency issues before insert
             throw new NotImplementedException();
         }
 
-        public Task Handle(P22MessageReceived packet)
+        public Task<MessageSendError> Handle(P22MessageReceived packet)
         {
             throw new NotImplementedException();
         }
 
-        public Task Handle(P23MessageRead packet)
+        public Task<MessageSendError> Handle(P23MessageRead packet)
         {
             throw new NotImplementedException();
         }
 
-        public Task Handle(P25Nickname packet)
+        public Task<MessageSendError> Handle(P25Nickname packet)
         {
             throw new NotImplementedException();
         }
 
-        public Task Handle(P26PersonalMessage packet)
+        public Task<MessageSendError> Handle(P26PersonalMessage packet)
         {
             throw new NotImplementedException();
         }
 
-        public Task Handle(P27ProfileImage packet)
+        public Task<MessageSendError> Handle(P27ProfileImage packet)
         {
             throw new NotImplementedException();
         }
 
-        public Task Handle(P28BlockList packet)
+        public Task<MessageSendError> Handle(P28BlockList packet)
         {
             // TODO: What happens with existing channels?
             throw new NotImplementedException();

@@ -9,8 +9,17 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Packet(0x0B, PacketPolicy.Duplex)]
-    internal class P0BChannelMessage : ChannelMessage
+    internal class P0BChannelMessage : Packet
     {
+        public long ChannelId { get; set; }
+        public long SenderId { get; set; }
+        public long MessageId { get; set; }
+        public long SkipCount { get; set; }
+        public DateTime DispatchTime { get; set; }
+        public MessageFlags MessageFlags { get; set; }
+        public long FileId { get; set; }
+        public List<MessageDependency> Dependencies { get; set; } = new List<MessageDependency>();
+
         public byte PacketVersion { get; set; }
         public PacketPolicy ContentPacketPolicy { get; set; }
         public byte ContentPacketId { get; set; }
@@ -19,7 +28,7 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P0BChannelMessage().Init(this);
 
-        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
+        public sealed override Task Handle(IPacketHandler handler) => handler.Handle(this);
 
         public sealed override void ReadPacket(PacketBuffer buffer)
         {
@@ -60,6 +69,20 @@ namespace SkynetServer.Network.Packets
                 buffer.WriteLong(dependency.ChannelId);
                 buffer.WriteLong(dependency.MessageId);
             }
+        }
+
+        public P0BChannelMessage Init(P0BChannelMessage source)
+        {
+            Id = source.Id;
+            Policy = source.Policy;
+            ContentPacketId = source.ContentPacketId;
+            ContentPacketPolicy = source.ContentPacketPolicy;
+            return this;
+        }
+
+        public virtual Task<MessageSendError> HandleMessage(IPacketHandler handler)
+        {
+            return Task.FromResult(MessageSendError.Success);
         }
 
         public virtual void ReadMessage(PacketBuffer buffer)

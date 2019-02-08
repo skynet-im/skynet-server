@@ -8,7 +8,7 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Packet(0x18, PacketPolicy.Duplex)]
-    internal sealed class P18PublicKeys : ChannelMessage
+    internal sealed class P18PublicKeys : P0BChannelMessage
     {
         public KeyFormat SignatureKeyFormat { get; set; }
         public byte[] SignatureKey { get; set; }
@@ -17,9 +17,9 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P18PublicKeys().Init(this);
 
-        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
+        public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
 
-        public override void ReadPacket(PacketBuffer buffer)
+        public override void ReadMessage(PacketBuffer buffer)
         {
             SignatureKeyFormat = (KeyFormat)buffer.ReadByte();
             SignatureKey = buffer.ReadByteArray();
@@ -27,7 +27,7 @@ namespace SkynetServer.Network.Packets
             DerivationKey = buffer.ReadByteArray();
         }
 
-        public override void WritePacket(PacketBuffer buffer)
+        public override void WriteMessage(PacketBuffer buffer)
         {
             buffer.WriteByte((byte)SignatureKeyFormat);
             buffer.WriteByteArray(SignatureKey, true);
