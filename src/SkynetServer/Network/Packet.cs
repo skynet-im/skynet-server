@@ -75,5 +75,10 @@ namespace SkynetServer.Network
             Policy = source.Policy;
             return this;
         }
+
+        public override string ToString()
+        {
+            return $"{{{GetType().Name}: Id=0x{Id.ToString("x2")}}}";
+        }
     }
 }

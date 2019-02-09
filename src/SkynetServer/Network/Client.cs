@@ -20,8 +20,10 @@ namespace SkynetServer.Network
             {
                 packet.WritePacket(buffer);
                 bool success = await socket.SendPacketAsync(packet.Id, buffer.ToArray());
-                if (!success)
-                    Console.WriteLine($"Failed to send packet {packet.Id}");
+                if (success)
+                    Console.WriteLine($"Successfully sent packet {packet}");
+                else
+                    Console.WriteLine($"Failed to send packet {packet}");
             }
         }
 
@@ -31,7 +33,11 @@ namespace SkynetServer.Network
             ImmutableInterlocked.Update(ref Program.Clients, list => list.Add(this));
         }
 
-        public Task OnConnectionEstablished() => Task.CompletedTask;
+        public Task OnConnectionEstablished()
+        {
+            Console.WriteLine($"Client connection established with version {socket.ConnectionVersionString}");
+            return Task.CompletedTask;
+        }
 
         public async Task OnPacketReceived(byte id, byte[] content)
         {
@@ -47,6 +53,8 @@ namespace SkynetServer.Network
 
             if (session != null && packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
                 throw new ProtocolException($"Authorized clients cannot send packet {id}");
+
+            Console.WriteLine($"Starting to handle packet {packet}");
 
             Packet instance = packet.Create();
 

@@ -69,7 +69,7 @@ namespace SkynetServer.Network
                         using (PacketBuffer buffer = PacketBuffer.CreateDynamic())
                         {
                             passwordUpdate.WriteMessage(buffer);
-                            ctx.Messages.Add(new Message()
+                            await DatabaseHelper.AddMessage(new Message()
                             {
                                 ChannelId = channel.ChannelId,
                                 SenderId = account.AccountId,
@@ -79,7 +79,6 @@ namespace SkynetServer.Network
                                 ContentPacketVersion = 0,
                                 ContentPacket = buffer.ToArray()
                             });
-                            await ctx.SaveChangesAsync();
                         }
 
                         await mail;
@@ -123,11 +122,13 @@ namespace SkynetServer.Network
                     response.AccountId = account.AccountId;
                     response.SessionId = session.SessionId;
                     response.ErrorCode = CreateSessionError.Success;
+                    await SendPacket(response);
+                    await SendMessages(new List<(long channelId, long messageId)>());
+                    return;
                 }
                 else
                     response.ErrorCode = CreateSessionError.InvalidCredentials;
                 await SendPacket(response);
-                await SendMessages(new List<(long channelId, long messageId)>());
             }
         }
 
@@ -148,12 +149,14 @@ namespace SkynetServer.Network
                     {
                         account = accountCandidate;
                         response.ErrorCode = RestoreSessionError.Success;
+                        await SendPacket(response);
+                        await SendMessages(packet.Channels);
+                        return;
                     }
                 }
                 else
                     response.ErrorCode = RestoreSessionError.InvalidCredentials;
                 await SendPacket(response);
-                await SendMessages(packet.Channels);
             }
         }
 
@@ -316,7 +319,7 @@ namespace SkynetServer.Network
                 P0BChannelMessage instance = message.Create(packet);
 
                 using (PacketBuffer buffer = PacketBuffer.CreateStatic(packet.ContentPacket))
-                    instance.ReadPacket(buffer);
+                    instance.ReadMessage(buffer);
 
                 if (await instance.HandleMessage(this) != MessageSendError.Success)
                     return; // Not all messages can be saved, some return MessageSendError other than Success
@@ -325,7 +328,7 @@ namespace SkynetServer.Network
             Message entity = new Message
             {
                 ChannelId = packet.ChannelId,
-                SenderId = packet.SenderId,
+                SenderId = account.AccountId,
                 DispatchTime = DateTime.Now,
                 MessageFlags = packet.MessageFlags,
                 // TODO: Implement FileId
@@ -390,7 +393,7 @@ namespace SkynetServer.Network
         public Task<MessageSendError> Handle(P18PublicKeys packet)
         {
             // TODO: Save message in loopback channel and forward to all direct channels
-            throw new NotImplementedException();
+            return Task.FromResult(MessageSendError.Success);
         }
 
         public Task<MessageSendError> Handle(P1EGroupChannelUpdate packet)

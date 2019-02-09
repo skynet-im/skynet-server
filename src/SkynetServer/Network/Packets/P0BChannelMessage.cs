@@ -18,6 +18,7 @@ namespace SkynetServer.Network.Packets
         public DateTime DispatchTime { get; set; }
         public MessageFlags MessageFlags { get; set; }
         public long FileId { get; set; }
+        public byte[] FileKey { get; set; }
         public List<MessageDependency> Dependencies { get; set; } = new List<MessageDependency>();
 
         public byte PacketVersion { get; set; }
@@ -41,6 +42,8 @@ namespace SkynetServer.Network.Packets
             ContentPacketId = buffer.ReadByte();
             ContentPacketVersion = buffer.ReadByte();
             ContentPacket = buffer.ReadByteArray();
+            if (MessageFlags.HasFlag(MessageFlags.Unencrypted | MessageFlags.FileAttached))
+                FileKey = buffer.ReadByteArray();
             ushort length = buffer.ReadUShort();
             for (int i = 0; i < length; i++)
             {
@@ -62,6 +65,8 @@ namespace SkynetServer.Network.Packets
             buffer.WriteByte(ContentPacketId);
             buffer.WriteByte(ContentPacketVersion);
             buffer.WriteByteArray(ContentPacket, true);
+            if (MessageFlags.HasFlag(MessageFlags.Unencrypted | MessageFlags.FileAttached))
+                buffer.WriteByteArray(FileKey, true);
             buffer.WriteUShort((ushort)Dependencies.Count);
             foreach (MessageDependency dependency in Dependencies)
             {
@@ -115,6 +120,11 @@ namespace SkynetServer.Network.Packets
         public virtual void WriteMessage(PacketBuffer buffer)
         {
 
+        }
+
+        public override string ToString()
+        {
+            return $"{{{GetType().Name}: Id=0x{Id:x2} ContentId=0x{ContentPacketId:x2} ChannelId=0x{ChannelId:x8} MessageFlags={MessageFlags}}}";
         }
     }
 }
