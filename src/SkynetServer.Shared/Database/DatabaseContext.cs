@@ -13,6 +13,8 @@ namespace SkynetServer.Database
         public DbSet<Session> Sessions { get; set; }
         public DbSet<Channel> Channels { get; set; }
         public DbSet<ChannelMember> ChannelMembers { get; set; }
+        public DbSet<BlockedAccount> BlockedAccounts { get; set; }
+        public DbSet<BlockedConversation> BlockedConversations { get; set; }
         public DbSet<Message> Messages { get; set; }
         public DbSet<MessageDependency> MessageDependencies { get; set; }
         public DbSet<MailConfirmation> MailConfirmations { get; set; }
@@ -30,16 +32,6 @@ namespace SkynetServer.Database
             session.Property(s => s.SessionId).ValueGeneratedNever();
             session.Property(s => s.ApplicationIdentifier).IsRequired();
 
-            var blockedAccount = modelBuilder.Entity<BlockedAccount>();
-            blockedAccount.HasKey(b => new { b.OwnerId, b.AccountId });
-            blockedAccount.HasOne(b => b.Owner).WithMany(a => a.BlockedAccounts).HasForeignKey(b => b.OwnerId);
-            blockedAccount.HasOne(b => b.Account).WithMany(a => a.Blockers).HasForeignKey(b => b.AccountId);
-
-            var blockedConv = modelBuilder.Entity<BlockedConversation>();
-            blockedConv.HasKey(b => new { b.OwnerId, b.ChannelId });
-            blockedConv.HasOne(b => b.Owner).WithMany(a => a.BlockedConversations).HasForeignKey(b => b.OwnerId);
-            blockedConv.HasOne(b => b.Channel).WithMany(c => c.Blockers).HasForeignKey(b => b.ChannelId);
-
             var channel = modelBuilder.Entity<Channel>();
             channel.HasKey(c => c.ChannelId);
             channel.Property(c => c.ChannelId).ValueGeneratedNever();
@@ -51,6 +43,16 @@ namespace SkynetServer.Database
             channelMember.HasKey(m => new { m.ChannelId, m.AccountId });
             channelMember.HasOne(m => m.Channel).WithMany(c => c.ChannelMembers).HasForeignKey(m => m.ChannelId);
             channelMember.HasOne(m => m.Account).WithMany(a => a.ChannelMemberships).HasForeignKey(m => m.AccountId);
+
+            var blockedAccount = modelBuilder.Entity<BlockedAccount>();
+            blockedAccount.HasKey(b => new { b.OwnerId, b.AccountId });
+            blockedAccount.HasOne(b => b.Owner).WithMany(a => a.BlockedAccounts).HasForeignKey(b => b.OwnerId);
+            blockedAccount.HasOne(b => b.Account).WithMany(a => a.Blockers).HasForeignKey(b => b.AccountId);
+
+            var blockedConv = modelBuilder.Entity<BlockedConversation>();
+            blockedConv.HasKey(b => new { b.OwnerId, b.ChannelId });
+            blockedConv.HasOne(b => b.Owner).WithMany(a => a.BlockedConversations).HasForeignKey(b => b.OwnerId);
+            blockedConv.HasOne(b => b.Channel).WithMany(c => c.Blockers).HasForeignKey(b => b.ChannelId);
 
             var message = modelBuilder.Entity<Message>();
             message.HasKey(m => new { m.ChannelId, m.MessageId });
