@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x18, PacketPolicy.Duplex)]
+    [Message(0x18, PacketPolicy.Duplex)]
     internal sealed class P18PublicKeys : P0BChannelMessage
     {
         public KeyFormat SignatureKeyFormat { get; set; }

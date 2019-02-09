@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x1B, PacketPolicy.Send)]
+    [Message(0x1B, PacketPolicy.Send)]
     internal sealed class P1BDirectChannelUpdate : P0BChannelMessage
     {
         public override Packet Create() => new P1BDirectChannelUpdate().Init(this);

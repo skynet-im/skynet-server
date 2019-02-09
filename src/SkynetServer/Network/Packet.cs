@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SkynetServer.Network.Packets;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -16,14 +17,29 @@ namespace SkynetServer.Network
 
             foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
             {
-                object[] attributes = type.GetCustomAttributes(typeof(PacketAttribute), false);
-                if (attributes.Length > 0 && attributes[0] is PacketAttribute attribute)
+                if (!type.IsSubclassOf(typeof(Packet))) continue;
+
+                object[] attributes = type.GetCustomAttributes(typeof(PacketAttribute), inherit: true);
+                if (attributes.Length == 1)
                 {
+                    PacketAttribute attribute = (PacketAttribute)attributes[0];
                     Packet instance = (Packet)Activator.CreateInstance(type);
                     instance.Id = attribute.PacketId;
                     instance.Policy = attribute.PacketPolicy;
                     packets.Add(instance);
-                    if (attribute.PacketId > max) max = attribute.PacketId;
+                    max = Math.Max(max, attribute.PacketId);
+                }
+                else if (attributes.Length == 2)
+                {
+                    MessageAttribute messageAttribute = (MessageAttribute)attributes[0];
+                    PacketAttribute packetAttribute = (PacketAttribute)attributes[1];
+                    P0BChannelMessage instance = (P0BChannelMessage)Activator.CreateInstance(type);
+                    instance.Id = packetAttribute.PacketId;
+                    instance.Policy = packetAttribute.PacketPolicy;
+                    instance.ContentPacketId = messageAttribute.PacketId;
+                    instance.ContentPacketPolicy = messageAttribute.PacketPolicy;
+                    packets.Add(instance);
+                    max = Math.Max(max, messageAttribute.PacketId);
                 }
             }
 
@@ -31,7 +47,10 @@ namespace SkynetServer.Network
 
             foreach (Packet packet in packets)
             {
-                Packets[packet.Id] = packet;
+                int index = packet is P0BChannelMessage message && message.GetType() != typeof(P0BChannelMessage) ?
+                    message.ContentPacketId : packet.Id;
+
+                Packets[index] = packet;
             }
         }
 
@@ -39,7 +58,7 @@ namespace SkynetServer.Network
 
         public static T New<T>() where T : Packet
         {
-            return Packets.Where(p => p is T).Select(packet => (T) packet.Create()).FirstOrDefault();
+            return Packets.Where(p => p is T).Select(packet => (T)packet.Create()).FirstOrDefault();
         }
 
         public byte Id { get; set; }

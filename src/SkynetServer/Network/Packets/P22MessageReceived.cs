@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x22, PacketPolicy.Duplex)]
+    [Message(0x22, PacketPolicy.Duplex)]
     internal sealed class P22MessageReceived : P0BChannelMessage
     {
         public override Packet Create() => new P22MessageReceived().Init(this);

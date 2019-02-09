@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x1E, PacketPolicy.Duplex)]
+    [Message(0x1E, PacketPolicy.Duplex)]
     internal sealed class P1EGroupChannelUpdate : P0BChannelMessage
     {
         public long GroupRevision { get; set; }

@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x27, PacketPolicy.Duplex)]
+    [Message(0x27, PacketPolicy.Duplex)]
     internal sealed class P27ProfileImage : P0BChannelMessage
     {
         public string Caption { get; set; }

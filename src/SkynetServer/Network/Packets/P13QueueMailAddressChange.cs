@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x13, PacketPolicy.Receive)]
+    [Message(0x13, PacketPolicy.Receive)]
     internal sealed class P13QueueMailAddressChange : P0BChannelMessage
     {
         public string NewMailAddress { get; set; }

@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x15, PacketPolicy.Duplex)]
+    [Message(0x15, PacketPolicy.Duplex)]
     internal sealed class P15PasswordUpdate : P0BChannelMessage
     {
         public byte[] OldKeyHash { get; set; }

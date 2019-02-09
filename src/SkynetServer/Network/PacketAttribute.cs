@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SkynetServer.Network
 {
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
     internal class PacketAttribute : Attribute
     {
         public PacketAttribute(byte packedId, PacketPolicy packetPolicy)

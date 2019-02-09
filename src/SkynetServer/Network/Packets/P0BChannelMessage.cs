@@ -71,7 +71,7 @@ namespace SkynetServer.Network.Packets
             }
         }
 
-        public P0BChannelMessage Init(P0BChannelMessage source)
+        protected P0BChannelMessage Init(P0BChannelMessage source)
         {
             Id = source.Id;
             Policy = source.Policy;

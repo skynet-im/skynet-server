@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x19, PacketPolicy.Send)]
+    [Message(0x19, PacketPolicy.Send)]
     internal sealed class P19DerivationKey : P0BChannelMessage
     {
         public override Packet Create() => new P19DerivationKey().Init(this);

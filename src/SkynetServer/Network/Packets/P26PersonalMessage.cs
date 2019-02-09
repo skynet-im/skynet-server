@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x26, PacketPolicy.Duplex)]
+    [Message(0x26, PacketPolicy.Duplex)]
     internal sealed class P26PersonalMessage : P0BChannelMessage
     {
         public string PersonalMessage { get; set; }
