@@ -35,10 +35,10 @@ namespace SkynetServer.Network
 
         public async Task OnPacketReceived(byte id, byte[] content)
         {
-            if (id > 0x31)
+            if (id >= Packet.Packets.Length)
                 throw new ProtocolException($"Invalid packet ID {id}");
 
-            var packet = Packet.Packets[id];
+            Packet packet = Packet.Packets[id];
             if (packet == null || !packet.Policy.HasFlag(PacketPolicy.Receive))
                 throw new ProtocolException($"Cannot receive packet {id}");
 
@@ -48,12 +48,14 @@ namespace SkynetServer.Network
             if (session != null && packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
                 throw new ProtocolException($"Authorized clients cannot send packet {id}");
 
+            Packet instance = packet.Create();
+
             using (var buffer = PacketBuffer.CreateStatic(content))
             {
-                packet.ReadPacket(buffer);
+                instance.ReadPacket(buffer);
             }
 
-            await packet.Handle(this);
+            await instance.Handle(this);
         }
 
         public void OnConnectionClosed(ConnectionCloseReason reason, string message, Exception exception)

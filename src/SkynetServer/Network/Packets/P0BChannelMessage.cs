@@ -80,6 +80,28 @@ namespace SkynetServer.Network.Packets
             return this;
         }
 
+        public P0BChannelMessage Create(P0BChannelMessage source)
+        {
+            P0BChannelMessage target = (P0BChannelMessage)Create();
+
+            target.ChannelId = source.ChannelId;
+            target.SenderId = source.SenderId;
+            target.MessageId = source.MessageId;
+            target.SkipCount = source.SkipCount;
+            target.DispatchTime = source.DispatchTime;
+            target.MessageFlags = source.MessageFlags;
+            target.FileId = source.FileId;
+            target.Dependencies = source.Dependencies;
+
+            target.PacketVersion = source.PacketVersion;
+            target.ContentPacketPolicy = source.ContentPacketPolicy;
+            target.ContentPacketId = source.ContentPacketId;
+            target.ContentPacketVersion = source.ContentPacketVersion;
+            target.ContentPacket = source.ContentPacket;
+
+            return target;
+        }
+
         public virtual Task<MessageSendError> HandleMessage(IPacketHandler handler)
         {
             return Task.FromResult(MessageSendError.Success);

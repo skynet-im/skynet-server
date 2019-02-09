@@ -297,36 +297,28 @@ namespace SkynetServer.Network
             }
         }
 
-        public Task Handle(P0BChannelMessage packet)
+        public async Task Handle(P0BChannelMessage packet)
         {
             if (packet.ContentPacketId < 0x13 || packet.ContentPacketId > 0x2A)
                 throw new ProtocolException("Invalid content packet ID");
 
             if (packet.MessageFlags.HasFlag(MessageFlags.Unencrypted))
             {
-                if (!(Packet.Packets[packet.ContentPacketId] is P0BChannelMessage message) || !message.Policy.HasFlag(PacketPolicy.Receive))
+                if (!(Packet.Packets[packet.ContentPacketId] is P0BChannelMessage message)
+                    || !message.ContentPacketPolicy.HasFlag(PacketPolicy.Receive))
                     throw new ProtocolException("Content packet is no receivable channel message");
 
-                message.ChannelId = packet.ChannelId;
-                message.SenderId = packet.SenderId;
-                message.MessageId = packet.MessageId;
-                message.SkipCount = packet.SkipCount;
-                message.DispatchTime = packet.DispatchTime;
-                message.MessageFlags = packet.MessageFlags;
-                message.FileId = packet.FileId;
-                message.Dependencies = packet.Dependencies;
+                P0BChannelMessage instance = message.Create(packet);
 
                 using (PacketBuffer buffer = PacketBuffer.CreateStatic(packet.ContentPacket))
-                    message.ReadPacket(buffer);
+                    instance.ReadPacket(buffer);
 
-                return message.Handle(this);
-                // TODO: Not all messages can be saved, some return MessageSendError other than Success
+                if (await instance.HandleMessage(this) != MessageSendError.Success)
+                    return; // Not all messages can be saved, some return MessageSendError other than Success
             }
-            else
-            {
-                // TODO: Save packet in DB and send to channel
-                throw new NotImplementedException();
-            }
+
+            // TODO: Save packet in DB and send to channel
+            throw new NotImplementedException();
         }
 
         public Task Handle(P0DMessageBlock packet)
