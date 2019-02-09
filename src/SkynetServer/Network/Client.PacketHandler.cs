@@ -67,7 +67,7 @@ namespace SkynetServer.Network
                         passwordUpdate.KeyHash = packet.KeyHash;
                         using (PacketBuffer buffer = PacketBuffer.CreateDynamic())
                         {
-                            packet.WritePacket(buffer);
+                            passwordUpdate.WriteMessage(buffer);
                             ctx.Messages.Add(new Message()
                             {
                                 Channel = channel,
@@ -317,8 +317,31 @@ namespace SkynetServer.Network
                     return; // Not all messages can be saved, some return MessageSendError other than Success
             }
 
-            // TODO: Save packet in DB and send to channel
-            throw new NotImplementedException();
+            Message entity = new Message
+            {
+                ChannelId = packet.ChannelId,
+                SenderId = packet.SenderId,
+                DispatchTime = DateTime.Now,
+                MessageFlags = packet.MessageFlags,
+                // TODO: Implement FileId
+                // TODO: Implement dependencies
+                ContentPacketId = packet.ContentPacketId,
+                ContentPacketVersion = packet.ContentPacketVersion,
+                ContentPacket = packet.ContentPacket
+            };
+
+            entity = await DatabaseHelper.AddMessage(entity);
+
+            var response = Packet.New<P0CChannelMessageResponse>();
+            response.ChannelId = packet.ChannelId;
+            response.TempMessageId = packet.MessageId;
+            response.ErrorCode = MessageSendError.Success;
+            response.MessageId = entity.MessageId;
+            // TODO: Implement skip count
+            response.DispatchTime = entity.DispatchTime;
+            await SendPacket(response);
+
+            // TODO: Send message to other channel members
         }
 
         public Task Handle(P0DMessageBlock packet)
