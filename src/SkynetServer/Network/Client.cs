@@ -11,8 +11,6 @@ namespace SkynetServer.Network
     internal partial class Client : IVSLCallback, IPacketHandler
     {
         private VSLServer socket;
-        private Account account;
-        private Session session;
 
         public async Task SendPacket(Packet packet)
         {
@@ -26,6 +24,9 @@ namespace SkynetServer.Network
                     Console.WriteLine($"Failed to send packet {packet}");
             }
         }
+
+        public Account Account { get; private set; }
+        public Session Session { get; private set; }
 
         public void OnInstanceCreated(VSLSocket socket)
         {
@@ -48,10 +49,10 @@ namespace SkynetServer.Network
             if (packet == null || !packet.Policy.HasFlag(PacketPolicy.Receive))
                 throw new ProtocolException($"Cannot receive packet {id}");
 
-            if (session == null && !packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
+            if (Session == null && !packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
                 throw new ProtocolException($"Unauthorized packet {id}");
 
-            if (session != null && packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
+            if (Session != null && packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
                 throw new ProtocolException($"Authorized clients cannot send packet {id}");
 
             Console.WriteLine($"Starting to handle packet {packet}");

@@ -107,7 +107,7 @@ namespace SkynetServer.Network
                     response.ErrorCode = CreateSessionError.UnconfirmedAccount;
                 else if (packet.KeyHash.SafeEquals(confirmation.Account.KeyHash))
                 {
-                    session = await DatabaseHelper.AddSession(new Session
+                    Session = await DatabaseHelper.AddSession(new Session
                     {
                         AccountId = confirmation.AccountId,
                         ApplicationIdentifier = applicationIdentifier,
@@ -117,10 +117,10 @@ namespace SkynetServer.Network
                         FcmToken = packet.FcmRegistrationToken
                     });
 
-                    account = confirmation.Account;
+                    Account = confirmation.Account;
 
-                    response.AccountId = account.AccountId;
-                    response.SessionId = session.SessionId;
+                    response.AccountId = Account.AccountId;
+                    response.SessionId = Session.SessionId;
                     response.ErrorCode = CreateSessionError.Success;
                     await SendPacket(response);
                     await SendMessages(new List<(long channelId, long messageId)>());
@@ -140,14 +140,14 @@ namespace SkynetServer.Network
                 var response = Packet.New<P09RestoreSessionResponse>();
                 if (accountCandidate != null && packet.KeyHash.SafeEquals(accountCandidate.KeyHash))
                 {
-                    session = ctx.Sessions.SingleOrDefault(s =>
+                    Session = ctx.Sessions.SingleOrDefault(s =>
                         s.AccountId == packet.AccountId && s.SessionId == packet.SessionId);
 
-                    if (session == null)
+                    if (Session == null)
                         response.ErrorCode = RestoreSessionError.InvalidSession;
                     else
                     {
-                        account = accountCandidate;
+                        Account = accountCandidate;
                         response.ErrorCode = RestoreSessionError.Success;
                         await SendPacket(response);
                         await SendMessages(packet.Channels);
@@ -164,7 +164,7 @@ namespace SkynetServer.Network
         {
             using (DatabaseContext ctx = new DatabaseContext())
             {
-                Channel[] channels = ctx.ChannelMembers.Where(m => m.AccountId == account.AccountId)
+                Channel[] channels = ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
                     .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c).ToArray();
 
                 foreach (Channel channel in channels)
@@ -206,7 +206,7 @@ namespace SkynetServer.Network
                 }
 
                 // Send messages from direct channels
-                foreach (Channel channel in ctx.ChannelMembers.Where(m => m.AccountId == account.AccountId)
+                foreach (Channel channel in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
                     .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c).Where(c => c.ChannelType == ChannelType.Direct))
                 {
                     long lastMessage = currentState.Single(s => s.channelId == channel.ChannelId).messageId;
@@ -246,19 +246,19 @@ namespace SkynetServer.Network
                         {
                             response.ErrorCode = CreateChannelError.InvalidCounterpart;
                         }
-                        else if (ctx.BlockedAccounts.Any(b => b.OwnerId == packet.CounterpartId && b.AccountId == account.AccountId)
-                                 || ctx.BlockedAccounts.Any(b => b.OwnerId == account.AccountId && b.AccountId == packet.CounterpartId))
+                        else if (ctx.BlockedAccounts.Any(b => b.OwnerId == packet.CounterpartId && b.AccountId == Account.AccountId)
+                                 || ctx.BlockedAccounts.Any(b => b.OwnerId == Account.AccountId && b.AccountId == packet.CounterpartId))
                             response.ErrorCode = CreateChannelError.Blocked;
                         else
                         {
                             // TODO: Check whether a direct channel exists before and after inserting
                             channel = await DatabaseHelper.AddChannel(new Channel
                             {
-                                Owner = account,
+                                Owner = Account,
                                 ChannelType = ChannelType.Direct
                             });
 
-                            ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = account.AccountId });
+                            ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = Account.AccountId });
                             ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = packet.CounterpartId });
                             await ctx.SaveChangesAsync();
 
@@ -268,7 +268,7 @@ namespace SkynetServer.Network
                     case ChannelType.Group:
                         channel = await DatabaseHelper.AddChannel(new Channel
                         {
-                            Owner = account,
+                            Owner = Account,
                             ChannelType = packet.ChannelType
                         });
 
@@ -276,17 +276,17 @@ namespace SkynetServer.Network
                         break;
                     case ChannelType.ProfileData:
                     case ChannelType.Loopback:
-                        if (ctx.Channels.Any(c => c.OwnerId == account.AccountId && c.ChannelType == packet.ChannelType))
+                        if (ctx.Channels.Any(c => c.OwnerId == Account.AccountId && c.ChannelType == packet.ChannelType))
                             response.ErrorCode = CreateChannelError.AlreadyExists;
                         else
                         {
                             channel = await DatabaseHelper.AddChannel(new Channel
                             {
-                                Owner = account,
+                                Owner = Account,
                                 ChannelType = packet.ChannelType
                             });
 
-                            ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = account.AccountId });
+                            ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = Account.AccountId });
                             await ctx.SaveChangesAsync();
 
                             response.ErrorCode = CreateChannelError.Success;
@@ -328,7 +328,7 @@ namespace SkynetServer.Network
             Message entity = new Message
             {
                 ChannelId = packet.ChannelId,
-                SenderId = account.AccountId,
+                SenderId = Account.AccountId,
                 DispatchTime = DateTime.Now,
                 MessageFlags = packet.MessageFlags,
                 // TODO: Implement FileId
@@ -349,7 +349,14 @@ namespace SkynetServer.Network
             response.DispatchTime = entity.DispatchTime;
             await SendPacket(response);
 
-            // TODO: Send message to other channel members
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                packet.SenderId = Account.AccountId;
+                packet.MessageId = entity.MessageId;
+                packet.DispatchTime = entity.DispatchTime;
+                await Program.SendAllExcept(packet, ctx.ChannelMembers
+                    .Where(m => m.ChannelId == packet.ChannelId).Select(m => m.AccountId), this);
+            }
         }
 
         public Task Handle(P0DMessageBlock packet)
