@@ -397,7 +397,7 @@ namespace SkynetServer.Network
             throw new NotImplementedException();
         }
 
-        public Task<MessageSendError> Handle(P18PublicKeys packet)
+        public Task<MessageSendError> Handle(P18PublicKeys packet) // Alice changes her keypair
         {
             using (DatabaseContext ctx = new DatabaseContext())
             {
@@ -414,8 +414,13 @@ namespace SkynetServer.Network
                     forward.SignatureKey = packet.SignatureKey;
                     forward.DerivationKeyFormat = packet.DerivationKeyFormat;
                     forward.DerivationKey = packet.DerivationKey;
-                    // TODO: Forward public keys packet with MessageFlags.NoSenderSync and removed dependencies
-                    // TODO: Create and send two keypair references and one direct channel update
+                    // TODO: Forward public keys packet with MessageFlags.NoSenderSync
+                    //       We want a dependency on the original packet in the database but not sent to Bob
+                    //       So we declare this dependency specific for Alice's account
+
+                    // TODO: Get Bob's latest public key packet in this channel and resolve the dependency to Alice's keypair
+                    // TODO: Resolve the dependency from Bob's private key packet and take the currently received packet of Alice
+                    // TODO: Combine the packets of the last two steps and create one direct channel update
                 }
             }
             return Task.FromResult(MessageSendError.Success);
