@@ -399,7 +399,25 @@ namespace SkynetServer.Network
 
         public Task<MessageSendError> Handle(P18PublicKeys packet)
         {
-            // TODO: Save message in loopback channel and forward to all direct channels
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                foreach (Channel channel in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
+                    .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                    .Where(c => c.ChannelType == ChannelType.Direct))
+                {
+                    P18PublicKeys forward = Packet.New<P18PublicKeys>();
+                    forward.ChannelId = channel.ChannelId;
+                    forward.SenderId = Account.AccountId;
+                    forward.DispatchTime = DateTime.Now;
+                    forward.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
+                    forward.SignatureKeyFormat = packet.SignatureKeyFormat;
+                    forward.SignatureKey = packet.SignatureKey;
+                    forward.DerivationKeyFormat = packet.DerivationKeyFormat;
+                    forward.DerivationKey = packet.DerivationKey;
+                    // TODO: Forward public keys packet with MessageFlags.NoSenderSync and removed dependencies
+                    // TODO: Create and send two keypair references and one direct channel update
+                }
+            }
             return Task.FromResult(MessageSendError.Success);
         }
 

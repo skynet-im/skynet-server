@@ -124,7 +124,7 @@ namespace SkynetServer.Network.Packets
 
         public override string ToString()
         {
-            return $"{{{GetType().Name}: Id=0x{Id:x2} ContentId=0x{ContentPacketId:x2} ChannelId=0x{ChannelId:x8} MessageFlags={MessageFlags}}}";
+            return $"{{{GetType().Name}: ContentId=0x{ContentPacketId:x2} ChannelId=0x{ChannelId:x8} MessageFlags={MessageFlags}}}";
         }
     }
 }

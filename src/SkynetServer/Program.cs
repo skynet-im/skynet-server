@@ -18,6 +18,9 @@ namespace SkynetServer
 
         private static void Main(string[] args)
         {
+            Console.Title = "Skynet Server";
+            Console.WriteLine("Initializing...");
+
             // The appsettings.json file contained in this repository lacks some secrets that are necessary for production usage.
             // Our debug keypair "<Modulus>jKoWxmIf..." should be used in all client applications to connect to development servers.
             Configuration = new ConfigurationBuilder()
@@ -28,7 +31,7 @@ namespace SkynetServer
             VSLListener listener = CreateListener();
             listener.Start();
 
-            Console.WriteLine("Press Enter to exit");
+            Console.WriteLine("Server running. Press Enter to exit...");
             Console.ReadLine();
         }
 

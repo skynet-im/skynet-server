@@ -78,7 +78,7 @@ namespace SkynetServer.Network
 
         public override string ToString()
         {
-            return $"{{{GetType().Name}: Id=0x{Id.ToString("x2")}}}";
+            return $"{{{GetType().Name}}}";
         }
     }
 }
