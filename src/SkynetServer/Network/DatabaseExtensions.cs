@@ -1,23 +1,24 @@
 ﻿using SkynetServer.Database;
 using SkynetServer.Database.Entities;
+using SkynetServer.Model;
+using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using VSL;
-using DatabaseDependency = SkynetServer.Database.Entities.MessageDependency;
-using ProtocolDependency = SkynetServer.Network.Model.MessageDependency;
 
 namespace SkynetServer.Network
 {
     internal static class DatabaseExtensions
     {
-        public static IEnumerable<DatabaseDependency> ToDatabase(this IEnumerable<ProtocolDependency> dependencies)
+        public static IEnumerable<MessageDependency> ToDatabase(this IEnumerable<Dependency> dependencies)
         {
-            foreach (ProtocolDependency dependency in dependencies)
+            foreach (Dependency dependency in dependencies)
             {
-                yield return new DatabaseDependency()
+                yield return new MessageDependency()
                 {
                     ChannelId = dependency.ChannelId,
                     MessageId = dependency.MessageId,
@@ -29,6 +30,7 @@ namespace SkynetServer.Network
         public static async Task<Message> SendMessage(this Channel channel, P0BChannelMessage packet, long? senderId)
         {
             packet.ChannelId = channel.ChannelId;
+            packet.MessageFlags |= MessageFlags.Unencrypted;
             if (packet.ContentPacket == null)
             {
                 using (PacketBuffer buffer = PacketBuffer.CreateDynamic())
@@ -53,7 +55,17 @@ namespace SkynetServer.Network
 
             await DatabaseHelper.AddMessage(message, packet.Dependencies.ToDatabase());
 
-            // TODO: Send message to connected clients respecting the message flags
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                long[] members = ctx.ChannelMembers.Where(m => m.ChannelId == channel.ChannelId).Select(m => m.AccountId).ToArray();
+                bool isLoopback = packet.MessageFlags.HasFlag(MessageFlags.Loopback);
+                bool isNoSenderSync = packet.MessageFlags.HasFlag(MessageFlags.NoSenderSync);
+                await Task.WhenAll(Program.Clients
+                    .Where(c => c.Account != null && members.Contains(c.Account.AccountId))
+                    .Where(c => isLoopback && c.Account.AccountId == senderId)
+                    .Where(c => isNoSenderSync && c.Account.AccountId != senderId)
+                    .Select(c => c.SendPacket(packet)));
+            }
 
             return message;
         }

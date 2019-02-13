@@ -4,9 +4,9 @@ using System.Text;
 
 namespace SkynetServer.Network.Model
 {
-    internal struct MessageDependency
+    internal struct Dependency
     {
-        public MessageDependency(long accountId, long channelId, long messageId)
+        public Dependency(long accountId, long channelId, long messageId)
         {
             AccountId = accountId;
             ChannelId = channelId;

@@ -357,7 +357,7 @@ namespace SkynetServer.Network
                     .Where(m => m.ChannelId == packet.ChannelId).Select(m => m.AccountId), this);
             }
 
-            await packet.PostHandling(this);
+            await packet.PostHandling(this, entity);
         }
 
         public Task Handle(P0DMessageBlock packet)
@@ -404,7 +404,7 @@ namespace SkynetServer.Network
             return Task.FromResult(MessageSendError.Success);
         }
 
-        public async Task PostHandling(P18PublicKeys packet) // Alice changes her keypair
+        public async Task PostHandling(P18PublicKeys packet, Message message) // Alice changes her keypair
         {
             using (DatabaseContext ctx = new DatabaseContext())
             {
@@ -421,7 +421,7 @@ namespace SkynetServer.Network
                     forward.SenderId = Account.AccountId;
                     forward.DispatchTime = DateTime.Now;
                     forward.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
-                    //forward.Dependencies.Add(new Model.MessageDependency(Account.AccountId, packet.ChannelId, packet.MessageId));
+                    forward.Dependencies.Add(new Dependency(Account.AccountId, message.ChannelId, message.MessageId));
                     forward.SignatureKeyFormat = packet.SignatureKeyFormat;
                     forward.SignatureKey = packet.SignatureKey;
                     forward.DerivationKeyFormat = packet.DerivationKeyFormat;
@@ -445,8 +445,8 @@ namespace SkynetServer.Network
 
                     var refForAlice = Packet.New<P19KeypairReference>();
                     refForAlice.MessageFlags = MessageFlags.Loopback | MessageFlags.Unencrypted;
-                    refForAlice.Dependencies.Add(new Model.MessageDependency(Account.AccountId, alicePrivate.ChannelId, alicePrivate.MessageId));
-                    refForAlice.Dependencies.Add(new Model.MessageDependency(bobId, bobPublic.ChannelId, bobPublic.MessageId));
+                    refForAlice.Dependencies.Add(new Dependency(Account.AccountId, alicePrivate.ChannelId, alicePrivate.MessageId));
+                    refForAlice.Dependencies.Add(new Dependency(bobId, bobPublic.ChannelId, bobPublic.MessageId));
                     Message msgForAlice = await channel.SendMessage(refForAlice, Account.AccountId);
 
                     // Resolve the dependency from Bob's public key packet and take the currently forwarded packet of Alice
@@ -461,16 +461,16 @@ namespace SkynetServer.Network
 
                     var refForBob = Packet.New<P19KeypairReference>();
                     refForAlice.MessageFlags = MessageFlags.Loopback | MessageFlags.Unencrypted;
-                    refForBob.Dependencies.Add(new Model.MessageDependency(bobId, bobPrivate.ChannelId, bobPrivate.MessageId));
-                    refForBob.Dependencies.Add(new Model.MessageDependency(Account.AccountId, forwardMsg.ChannelId, forwardMsg.MessageId));
+                    refForBob.Dependencies.Add(new Dependency(bobId, bobPrivate.ChannelId, bobPrivate.MessageId));
+                    refForBob.Dependencies.Add(new Dependency(Account.AccountId, forwardMsg.ChannelId, forwardMsg.MessageId));
                     Message msgForBob = await channel.SendMessage(refForBob, bobId);
 
                     // Combine the packets of the last two steps and create one direct channel update
 
                     var update = Packet.New<P1BDirectChannelUpdate>();
                     update.MessageFlags = MessageFlags.Unencrypted;
-                    update.Dependencies.Add(new Model.MessageDependency(Account.AccountId, msgForAlice.ChannelId, msgForAlice.MessageId));
-                    update.Dependencies.Add(new Model.MessageDependency(bobId, msgForBob.ChannelId, msgForBob.MessageId));
+                    update.Dependencies.Add(new Dependency(Account.AccountId, msgForAlice.ChannelId, msgForAlice.MessageId));
+                    update.Dependencies.Add(new Dependency(bobId, msgForBob.ChannelId, msgForBob.MessageId));
                     await channel.SendMessage(update, null);
                 }
             }

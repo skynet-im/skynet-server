@@ -19,7 +19,7 @@ namespace SkynetServer.Network.Packets
         public MessageFlags MessageFlags { get; set; }
         public long FileId { get; set; }
         public byte[] FileKey { get; set; }
-        public List<MessageDependency> Dependencies { get; set; } = new List<MessageDependency>();
+        public List<Dependency> Dependencies { get; set; } = new List<Dependency>();
 
         public byte PacketVersion { get; set; }
         public PacketPolicy ContentPacketPolicy { get; set; }
@@ -47,7 +47,7 @@ namespace SkynetServer.Network.Packets
             ushort length = buffer.ReadUShort();
             for (int i = 0; i < length; i++)
             {
-                Dependencies.Add(new MessageDependency(buffer.ReadLong(), buffer.ReadLong(), buffer.ReadLong()));
+                Dependencies.Add(new Dependency(buffer.ReadLong(), buffer.ReadLong(), buffer.ReadLong()));
             }
         }
 
@@ -68,7 +68,7 @@ namespace SkynetServer.Network.Packets
             if (MessageFlags.HasFlag(MessageFlags.Unencrypted | MessageFlags.FileAttached))
                 buffer.WriteByteArray(FileKey, true);
             buffer.WriteUShort((ushort)Dependencies.Count);
-            foreach (MessageDependency dependency in Dependencies)
+            foreach (Dependency dependency in Dependencies)
             {
                 buffer.WriteLong(dependency.AccountId);
                 buffer.WriteLong(dependency.ChannelId);
@@ -112,7 +112,7 @@ namespace SkynetServer.Network.Packets
             return Task.FromResult(MessageSendError.Success);
         }
 
-        public virtual Task PostHandling(IPacketHandler handler)
+        public virtual Task PostHandling(IPacketHandler handler, Database.Entities.Message message)
         {
             return Task.CompletedTask;
         }
