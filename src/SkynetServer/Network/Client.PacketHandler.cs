@@ -397,7 +397,7 @@ namespace SkynetServer.Network
             throw new NotImplementedException();
         }
 
-        public Task<MessageSendError> Handle(P18PublicKeys packet) // Alice changes her keypair
+        public async Task<MessageSendError> Handle(P18PublicKeys packet) // Alice changes her keypair
         {
             using (DatabaseContext ctx = new DatabaseContext())
             {
@@ -418,12 +418,25 @@ namespace SkynetServer.Network
                     //       We want a dependency on the original packet in the database but not sent to Bob
                     //       So we declare this dependency specific for Alice's account
 
+                    long bobId = await ctx.ChannelMembers
+                        .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != Account.AccountId)
+                        .Select(m => m.AccountId).SingleAsync();
+
+                    Message bobPublic = await ctx.Messages
+                        .Where(m => m.ChannelId == channel.ChannelId && m.ContentPacketId == 0x18 && m.SenderId == bobId)
+                        .OrderByDescending(m => m.MessageId).FirstOrDefaultAsync();
+
+                    if (bobPublic == null) continue; // The server will create the DirectChannelUpdate when Bob sends his public key
+
+                    Message alicePrivate = await ctx.Messages
+                        .SingleAsync(m => m.ChannelId == packet.Dependencies[0].ChannelId && m.MessageId == packet.Dependencies[0].MessageId);
+                
                     // TODO: Get Bob's latest public key packet in this channel and resolve the dependency to Alice's keypair
                     // TODO: Resolve the dependency from Bob's private key packet and take the currently received packet of Alice
                     // TODO: Combine the packets of the last two steps and create one direct channel update
                 }
             }
-            return Task.FromResult(MessageSendError.Success);
+            return MessageSendError.Success;
         }
 
         public Task<MessageSendError> Handle(P1EGroupChannelUpdate packet)
