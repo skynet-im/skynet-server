@@ -332,13 +332,12 @@ namespace SkynetServer.Network
                 DispatchTime = DateTime.Now,
                 MessageFlags = packet.MessageFlags,
                 // TODO: Implement FileId
-                // TODO: Implement dependencies
                 ContentPacketId = packet.ContentPacketId,
                 ContentPacketVersion = packet.ContentPacketVersion,
                 ContentPacket = packet.ContentPacket
             };
 
-            entity = await DatabaseHelper.AddMessage(entity);
+            entity = await DatabaseHelper.AddMessage(entity, packet.Dependencies.ToDatabase());
 
             var response = Packet.New<P0CChannelMessageResponse>();
             response.ChannelId = packet.ChannelId;
@@ -430,6 +429,8 @@ namespace SkynetServer.Network
                         .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != Account.AccountId)
                         .Select(m => m.AccountId).SingleAsync();
 
+                    // Get Bob's latest public key packet in this channel and resolve the dependency to Alice's keypair
+
                     Message bobPublic = await ctx.Messages
                         .Where(m => m.ChannelId == channel.ChannelId && m.ContentPacketId == 0x18 && m.SenderId == bobId)
                         .OrderByDescending(m => m.MessageId).FirstOrDefaultAsync();
@@ -439,7 +440,13 @@ namespace SkynetServer.Network
                     Message alicePrivate = await ctx.Messages
                         .SingleAsync(m => m.ChannelId == packet.Dependencies[0].ChannelId && m.MessageId == packet.Dependencies[0].MessageId);
 
-                    // TODO: Get Bob's latest public key packet in this channel and resolve the dependency to Alice's keypair
+                    var refForAlice = Packet.New<P19DerivationKey>();
+                    refForAlice.MessageFlags = MessageFlags.Loopback | MessageFlags.Unencrypted;
+                    refForAlice.Dependencies.Add(new Model.MessageDependency(Account.AccountId, alicePrivate.ChannelId, alicePrivate.MessageId));
+                    refForAlice.Dependencies.Add(new Model.MessageDependency(bobId, bobPublic.ChannelId, bobPublic.MessageId));
+                    await channel.SendMessage(refForAlice, Account.AccountId);
+
+                    // Resolve the dependency from Bob's public key packet and take the currently forwarded packet of Alice
 
                     Message bobPublicGlobal = await ctx.MessageDependencies
                         .Where(d => d.OwningChannelId == bobPublic.ChannelId && d.OwningMessageId == bobPublic.MessageId)
@@ -448,8 +455,20 @@ namespace SkynetServer.Network
                     Message bobPrivate = await ctx.MessageDependencies
                         .Where(d => d.OwningChannelId == bobPublicGlobal.ChannelId && d.OwningMessageId == bobPublicGlobal.MessageId)
                         .Select(d => d.Message).SingleAsync();
-                    // TODO: Resolve the dependency from Bob's private key packet and take the currently received packet of Alice
-                    // TODO: Combine the packets of the last two steps and create one direct channel update
+
+                    var refForBob = Packet.New<P19DerivationKey>();
+                    refForAlice.MessageFlags = MessageFlags.Loopback | MessageFlags.Unencrypted;
+                    refForBob.Dependencies.Add(new Model.MessageDependency(bobId, bobPrivate.ChannelId, bobPrivate.MessageId));
+                    //refForBob.Dependencies.Add(new Model.MessageDependency(Account.AccountId, ???, ???));
+                    await channel.SendMessage(refForBob, bobId);
+
+                    // Combine the packets of the last two steps and create one direct channel update
+
+                    var update = Packet.New<P1BDirectChannelUpdate>();
+                    update.MessageFlags = MessageFlags.Unencrypted;
+                    //update.Dependencies.Add(new Model.MessageDependency(Account.AccountId, channel.ChannelId, ???));
+                    //update.Dependencies.Add(new Model.MessageDependency(bobId, channel.ChannelId, ???));
+                    await channel.SendMessage(update, null);
                 }
             }
         }
