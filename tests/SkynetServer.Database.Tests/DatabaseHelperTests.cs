@@ -80,6 +80,35 @@ namespace SkynetServer.Database.Tests
             });
         }
 
+        [TestMethod]
+        public async Task TestAddMessageAndDependency()
+        {
+            Channel channel = new Channel() { ChannelType = ChannelType.Loopback };
+            await DatabaseHelper.AddChannel(channel);
+            Message previous = null;
+
+            await AsyncParallel.ForAsync(0, 100, async i =>
+            {
+                Message message = new Message() { ChannelId = channel.ChannelId, DispatchTime = DateTime.Now };
+                message = await DatabaseHelper.AddMessage(message);
+                if (previous != null)
+                {
+                    using (DatabaseContext ctx = new DatabaseContext())
+                    {
+                        ctx.MessageDependencies.Add(new MessageDependency()
+                        {
+                            OwningChannelId = channel.ChannelId,
+                            OwningMessageId = message.MessageId,
+                            ChannelId = channel.ChannelId,
+                            MessageId = previous.MessageId,
+                        });
+                        await ctx.SaveChangesAsync();
+                    }
+                }
+                previous = message;
+            });
+        }
+
         private string RandomAddress()
         {
             using (var random = RandomNumberGenerator.Create())
