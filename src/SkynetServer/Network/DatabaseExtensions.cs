@@ -53,6 +53,8 @@ namespace SkynetServer.Network
 
             await DatabaseHelper.AddMessage(message, packet.Dependencies.ToDatabase());
 
+            // TODO: Send message to connected clients respecting the message flags
+
             return message;
         }
     }
