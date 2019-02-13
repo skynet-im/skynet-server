@@ -61,8 +61,9 @@ namespace SkynetServer.Database
             message.Property(m => m.MessageFlags).HasConversion<byte>();
 
             var messageDependency = modelBuilder.Entity<MessageDependency>();
-            messageDependency.HasKey(d => new { d.AccountId, d.ChannelId, d.MessageId });
-            messageDependency.HasOne(d => d.Message).WithMany(m => m.Dependencies).HasForeignKey(d => new { d.ChannelId, d.MessageId });
+            messageDependency.HasKey(d => new { d.OwningChannelId, d.OwningMessageId, d.ChannelId, d.MessageId, d.AccountId });
+            messageDependency.HasOne(d => d.OwningMessage).WithMany(m => m.Dependencies).HasForeignKey(d => new { d.OwningChannelId, d.OwningMessageId });
+            messageDependency.HasOne(d => d.Message).WithMany(m => m.Dependants).HasForeignKey(d => new { d.ChannelId, d.MessageId });
 
             var mailConfirmation = modelBuilder.Entity<MailConfirmation>();
             mailConfirmation.HasKey(c => c.MailAddress);
