@@ -19,6 +19,8 @@ namespace SkynetServer.Network.Packets
 
         public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
 
+        public override Task PostHandling(IPacketHandler handler) => handler.PostHandling(this);
+
         public override void ReadMessage(PacketBuffer buffer)
         {
             SignatureKeyFormat = (KeyFormat)buffer.ReadByte();

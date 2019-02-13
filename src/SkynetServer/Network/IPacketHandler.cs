@@ -33,14 +33,15 @@ namespace SkynetServer.Network
         //Task<MessageSendError> Handle(P14MailAddress packet);
         Task<MessageSendError> Handle(P15PasswordUpdate packet);
         Task<MessageSendError> Handle(P18PublicKeys packet);
+        Task PostHandling(P18PublicKeys packet);
         //Task<MessageSendError> Handle(P19DerivationKey packet);
         //Task<MessageSendError> Handle(P1BDirectChannelUpdate packet);
         Task<MessageSendError> Handle(P1EGroupChannelUpdate packet);
-        Task<MessageSendError> Handle(P22MessageReceived packet);
-        Task<MessageSendError> Handle(P23MessageRead packet);
-        Task<MessageSendError> Handle(P25Nickname packet);
-        Task<MessageSendError> Handle(P26PersonalMessage packet);
-        Task<MessageSendError> Handle(P27ProfileImage packet);
+        //Task<MessageSendError> Handle(P22MessageReceived packet);
+        //Task<MessageSendError> Handle(P23MessageRead packet);
+        //Task<MessageSendError> Handle(P25Nickname packet);
+        //Task<MessageSendError> Handle(P26PersonalMessage packet);
+        //Task<MessageSendError> Handle(P27ProfileImage packet);
         Task<MessageSendError> Handle(P28BlockList packet);
         //Task<MessageSendError> Handle(P29DeviceList packet);
 

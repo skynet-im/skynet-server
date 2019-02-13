@@ -112,6 +112,11 @@ namespace SkynetServer.Network.Packets
             return Task.FromResult(MessageSendError.Success);
         }
 
+        public virtual Task PostHandling(IPacketHandler handler)
+        {
+            return Task.CompletedTask;
+        }
+
         public virtual void ReadMessage(PacketBuffer buffer)
         {
 

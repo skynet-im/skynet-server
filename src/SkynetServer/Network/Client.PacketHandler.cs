@@ -357,6 +357,8 @@ namespace SkynetServer.Network
                 await Program.SendAllExcept(packet, ctx.ChannelMembers
                     .Where(m => m.ChannelId == packet.ChannelId).Select(m => m.AccountId), this);
             }
+
+            await packet.PostHandling(this);
         }
 
         public Task Handle(P0DMessageBlock packet)
@@ -397,7 +399,13 @@ namespace SkynetServer.Network
             throw new NotImplementedException();
         }
 
-        public async Task<MessageSendError> Handle(P18PublicKeys packet) // Alice changes her keypair
+        public Task<MessageSendError> Handle(P18PublicKeys packet)
+        {
+            // TODO: Validate dependencies
+            return Task.FromResult(MessageSendError.Success);
+        }
+
+        public async Task PostHandling(P18PublicKeys packet) // Alice changes her keypair
         {
             using (DatabaseContext ctx = new DatabaseContext())
             {
@@ -430,43 +438,25 @@ namespace SkynetServer.Network
 
                     Message alicePrivate = await ctx.Messages
                         .SingleAsync(m => m.ChannelId == packet.Dependencies[0].ChannelId && m.MessageId == packet.Dependencies[0].MessageId);
-                
+
                     // TODO: Get Bob's latest public key packet in this channel and resolve the dependency to Alice's keypair
+
+                    Message bobPublicGlobal = await ctx.MessageDependencies
+                        .Where(d => d.OwningChannelId == bobPublic.ChannelId && d.OwningMessageId == bobPublic.MessageId)
+                        .Select(d => d.Message).SingleAsync();
+
+                    Message bobPrivate = await ctx.MessageDependencies
+                        .Where(d => d.OwningChannelId == bobPublicGlobal.ChannelId && d.OwningMessageId == bobPublicGlobal.MessageId)
+                        .Select(d => d.Message).SingleAsync();
                     // TODO: Resolve the dependency from Bob's private key packet and take the currently received packet of Alice
                     // TODO: Combine the packets of the last two steps and create one direct channel update
                 }
             }
-            return MessageSendError.Success;
         }
 
         public Task<MessageSendError> Handle(P1EGroupChannelUpdate packet)
         {
             // TODO: Check for concurrency issues before insert
-            throw new NotImplementedException();
-        }
-
-        public Task<MessageSendError> Handle(P22MessageReceived packet)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<MessageSendError> Handle(P23MessageRead packet)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<MessageSendError> Handle(P25Nickname packet)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<MessageSendError> Handle(P26PersonalMessage packet)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<MessageSendError> Handle(P27ProfileImage packet)
-        {
             throw new NotImplementedException();
         }
 
