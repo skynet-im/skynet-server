@@ -14,7 +14,7 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P26PersonalMessage().Init(this);
 
-        public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
+        //public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
 
         public override void ReadMessage(PacketBuffer buffer)
         {

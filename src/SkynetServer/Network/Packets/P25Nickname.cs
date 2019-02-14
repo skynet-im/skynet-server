@@ -14,7 +14,7 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P25Nickname().Init(this);
 
-        public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
+        //public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
 
         public override void ReadMessage(PacketBuffer buffer)
         {
