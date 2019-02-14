@@ -62,8 +62,8 @@ namespace SkynetServer.Network
                 bool isNoSenderSync = packet.MessageFlags.HasFlag(MessageFlags.NoSenderSync);
                 await Task.WhenAll(Program.Clients
                     .Where(c => c.Account != null && members.Contains(c.Account.AccountId))
-                    .Where(c => isLoopback && c.Account.AccountId == senderId)
-                    .Where(c => isNoSenderSync && c.Account.AccountId != senderId)
+                    .Where(c => !isLoopback || c.Account.AccountId == senderId)
+                    .Where(c => !isNoSenderSync || c.Account.AccountId != senderId)
                     .Select(c => c.SendPacket(packet)));
             }
 

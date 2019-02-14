@@ -66,20 +66,8 @@ namespace SkynetServer.Network
                         // Send password update packet
                         var passwordUpdate = Packet.New<P15PasswordUpdate>();
                         passwordUpdate.KeyHash = packet.KeyHash;
-                        using (PacketBuffer buffer = PacketBuffer.CreateDynamic())
-                        {
-                            passwordUpdate.WriteMessage(buffer);
-                            await DatabaseHelper.AddMessage(new Message()
-                            {
-                                ChannelId = channel.ChannelId,
-                                SenderId = account.AccountId,
-                                DispatchTime = DateTime.Now,
-                                MessageFlags = MessageFlags.Unencrypted,
-                                ContentPacketId = packet.Id,
-                                ContentPacketVersion = 0,
-                                ContentPacket = buffer.ToArray()
-                            });
-                        }
+                        passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
+                        await channel.SendMessage(passwordUpdate, account.AccountId);
 
                         await mail;
                         response.ErrorCode = CreateAccountError.Success;
@@ -210,7 +198,9 @@ namespace SkynetServer.Network
                     .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c).Where(c => c.ChannelType == ChannelType.Direct))
                 {
                     long lastMessage = currentState.Single(s => s.channelId == channel.ChannelId).messageId;
-                    foreach (Message message in ctx.Messages.Where(m => m.ChannelId == channel.ChannelId && m.MessageId > lastMessage))
+                    foreach (Message message in ctx.Messages.Where(m => m.ChannelId == channel.ChannelId && m.MessageId > lastMessage)
+                        .Where(m => !m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == Account.AccountId)
+                        .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != Account.AccountId))
                     {
                         var packet = Packet.New<P0BChannelMessage>();
                         packet.ChannelId = loopback.ChannelId;
