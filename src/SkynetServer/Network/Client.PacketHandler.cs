@@ -178,19 +178,7 @@ namespace SkynetServer.Network
                 long lastLoopbackMessage = currentState.Single(s => s.channelId == loopback.ChannelId).messageId;
                 foreach (Message message in ctx.Messages.Where(m => m.ChannelId == loopback.ChannelId && m.MessageId > lastLoopbackMessage))
                 {
-                    var packet = Packet.New<P0BChannelMessage>();
-                    packet.ChannelId = loopback.ChannelId;
-                    packet.SenderId = message.SenderId ?? 0;
-                    packet.MessageId = message.MessageId;
-                    packet.SkipCount = 0; // TODO: Implement flags and skip count
-                    packet.DispatchTime = message.DispatchTime;
-                    packet.MessageFlags = message.MessageFlags;
-                    packet.FileId = 0; // Files are not implemented yet
-                                       // TODO: Implement dependencies
-                    packet.ContentPacketId = message.ContentPacketId;
-                    packet.ContentPacketVersion = message.ContentPacketVersion;
-                    packet.ContentPacket = message.ContentPacket;
-                    await SendPacket(packet);
+                    await message.SendTo(this);
                 }
 
                 // Send messages from direct channels
@@ -202,19 +190,7 @@ namespace SkynetServer.Network
                         .Where(m => !m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == Account.AccountId)
                         .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != Account.AccountId))
                     {
-                        var packet = Packet.New<P0BChannelMessage>();
-                        packet.ChannelId = loopback.ChannelId;
-                        packet.SenderId = message.SenderId ?? 0;
-                        packet.MessageId = message.MessageId;
-                        packet.SkipCount = 0; // TODO: Implement flags and skip count
-                        packet.DispatchTime = message.DispatchTime;
-                        packet.MessageFlags = message.MessageFlags;
-                        packet.FileId = 0; // Files are not implemented yet
-                                           // TODO: Implement dependencies
-                        packet.ContentPacketId = message.ContentPacketId;
-                        packet.ContentPacketVersion = message.ContentPacketVersion;
-                        packet.ContentPacket = message.ContentPacket;
-                        await SendPacket(packet);
+                        await message.SendTo(this);
                     }
                 }
 

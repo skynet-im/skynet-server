@@ -27,6 +27,14 @@ namespace SkynetServer.Network
             }
         }
 
+        public static IEnumerable<Dependency> ToProtocol(this IEnumerable<MessageDependency> dependencies)
+        {
+            foreach (MessageDependency dependency in dependencies)
+            {
+                yield return new Dependency(dependency.AccountId ?? 0, dependency.ChannelId, dependency.MessageId);
+            }
+        }
+
         public static async Task<Message> SendMessage(this Channel channel, P0BChannelMessage packet, long? senderId)
         {
             packet.ChannelId = channel.ChannelId;
@@ -68,6 +76,23 @@ namespace SkynetServer.Network
             }
 
             return message;
+        }
+
+        public static Task SendTo(this Message message, Client target)
+        {
+            var packet = Packet.New<P0BChannelMessage>();
+            packet.ChannelId = message.ChannelId;
+            packet.SenderId = message.SenderId ?? 0;
+            packet.MessageId = message.MessageId;
+            packet.SkipCount = 0; // TODO: Implement flags and skip count
+            packet.DispatchTime = message.DispatchTime;
+            packet.MessageFlags = message.MessageFlags;
+            packet.FileId = 0; // Files are not implemented yet
+            packet.Dependencies.AddRange(message.Dependencies.ToProtocol());
+            packet.ContentPacketId = message.ContentPacketId;
+            packet.ContentPacketVersion = message.ContentPacketVersion;
+            packet.ContentPacket = message.ContentPacket;
+            return target.SendPacket(packet);
         }
     }
 }
