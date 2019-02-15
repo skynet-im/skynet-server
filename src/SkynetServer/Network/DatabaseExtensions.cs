@@ -1,4 +1,5 @@
-﻿using SkynetServer.Database;
+﻿using Microsoft.EntityFrameworkCore;
+using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
 using SkynetServer.Network.Model;
@@ -93,6 +94,20 @@ namespace SkynetServer.Network
             packet.ContentPacketVersion = message.ContentPacketVersion;
             packet.ContentPacket = message.ContentPacket;
             return target.SendPacket(packet);
+        }
+
+        public static async Task<Message> GetLatestPublicKey(this Account account)
+        {
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                long loopback = await ctx.Channels
+                    .Where(c => c.OwnerId == account.AccountId && c.ChannelType == ChannelType.Loopback)
+                    .Select(c => c.ChannelId).SingleAsync();
+
+                return await ctx.Messages
+                    .Where(m => m.ChannelId == loopback && m.ContentPacketId == 0x18 && m.SenderId == account.AccountId)
+                    .OrderByDescending(m => m.MessageId).FirstOrDefaultAsync();
+            }
         }
     }
 }

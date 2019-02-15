@@ -229,6 +229,8 @@ namespace SkynetServer.Network
                             await ctx.SaveChangesAsync();
 
                             response.ErrorCode = CreateChannelError.Success;
+
+                            Task task = ForwardPublicKeys(channel, Account, counterpart);
                         }
                         break;
                     case ChannelType.Group:
@@ -268,6 +270,40 @@ namespace SkynetServer.Network
                     response.TempChannelId = packet.ChannelId;
                 }
                 await SendPacket(response);
+            }
+        }
+
+        private async Task ForwardPublicKeys(Channel channel, Account alice, Account bob)
+        {
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                Message alicePublic = await alice.GetLatestPublicKey();
+                Message bobPublic = await bob.GetLatestPublicKey();
+
+                if (alicePublic != null)
+                {
+                    P18PublicKeys forward = Packet.New<P18PublicKeys>();
+                    forward.ChannelId = channel.ChannelId;
+                    forward.SenderId = Account.AccountId;
+                    forward.DispatchTime = DateTime.Now;
+                    forward.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
+                    forward.Dependencies.Add(new Dependency(alice.AccountId, alicePublic.ChannelId, alicePublic.MessageId));
+                    forward.ContentPacket = alicePublic.ContentPacket;
+                    Message alicePublicMsg = await channel.SendMessage(forward, alice.AccountId);
+                }
+                if (bobPublic != null)
+                {
+                    P18PublicKeys forward = Packet.New<P18PublicKeys>();
+                    forward.ChannelId = channel.ChannelId;
+                    forward.SenderId = Account.AccountId;
+                    forward.DispatchTime = DateTime.Now;
+                    forward.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
+                    forward.Dependencies.Add(new Dependency(bob.AccountId, bobPublic.ChannelId, bobPublic.MessageId));
+                    forward.ContentPacket = bobPublic.ContentPacket;
+                    Message bobPublicMsg = await channel.SendMessage(forward, bob.AccountId);
+                }
+
+                // TODO: Create keypair references
             }
         }
 
@@ -374,6 +410,7 @@ namespace SkynetServer.Network
         {
             using (DatabaseContext ctx = new DatabaseContext())
             {
+                // Get all direct channels of Alice
                 foreach (Channel channel in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
                     .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
                     .Where(c => c.ChannelType == ChannelType.Direct))
