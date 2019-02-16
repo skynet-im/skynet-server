@@ -65,6 +65,23 @@ namespace SkynetServer.Database.Tests
         }
 
         [TestMethod]
+        public async Task TestAddChannelWithOwner()
+        {
+            await AsyncParallel.ForAsync(0, 50, async i =>
+            {
+                (var account, _, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", new byte[0]);
+                Assert.IsTrue(success);
+
+                Channel channel = new Channel()
+                {
+                    OwnerId = account.AccountId,
+                    ChannelType = ChannelType.Loopback
+                };
+                await DatabaseHelper.AddChannel(channel);
+            });
+        }
+
+        [TestMethod]
         public async Task TestAddChannelAndMessage()
         {
             await AsyncParallel.ForAsync(0, 5, async i =>

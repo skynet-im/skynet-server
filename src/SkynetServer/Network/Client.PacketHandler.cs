@@ -176,7 +176,9 @@ namespace SkynetServer.Network
                 // Send messages from loopback channel
                 Channel loopback = channels.Single(c => c.ChannelType == ChannelType.Loopback);
                 long lastLoopbackMessage = currentState.Single(s => s.channelId == loopback.ChannelId).messageId;
-                foreach (Message message in ctx.Messages.Where(m => m.ChannelId == loopback.ChannelId && m.MessageId > lastLoopbackMessage))
+                foreach (Message message in ctx.Messages
+                    .Where(m => m.ChannelId == loopback.ChannelId && m.MessageId > lastLoopbackMessage)
+                    .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
                 {
                     await message.SendTo(this);
                 }
@@ -186,9 +188,11 @@ namespace SkynetServer.Network
                     .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c).Where(c => c.ChannelType == ChannelType.Direct))
                 {
                     long lastMessage = currentState.Single(s => s.channelId == channel.ChannelId).messageId;
-                    foreach (Message message in ctx.Messages.Where(m => m.ChannelId == channel.ChannelId && m.MessageId > lastMessage)
+                    foreach (Message message in ctx.Messages
+                        .Where(m => m.ChannelId == channel.ChannelId && m.MessageId > lastMessage)
                         .Where(m => !m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == Account.AccountId)
-                        .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != Account.AccountId))
+                        .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != Account.AccountId)
+                        .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
                     {
                         await message.SendTo(this);
                     }
@@ -220,13 +224,25 @@ namespace SkynetServer.Network
                             // TODO: Check whether a direct channel exists before and after inserting
                             channel = await DatabaseHelper.AddChannel(new Channel
                             {
-                                Owner = Account,
+                                OwnerId = Account.AccountId,
                                 ChannelType = ChannelType.Direct
                             });
 
                             ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = Account.AccountId });
                             ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = packet.CounterpartId });
                             await ctx.SaveChangesAsync();
+
+                            var createAlice = Packet.New<P0ACreateChannel>();
+                            createAlice.ChannelId = channel.ChannelId;
+                            createAlice.ChannelType = ChannelType.Direct;
+                            createAlice.CounterpartId = packet.CounterpartId;
+                            await SendPacket(packet);
+
+                            var createBob = Packet.New<P0ACreateChannel>();
+                            createBob.ChannelId = channel.ChannelId;
+                            createBob.ChannelType = ChannelType.Direct;
+                            createBob.CounterpartId = Account.AccountId;
+                            await Program.SendAllExcept(packet, new[] { packet.CounterpartId }, null);
 
                             response.ErrorCode = CreateChannelError.Success;
 
@@ -236,7 +252,7 @@ namespace SkynetServer.Network
                     case ChannelType.Group:
                         channel = await DatabaseHelper.AddChannel(new Channel
                         {
-                            Owner = Account,
+                            OwnerId = Account.AccountId,
                             ChannelType = packet.ChannelType
                         });
 
@@ -250,7 +266,7 @@ namespace SkynetServer.Network
                         {
                             channel = await DatabaseHelper.AddChannel(new Channel
                             {
-                                Owner = Account,
+                                OwnerId = Account.AccountId,
                                 ChannelType = packet.ChannelType
                             });
 
@@ -501,12 +517,8 @@ namespace SkynetServer.Network
                     .Take(100); // Limit to 100 entries
                 var response = Packet.New<P2ESearchAccountResponse>();
                 foreach (var result in results)
-                    response.Results.Add(new SearchResult
-                    {
-                        AccountId = result.AccountId,
-                        AccountName = result.MailAddress
-                        // Forward public packets to fully implement the Skynet protocol v5
-                    });
+                    response.Results.Add(new SearchResult(result.AccountId, result.MailAddress));
+                // Forward public packets to fully implement the Skynet protocol v5
                 return SendPacket(response);
             }
         }
