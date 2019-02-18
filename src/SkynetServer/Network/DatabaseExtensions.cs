@@ -66,7 +66,7 @@ namespace SkynetServer.Network
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
-                long[] members = ctx.ChannelMembers.Where(m => m.ChannelId == channel.ChannelId).Select(m => m.AccountId).ToArray();
+                long[] members = await ctx.ChannelMembers.Where(m => m.ChannelId == channel.ChannelId).Select(m => m.AccountId).ToArrayAsync();
                 bool isLoopback = packet.MessageFlags.HasFlag(MessageFlags.Loopback);
                 bool isNoSenderSync = packet.MessageFlags.HasFlag(MessageFlags.NoSenderSync);
                 await Task.WhenAll(Program.Clients
