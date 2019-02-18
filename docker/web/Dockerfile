@@ -5,12 +5,16 @@ FROM microsoft/dotnet:2.1-sdk AS build
 WORKDIR /app
 
 # Copy csproj and restore as distinct layers
-COPY ../src/*/*.csproj .
-RUN dotnet restore
+COPY SkynetServer.sln .
+COPY NuGet.config .
+COPY src/SkynetServer.Shared/SkynetServer.Shared.csproj src/SkynetServer.Shared/
+COPY src/SkynetServer.Web/SkynetServer.Web.csproj src/SkynetServer.Web/
+
+RUN dotnet restore src/SkynetServer.Web/SkynetServer.Web.csproj
 
 # Copy everything else and build
-COPY ../src .
-RUN dotnet publish -c Release -o /app/out
+COPY src/ src/
+RUN dotnet publish -c Release -o /app/out src/SkynetServer.Web/SkynetServer.Web.csproj
 
 # Build runtime image
 FROM microsoft/dotnet:2.1-aspnetcore-runtime AS runtime
