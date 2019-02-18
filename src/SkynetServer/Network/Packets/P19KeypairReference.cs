@@ -7,15 +7,16 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Message(0x22, PacketPolicy.Duplex)]
-    internal sealed class P22MessageReceived : P0BChannelMessage
+    [Message(0x19, PacketPolicy.Send)]
+    internal sealed class P19KeypairReference : P0BChannelMessage
     {
-        public override Packet Create() => new P22MessageReceived().Init(this);
+        public override Packet Create() => new P19KeypairReference().Init(this);
 
-        //public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
+        public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => throw new NotImplementedException();
 
         public override void ReadMessage(PacketBuffer buffer)
         {
+            throw new NotImplementedException();
         }
 
         public override void WriteMessage(PacketBuffer buffer)

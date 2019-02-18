@@ -7,21 +7,21 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x29, PacketPolicy.Send)]
-    internal sealed class P29DeviceList : ChannelMessage
+    [Message(0x29, PacketPolicy.Send)]
+    internal sealed class P29DeviceList : P0BChannelMessage
     {
         List<SessionInformation> Sessions { get; set; } = new List<SessionInformation>();
 
         public override Packet Create() => new P29DeviceList().Init(this);
 
-        public override Task Handle(IPacketHandler handler) => throw new NotImplementedException();
+        public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => throw new NotImplementedException();
 
-        public override void ReadPacket(PacketBuffer buffer)
+        public override void ReadMessage(PacketBuffer buffer)
         {
             throw new NotImplementedException();
         }
 
-        public override void WritePacket(PacketBuffer buffer)
+        public override void WriteMessage(PacketBuffer buffer)
         {
             buffer.WriteUShort((ushort)Sessions.Count);
             foreach (SessionInformation session in Sessions)

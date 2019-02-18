@@ -24,6 +24,7 @@ function Install-DbServer {
 
 	Start-BitsTransfer -Source $mirror -Destination $downloadPath -ErrorAction Stop
 	Expand-Archive -Path $downloadPath -DestinationPath $tempPath
+	if (!(Test-Path -PathType Container -Path $mariaDbPath)) { New-Item -ItemType Directory -Force -Path $mariaDbPath | Out-Null }
 	if (Test-Path -Path $versionPath) {	Remove-Item -Path $versionPath -Recurse -Force }
 	Move-Item -Path (Join-Path $tempPath mariadb-10.3.12-winx64) -Destination $versionPath -Force
 

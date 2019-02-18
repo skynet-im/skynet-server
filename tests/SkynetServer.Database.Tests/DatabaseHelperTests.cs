@@ -65,6 +65,23 @@ namespace SkynetServer.Database.Tests
         }
 
         [TestMethod]
+        public async Task TestAddChannelWithOwner()
+        {
+            await AsyncParallel.ForAsync(0, 50, async i =>
+            {
+                (var account, _, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", new byte[0]);
+                Assert.IsTrue(success);
+
+                Channel channel = new Channel()
+                {
+                    OwnerId = account.AccountId,
+                    ChannelType = ChannelType.Loopback
+                };
+                await DatabaseHelper.AddChannel(channel);
+            });
+        }
+
+        [TestMethod]
         public async Task TestAddChannelAndMessage()
         {
             await AsyncParallel.ForAsync(0, 5, async i =>
@@ -77,6 +94,35 @@ namespace SkynetServer.Database.Tests
                     Message message = new Message() { ChannelId = channel.ChannelId, DispatchTime = DateTime.Now };
                     return DatabaseHelper.AddMessage(message);
                 });
+            });
+        }
+
+        [TestMethod]
+        public async Task TestAddMessageAndDependency()
+        {
+            Channel channel = new Channel() { ChannelType = ChannelType.Loopback };
+            await DatabaseHelper.AddChannel(channel);
+            Message previous = null;
+
+            await AsyncParallel.ForAsync(0, 100, async i =>
+            {
+                Message message = new Message() { ChannelId = channel.ChannelId, DispatchTime = DateTime.Now };
+                message = await DatabaseHelper.AddMessage(message);
+                if (previous != null)
+                {
+                    using (DatabaseContext ctx = new DatabaseContext())
+                    {
+                        ctx.MessageDependencies.Add(new MessageDependency()
+                        {
+                            OwningChannelId = channel.ChannelId,
+                            OwningMessageId = message.MessageId,
+                            ChannelId = channel.ChannelId,
+                            MessageId = previous.MessageId,
+                        });
+                        await ctx.SaveChangesAsync();
+                    }
+                }
+                previous = message;
             });
         }
 

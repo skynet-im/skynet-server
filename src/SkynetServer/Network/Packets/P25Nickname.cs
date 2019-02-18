@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SkynetServer.Network.Model;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -6,21 +7,21 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x25, PacketPolicy.Duplex)]
-    internal sealed class P25Nickname : ChannelMessage
+    [Message(0x25, PacketPolicy.Duplex)]
+    internal sealed class P25Nickname : P0BChannelMessage
     {
         public string Nickname { get; set; }
 
         public override Packet Create() => new P25Nickname().Init(this);
 
-        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
+        //public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
 
-        public override void ReadPacket(PacketBuffer buffer)
+        public override void ReadMessage(PacketBuffer buffer)
         {
             Nickname = buffer.ReadString();
         }
 
-        public override void WritePacket(PacketBuffer buffer)
+        public override void WriteMessage(PacketBuffer buffer)
         {
             buffer.WriteString(Nickname);
         }
