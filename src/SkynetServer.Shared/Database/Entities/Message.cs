@@ -21,5 +21,6 @@ namespace SkynetServer.Database.Entities
         public Account Sender { get; set; }
 
         public IEnumerable<MessageDependency> Dependencies { get; set; }
+        public IEnumerable<MessageDependency> Dependants { get; set; }
     }
 }

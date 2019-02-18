@@ -4,6 +4,7 @@ using MimeKit;
 using SkynetServer.Configuration;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -16,6 +17,13 @@ namespace SkynetServer.Network.Mail
         public async Task SendMailAsync(string address, string token)
         {
             MailConfig config = Program.Configuration.Get<SkynetConfig>().MailConfig;
+
+            ValidationContext context = new ValidationContext(config);
+            if (!Validator.TryValidateObject(config, context, null))
+            {
+                Console.WriteLine($"Mail configuration is invalid. \"{address}\" will not receive the token \"{token}\".");
+                return;
+            }
 
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(config.SenderName, config.SenderAddress));
@@ -33,7 +41,6 @@ namespace SkynetServer.Network.Mail
                 await client.SendAsync(message);
                 await client.DisconnectAsync(quit: true);
             }
-            //message.From.Add()
         }
 
         public static bool IsValidEmail(string email)

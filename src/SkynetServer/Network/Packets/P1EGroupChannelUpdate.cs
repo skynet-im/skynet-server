@@ -7,8 +7,8 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x1E, PacketPolicy.Duplex)]
-    internal sealed class P1EGroupChannelUpdate : ChannelMessage
+    [Message(0x1E, PacketPolicy.Duplex)]
+    internal sealed class P1EGroupChannelUpdate : P0BChannelMessage
     {
         public long GroupRevision { get; set; }
         public List<(long AccountId, GroupMemberFlags Flags)> Members { get; set; } = new List<(long AccountId, GroupMemberFlags Flags)>();
@@ -16,9 +16,9 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P1EGroupChannelUpdate().Init(this);
 
-        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
+        public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
 
-        public override void ReadPacket(PacketBuffer buffer)
+        public override void ReadMessage(PacketBuffer buffer)
         {
             GroupRevision = buffer.ReadLong();
             ushort length = buffer.ReadUShort();
@@ -29,7 +29,7 @@ namespace SkynetServer.Network.Packets
             KeyHistory = buffer.ReadByteArray();
         }
 
-        public override void WritePacket(PacketBuffer buffer)
+        public override void WriteMessage(PacketBuffer buffer)
         {
             buffer.WriteLong(GroupRevision);
             buffer.WriteUShort((ushort)Members.Count);

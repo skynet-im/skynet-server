@@ -2,6 +2,7 @@
 using SkynetServer.Configuration;
 using SkynetServer.Network;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Net;
@@ -15,8 +16,11 @@ namespace SkynetServer
         public static IConfiguration Configuration { get; private set; }
         public static ImmutableList<Client> Clients;
 
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
+            Console.Title = "Skynet Server";
+            Console.WriteLine("Initializing...");
+
             // The appsettings.json file contained in this repository lacks some secrets that are necessary for production usage.
             // Our debug keypair "<Modulus>jKoWxmIf..." should be used in all client applications to connect to development servers.
             Configuration = new ConfigurationBuilder()
@@ -27,7 +31,7 @@ namespace SkynetServer
             VSLListener listener = CreateListener();
             listener.Start();
 
-            Console.WriteLine("Press Enter to exit");
+            Console.WriteLine("Server running. Press Enter to exit...");
             Console.ReadLine();
         }
 
@@ -48,6 +52,13 @@ namespace SkynetServer
             };
 
             return new VSLListener(endPoints, settings, () => new Client());
+        }
+
+        public static Task SendAllExcept(Packet packet, IEnumerable<long> accounts, Client exclude)
+        {
+            return Task.WhenAll(Clients
+                .Where(c => c.Account != null && accounts.Contains(c.Account.AccountId) && !ReferenceEquals(c, exclude))
+                .Select(c => c.SendPacket(packet)));
         }
     }
 }
