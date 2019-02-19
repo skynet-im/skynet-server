@@ -1,0 +1,22 @@
+version: 2
+
+services:
+  app:
+    image: skynet/core:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    expose:
+      - '32761:32761'
+  web:
+    image: skynet/web:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    expose:
+      - '8080:80'
+  db:
+    image: mariadb:latest
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: password
