@@ -1,0 +1,4 @@
+## Ignore generated CSS and JavaScript files
+
+wwwroot/css/site.min.css
+wwwroot/js/site.min.js
