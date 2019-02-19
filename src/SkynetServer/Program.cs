@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using SkynetServer.Configuration;
 using SkynetServer.Network;
 using System;
@@ -16,11 +18,8 @@ namespace SkynetServer
         public static IConfiguration Configuration { get; private set; }
         public static ImmutableList<Client> Clients;
 
-        private static void Main(string[] args)
+        private static Task Main(string[] args)
         {
-            Console.Title = "Skynet Server";
-            Console.WriteLine("Initializing...");
-
             // The appsettings.json file contained in this repository lacks some secrets that are necessary for production usage.
             // Our debug keypair "<Modulus>jKoWxmIf..." should be used in all client applications to connect to development servers.
             Configuration = new ConfigurationBuilder()
@@ -28,37 +27,22 @@ namespace SkynetServer
                 .Build();
 
             Clients = ImmutableList.Create<Client>();
-            VSLListener listener = CreateListener();
-            listener.Start();
 
-            Console.WriteLine("Server running. Press Enter to exit...");
-            Console.ReadLine();
+            return CreateHostBuilder(args).Build().RunAsync();
         }
 
-        private static VSLListener CreateListener()
+        private static IHostBuilder CreateHostBuilder(string[] args)
         {
-            VslConfig config = Configuration.Get<SkynetConfig>().VslConfig;
-            IPEndPoint[] endPoints = {
-                new IPEndPoint(IPAddress.Any, config.TcpPort),
-                new IPEndPoint(IPAddress.IPv6Any, config.TcpPort)
-            };
-
-            SocketSettings settings = new SocketSettings()
+            HostBuilder builder = new HostBuilder();
+            builder.ConfigureAppConfiguration(config =>
             {
-                LatestProductVersion = config.LatestProductVersion,
-                OldestProductVersion = config.OldestProductVersion,
-                RsaXmlKey = config.RsaXmlKey,
-                CatchApplicationExceptions = false
-            };
-
-            return new VSLListener(endPoints, settings, () => new Client());
-        }
-
-        public static Task SendAllExcept(Packet packet, IEnumerable<long> accounts, Client exclude)
-        {
-            return Task.WhenAll(Clients
-                .Where(c => c.Account != null && accounts.Contains(c.Account.AccountId) && !ReferenceEquals(c, exclude))
-                .Select(c => c.SendPacket(packet)));
+                config.AddConfiguration(Configuration);
+            });
+            builder.ConfigureServices(services =>
+            {
+                services.AddHostedService<ListenerService>();
+            });
+            return builder;
         }
     }
 }

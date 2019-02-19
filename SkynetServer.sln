@@ -34,7 +34,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{3252B458
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SkynetServer.Database.Tests", "tests\SkynetServer.Database.Tests\SkynetServer.Database.Tests.csproj", "{8C5F66CA-EEE8-4223-AE44-601B076CC167}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkynetServer.Protocol.Tests", "tests\SkynetServer.Protocol.Tests\SkynetServer.Protocol.Tests.csproj", "{159E952E-2E4A-45C3-936F-576FB5E1EF52}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docker", "docker", "{8C2BDEEF-6F6A-46F0-B8DA-75683A88C042}"
+	ProjectSection(SolutionItems) = preProject
+		docker\docker-compose.yml = docker\docker-compose.yml
+		docker\core\Dockerfile = docker\core\Dockerfile
+		docker\web\Dockerfile = docker\web\Dockerfile
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SkynetServer.Protocol.Tests", "tests\SkynetServer.Protocol.Tests\SkynetServer.Protocol.Tests.csproj", "{159E952E-2E4A-45C3-936F-576FB5E1EF52}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
