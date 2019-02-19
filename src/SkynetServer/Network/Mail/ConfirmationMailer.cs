@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -39,10 +40,12 @@ namespace SkynetServer.Network.Mail
             message.From.Add(new MailboxAddress(config.SenderName, config.SenderAddress));
             message.To.Add(new MailboxAddress(address));
             message.Subject = "Confirm your email address";
-            message.Body = new TextPart()
+            BodyBuilder builder = new BodyBuilder
             {
-                Text = config.ContentTemplate.Replace("$ADDRESS", address).Replace("$TOKEN", token)
+                TextBody = GetMailText().Replace("$ADDRESS", address).Replace("$TOKEN", token),
+                HtmlBody = GetMailHtml().Replace("$ADDRESS", address).Replace("$TOKEN", token)
             };
+            message.Body = builder.ToMessageBody();
 
             using (var client = new SmtpClient())
             {
@@ -96,6 +99,20 @@ namespace SkynetServer.Network.Mail
             {
                 return false;
             }
+        }
+
+        private static string GetMailText()
+        {
+            Stream stream = typeof(ConfirmationMailer).Assembly.GetManifestResourceStream("SkynetServer.Resources.email.txt");
+            using (StreamReader reader = new StreamReader(stream))
+                return reader.ReadToEnd();
+        }
+
+        private static string GetMailHtml()
+        {
+            Stream stream = typeof(ConfirmationMailer).Assembly.GetManifestResourceStream("SkynetServer.Resources.email.xhtml");
+            using (StreamReader reader = new StreamReader(stream))
+                return reader.ReadToEnd();
         }
     }
 }

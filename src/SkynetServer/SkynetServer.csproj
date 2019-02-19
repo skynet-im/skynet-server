@@ -26,4 +26,10 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Embedding binary files in RESX does not work on Linux -->
+    <EmbeddedResource Include="Resources\email.txt" />
+    <EmbeddedResource Include="Resources\email.xhtml" />
+  </ItemGroup>
+
 </Project>
