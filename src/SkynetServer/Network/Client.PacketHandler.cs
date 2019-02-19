@@ -215,10 +215,16 @@ namespace SkynetServer.Network
                         if (counterpart == null)
                         {
                             response.ErrorCode = CreateChannelError.InvalidCounterpart;
+                            await SendPacket(response);
+                            return;
                         }
                         else if (ctx.BlockedAccounts.Any(b => b.OwnerId == packet.CounterpartId && b.AccountId == Account.AccountId)
                                  || ctx.BlockedAccounts.Any(b => b.OwnerId == Account.AccountId && b.AccountId == packet.CounterpartId))
+                        {
                             response.ErrorCode = CreateChannelError.Blocked;
+                            await SendPacket(response);
+                            return;
+                        }
                         else
                         {
                             // TODO: Check whether a direct channel exists before and after inserting
@@ -236,56 +242,30 @@ namespace SkynetServer.Network
                             createAlice.ChannelId = channel.ChannelId;
                             createAlice.ChannelType = ChannelType.Direct;
                             createAlice.CounterpartId = packet.CounterpartId;
-                            await packet.SendTo(Account.AccountId, null);
+                            await createAlice.SendTo(Account.AccountId, this);
 
                             var createBob = Packet.New<P0ACreateChannel>();
                             createBob.ChannelId = channel.ChannelId;
                             createBob.ChannelType = ChannelType.Direct;
                             createBob.CounterpartId = Account.AccountId;
-                            await packet.SendTo(packet.CounterpartId, null);
+                            await createBob.SendTo(packet.CounterpartId, null);
 
                             response.ErrorCode = CreateChannelError.Success;
+                            response.ChannelId = channel.ChannelId;
+                            response.TempChannelId = packet.ChannelId;
+                            await SendPacket(response);
 
                             Task task = ForwardPublicKeys(channel, Account, counterpart);
                         }
                         break;
                     case ChannelType.Group:
-                        channel = await DatabaseHelper.AddChannel(new Channel
-                        {
-                            OwnerId = Account.AccountId,
-                            ChannelType = packet.ChannelType
-                        });
-
-                        response.ErrorCode = CreateChannelError.Success;
-                        break;
                     case ChannelType.ProfileData:
+                        throw new NotImplementedException();
                     case ChannelType.Loopback:
-                        if (ctx.Channels.Any(c => c.OwnerId == Account.AccountId && c.ChannelType == packet.ChannelType))
-                            response.ErrorCode = CreateChannelError.AlreadyExists;
-                        else
-                        {
-                            channel = await DatabaseHelper.AddChannel(new Channel
-                            {
-                                OwnerId = Account.AccountId,
-                                ChannelType = packet.ChannelType
-                            });
-
-                            ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = Account.AccountId });
-                            await ctx.SaveChangesAsync();
-
-                            response.ErrorCode = CreateChannelError.Success;
-                        }
-                        break;
+                        throw new ProtocolException("Loopback channels cannot be created manually");
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
-
-                if (channel != null)
-                {
-                    response.ChannelId = channel.ChannelId;
-                    response.TempChannelId = packet.ChannelId;
-                }
-                await SendPacket(response);
             }
         }
 
