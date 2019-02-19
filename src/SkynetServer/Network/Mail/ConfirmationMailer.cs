@@ -14,10 +14,20 @@ namespace SkynetServer.Network.Mail
 {
     internal class ConfirmationMailer
     {
+        private readonly MailConfig config;
+
+        public ConfirmationMailer()
+        {
+            config = Program.Configuration.Get<SkynetConfig>().MailConfig;
+        }
+
+        public ConfirmationMailer(MailConfig config)
+        {
+            this.config = config;
+        }
+
         public async Task SendMailAsync(string address, string token)
         {
-            MailConfig config = Program.Configuration.Get<SkynetConfig>().MailConfig;
-
             ValidationContext context = new ValidationContext(config);
             if (!Validator.TryValidateObject(config, context, null))
             {
