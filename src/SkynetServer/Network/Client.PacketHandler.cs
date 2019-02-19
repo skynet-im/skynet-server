@@ -236,13 +236,13 @@ namespace SkynetServer.Network
                             createAlice.ChannelId = channel.ChannelId;
                             createAlice.ChannelType = ChannelType.Direct;
                             createAlice.CounterpartId = packet.CounterpartId;
-                            await Program.SendAllExcept(packet, new[] { Account.AccountId }, null);
+                            await packet.SendTo(Account.AccountId, null);
 
                             var createBob = Packet.New<P0ACreateChannel>();
                             createBob.ChannelId = channel.ChannelId;
                             createBob.ChannelType = ChannelType.Direct;
                             createBob.CounterpartId = Account.AccountId;
-                            await Program.SendAllExcept(packet, new[] { packet.CounterpartId }, null);
+                            await packet.SendTo(packet.CounterpartId, null);
 
                             response.ErrorCode = CreateChannelError.Success;
 
@@ -404,7 +404,7 @@ namespace SkynetServer.Network
                 packet.SenderId = Account.AccountId;
                 packet.MessageId = entity.MessageId;
                 packet.DispatchTime = entity.DispatchTime;
-                await Program.SendAllExcept(packet, ctx.ChannelMembers
+                await packet.SendTo(ctx.ChannelMembers
                     .Where(m => m.ChannelId == packet.ChannelId).Select(m => m.AccountId), this);
             }
 

@@ -96,6 +96,20 @@ namespace SkynetServer.Network
             return target.SendPacket(packet);
         }
 
+        public static Task SendTo(this Packet packet, long accountId, Client exclude)
+        {
+            return Task.WhenAll(Program.Clients
+                .Where(c => c.Account != null && c.Account.AccountId == accountId && !ReferenceEquals(c, exclude))
+                .Select(c => c.SendPacket(packet)));
+        }
+
+        public static Task SendTo(this Packet packet, IEnumerable<long> accounts, Client exclude)
+        {
+            return Task.WhenAll(Program.Clients
+                .Where(c => c.Account != null && accounts.Contains(c.Account.AccountId) && !ReferenceEquals(c, exclude))
+                .Select(c => c.SendPacket(packet)));
+        }
+
         public static async Task<Message> GetLatestPublicKey(this Account account)
         {
             using (DatabaseContext ctx = new DatabaseContext())
