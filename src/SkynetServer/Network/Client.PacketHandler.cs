@@ -500,7 +500,8 @@ namespace SkynetServer.Network
             using (var ctx = new DatabaseContext())
             {
                 var results = ctx.MailConfirmations
-                    .Where(c => c.MailAddress.Contains(packet.Query)
+                    .Where(c => c.AccountId != Account.AccountId
+                        && c.MailAddress.Contains(packet.Query)
                         && c.ConfirmationTime != default) // Exclude unconfirmed accounts
                     .Take(100); // Limit to 100 entries
                 var response = Packet.New<P2ESearchAccountResponse>();

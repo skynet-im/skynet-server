@@ -4,6 +4,7 @@ using SkynetServer.Configuration;
 using SkynetServer.Network;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -48,7 +49,7 @@ namespace SkynetServer
                 LatestProductVersion = config.LatestProductVersion,
                 OldestProductVersion = config.OldestProductVersion,
                 RsaXmlKey = config.RsaXmlKey,
-                CatchApplicationExceptions = false
+                CatchApplicationExceptions = !Debugger.IsAttached
             };
 
             return new VSLListener(endPoints, settings, () => new Client());
