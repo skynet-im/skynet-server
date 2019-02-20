@@ -61,7 +61,11 @@ namespace SkynetServer.Network
                 ContentPacket = packet.ContentPacket
             };
 
-            await DatabaseHelper.AddMessage(message, packet.Dependencies.ToDatabase());
+            message = await DatabaseHelper.AddMessage(message, packet.Dependencies.ToDatabase());
+
+            packet.SenderId = message.SenderId ?? 0;
+            packet.MessageId = message.MessageId;
+            packet.DispatchTime = DateTime.SpecifyKind(message.DispatchTime, DateTimeKind.Utc);
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
@@ -85,7 +89,7 @@ namespace SkynetServer.Network
             packet.SenderId = message.SenderId ?? 0;
             packet.MessageId = message.MessageId;
             packet.SkipCount = 0; // TODO: Implement flags and skip count
-            packet.DispatchTime = message.DispatchTime;
+            packet.DispatchTime = DateTime.SpecifyKind(message.DispatchTime, DateTimeKind.Utc);
             packet.MessageFlags = message.MessageFlags;
             packet.FileId = 0; // Files are not implemented yet
             packet.Dependencies.AddRange(message.Dependencies.ToProtocol());

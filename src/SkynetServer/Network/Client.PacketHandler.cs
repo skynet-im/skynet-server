@@ -282,7 +282,6 @@ namespace SkynetServer.Network
                     P18PublicKeys forward = Packet.New<P18PublicKeys>();
                     forward.ChannelId = channel.ChannelId;
                     forward.SenderId = Account.AccountId;
-                    forward.DispatchTime = DateTime.Now;
                     forward.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
                     forward.Dependencies.Add(new Dependency(alice.AccountId, aliceGlobal.ChannelId, aliceGlobal.MessageId));
                     forward.ContentPacket = aliceGlobal.ContentPacket;
@@ -293,7 +292,6 @@ namespace SkynetServer.Network
                     P18PublicKeys forward = Packet.New<P18PublicKeys>();
                     forward.ChannelId = channel.ChannelId;
                     forward.SenderId = Account.AccountId;
-                    forward.DispatchTime = DateTime.Now;
                     forward.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
                     forward.Dependencies.Add(new Dependency(bob.AccountId, bobGlobal.ChannelId, bobGlobal.MessageId));
                     forward.ContentPacket = bobGlobal.ContentPacket;
@@ -375,14 +373,14 @@ namespace SkynetServer.Network
             response.ErrorCode = MessageSendError.Success;
             response.MessageId = entity.MessageId;
             // TODO: Implement skip count
-            response.DispatchTime = entity.DispatchTime;
+            response.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Utc);
             await SendPacket(response);
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
                 packet.SenderId = Account.AccountId;
                 packet.MessageId = entity.MessageId;
-                packet.DispatchTime = entity.DispatchTime;
+                packet.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Utc);
                 await packet.SendTo(ctx.ChannelMembers
                     .Where(m => m.ChannelId == packet.ChannelId).Select(m => m.AccountId), this);
             }
