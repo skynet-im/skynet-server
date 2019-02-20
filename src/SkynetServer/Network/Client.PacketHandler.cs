@@ -360,7 +360,6 @@ namespace SkynetServer.Network
             {
                 ChannelId = packet.ChannelId,
                 SenderId = Account.AccountId,
-                DispatchTime = DateTime.Now,
                 MessageFlags = packet.MessageFlags,
                 // TODO: Implement FileId
                 ContentPacketId = packet.ContentPacketId,

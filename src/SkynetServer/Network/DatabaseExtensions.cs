@@ -54,7 +54,6 @@ namespace SkynetServer.Network
                 ChannelId = channel.ChannelId,
                 SenderId = senderId,
                 // TODO: Implement skip count
-                DispatchTime = DateTime.Now,
                 MessageFlags = packet.MessageFlags,
                 // TODO: Implement FileId
                 ContentPacketId = packet.ContentPacketId,

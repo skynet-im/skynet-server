@@ -97,7 +97,7 @@ namespace SkynetServer.Cli.Commands
 
                     await AsyncParallel.ForAsync(0, MessageCount, i =>
                     {
-                        return DatabaseHelper.AddMessage(new Message() { ChannelId = channelId, SenderId = accountId, DispatchTime = DateTime.Now });
+                        return DatabaseHelper.AddMessage(new Message() { ChannelId = channelId, SenderId = accountId });
                     });
 
                     stopwatch.Stop();

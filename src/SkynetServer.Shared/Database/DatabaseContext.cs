@@ -37,6 +37,7 @@ namespace SkynetServer.Database
             channel.Property(c => c.ChannelId).ValueGeneratedNever();
             channel.Property(c => c.ChannelType).HasConversion<byte>();
             channel.Property(c => c.MessageIdCounter).IsConcurrencyToken();
+            channel.Property(c => c.CreationTime).HasDefaultValueSql("NOW()");
             channel.HasOne(c => c.Owner).WithMany(a => a.OwnedChannels).HasForeignKey(c => c.OwnerId);
 
             var channelMember = modelBuilder.Entity<ChannelMember>();
@@ -58,6 +59,7 @@ namespace SkynetServer.Database
             message.HasKey(m => new { m.ChannelId, m.MessageId });
             message.HasOne(m => m.Channel).WithMany(c => c.Messages).HasForeignKey(m => m.ChannelId);
             message.Property(m => m.MessageId).ValueGeneratedNever();
+            message.Property(m => m.DispatchTime).HasDefaultValueSql("NOW()");
             message.Property(m => m.MessageFlags).HasConversion<byte>();
 
             var messageDependency = modelBuilder.Entity<MessageDependency>();
