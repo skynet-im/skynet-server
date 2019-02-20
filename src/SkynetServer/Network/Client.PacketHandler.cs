@@ -373,14 +373,14 @@ namespace SkynetServer.Network
             response.ErrorCode = MessageSendError.Success;
             response.MessageId = entity.MessageId;
             // TODO: Implement skip count
-            response.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Utc);
+            response.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
             await SendPacket(response);
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
                 packet.SenderId = Account.AccountId;
                 packet.MessageId = entity.MessageId;
-                packet.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Utc);
+                packet.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
                 await packet.SendTo(ctx.ChannelMembers
                     .Where(m => m.ChannelId == packet.ChannelId).Select(m => m.AccountId), this);
             }
