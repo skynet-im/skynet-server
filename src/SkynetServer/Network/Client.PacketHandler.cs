@@ -166,7 +166,7 @@ namespace SkynetServer.Network
                         packet.OwnerId = channel.OwnerId ?? 0;
                         if (packet.ChannelType == ChannelType.Direct)
                             packet.CounterpartId = await ctx.ChannelMembers
-                                .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != channel.OwnerId)
+                                .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != Account.AccountId)
                                 .Select(m => m.AccountId).SingleAsync();
                         await SendPacket(packet);
                         currentState.Add((channel.ChannelId, 0));

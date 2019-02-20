@@ -79,7 +79,11 @@ namespace SkynetServer.Database
         {
             //optionsBuilder.UseLoggerFactory(new LoggerFactory(new[] { new ConsoleLoggerProvider((category, level) => level >= LogLevel.Information, false) }));
             optionsBuilder.EnableSensitiveDataLogging();
+#if DEBUG
             optionsBuilder.UseMySql("server=localhost;Port=3306;Database=Skynet;UID=root");
+#else
+            optionsBuilder.UseMySql("server=db;Port=3306;Database=Skynet;UID=root");
+#endif
         }
     }
 }
