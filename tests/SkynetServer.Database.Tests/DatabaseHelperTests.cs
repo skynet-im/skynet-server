@@ -91,7 +91,7 @@ namespace SkynetServer.Database.Tests
 
                 await AsyncParallel.ForAsync(0, 100, j =>
                 {
-                    Message message = new Message() { ChannelId = channel.ChannelId, DispatchTime = DateTime.Now };
+                    Message message = new Message() { ChannelId = channel.ChannelId };
                     return DatabaseHelper.AddMessage(message);
                 });
             });
@@ -106,7 +106,7 @@ namespace SkynetServer.Database.Tests
 
             await AsyncParallel.ForAsync(0, 100, async i =>
             {
-                Message message = new Message() { ChannelId = channel.ChannelId, DispatchTime = DateTime.Now };
+                Message message = new Message() { ChannelId = channel.ChannelId };
                 message = await DatabaseHelper.AddMessage(message);
                 if (previous != null)
                 {

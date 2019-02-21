@@ -10,6 +10,7 @@ namespace SkynetServer.Database.Entities
         public long ChannelId { get; set; }
         public ChannelType ChannelType { get; set; }
         public long MessageIdCounter { get; set; }
+        public DateTime CreationTime { get; set; }
 
         public long? OwnerId { get; set; }
         public Account Owner { get; set; }
