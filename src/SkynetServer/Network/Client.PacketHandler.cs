@@ -77,6 +77,13 @@ namespace SkynetServer.Network
                         passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
                         await loopback.SendMessage(passwordUpdate, account.AccountId);
 
+                        // Send email address
+                        var mailAddress = Packet.New<P14MailAddress>();
+                        mailAddress.MailAddress = await ctx.MailConfirmations.Where(c => c.AccountId == Account.AccountId)
+                            .Select(c => c.MailAddress).SingleAsync();
+                        mailAddress.MessageFlags = MessageFlags.Unencrypted;
+                        await accountData.SendMessage(mailAddress, account.AccountId);
+
                         await mail;
                         response.ErrorCode = CreateAccountError.Success;
                     }
