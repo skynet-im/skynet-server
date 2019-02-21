@@ -429,6 +429,8 @@ namespace SkynetServer.Network
                     return; // Not all messages can be saved, some return MessageSendError other than Success
             }
 
+            // TODO: Check if the account has the permission to send messages in this channel
+
             Message entity = new Message
             {
                 ChannelId = packet.ChannelId,

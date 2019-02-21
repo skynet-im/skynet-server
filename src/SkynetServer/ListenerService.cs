@@ -22,6 +22,7 @@ namespace SkynetServer
         {
             configuration = config;
             listener = CreateListener();
+            listener.CacheCapacity = 0;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
