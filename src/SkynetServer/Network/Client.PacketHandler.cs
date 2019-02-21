@@ -191,22 +191,40 @@ namespace SkynetServer.Network
                     await SendPacket(message.ToPacket());
                 }
 
-                // Send messages from direct channels
-                foreach (Channel channel in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
-                    .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c).Where(c => c.ChannelType == ChannelType.Direct))
+                // Send messages from account data channels
+                foreach (long channelId in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
+                    .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                    .Where(c => c.ChannelType == ChannelType.AccountData).Select(c => c.ChannelId))
                 {
-                    long lastMessage = currentState.Single(s => s.channelId == channel.ChannelId).messageId;
-                    foreach (Message message in ctx.Messages
-                        .Where(m => m.ChannelId == channel.ChannelId && m.MessageId > lastMessage)
-                        .Where(m => !m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == Account.AccountId)
-                        .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != Account.AccountId)
-                        .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
-                    {
-                        await SendPacket(message.ToPacket());
-                    }
+                    long lastMessage = currentState.Single(s => s.channelId == channelId).messageId;
+                    await SendMessages(channelId, lastMessage);
+                }
+
+                // Send messages from direct channels
+                foreach (long channelId in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
+                    .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                    .Where(c => c.ChannelType == ChannelType.Direct).Select(c => c.ChannelId))
+                {
+                    long lastMessage = currentState.Single(s => s.channelId == channelId).messageId;
+                    await SendMessages(channelId, lastMessage);
                 }
 
                 await SendPacket(Packet.New<P0FSyncFinished>());
+            }
+        }
+
+        private async Task SendMessages(long channelId, long lastMessage)
+        {
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                foreach (Message message in ctx.Messages
+                    .Where(m => m.ChannelId == channelId && m.MessageId > lastMessage)
+                    .Where(m => !m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == Account.AccountId)
+                    .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != Account.AccountId)
+                    .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
+                {
+                    await SendPacket(message.ToPacket());
+                }
             }
         }
 
@@ -270,7 +288,9 @@ namespace SkynetServer.Network
                             response.TempChannelId = packet.ChannelId;
                             await SendPacket(response);
 
-                            Task task = ForwardPublicKeys(channel, Account, counterpart);
+                            Task task1 = ForwardAccountChannels(Account, counterpart);
+                            // Forwarding public keys will not be necessary anymore when we fully switch to account data channels
+                            Task task2 = ForwardPublicKeys(channel, Account, counterpart);
                         }
                         break;
                     case ChannelType.Group:
