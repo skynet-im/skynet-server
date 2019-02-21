@@ -82,7 +82,7 @@ namespace SkynetServer.Network
             return message;
         }
 
-        public static Task SendTo(this Message message, Client target)
+        public static P0BChannelMessage ToPacket(this Message message)
         {
             var packet = Packet.New<P0BChannelMessage>();
             packet.ChannelId = message.ChannelId;
@@ -96,7 +96,7 @@ namespace SkynetServer.Network
             packet.ContentPacketId = message.ContentPacketId;
             packet.ContentPacketVersion = message.ContentPacketVersion;
             packet.ContentPacket = message.ContentPacket;
-            return target.SendPacket(packet);
+            return packet;
         }
 
         public static Task SendTo(this Packet packet, long accountId, Client exclude)

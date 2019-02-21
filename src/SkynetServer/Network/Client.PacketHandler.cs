@@ -55,19 +55,27 @@ namespace SkynetServer.Network
                     else
                     {
                         Task mail = new ConfirmationMailer().SendMailAsync(confirmation.MailAddress, confirmation.Token);
-                        Channel channel = await DatabaseHelper.AddChannel(new Channel()
+
+                        Channel loopback = await DatabaseHelper.AddChannel(new Channel
                         {
                             ChannelType = ChannelType.Loopback,
                             OwnerId = account.AccountId
                         });
-                        ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = account.AccountId });
+                        Channel accountData = await DatabaseHelper.AddChannel(new Channel
+                        {
+                            ChannelType = ChannelType.AccountData,
+                            OwnerId = account.AccountId
+                        });
+
+                        ctx.ChannelMembers.Add(new ChannelMember { ChannelId = loopback.ChannelId, AccountId = account.AccountId });
+                        ctx.ChannelMembers.Add(new ChannelMember { ChannelId = accountData.ChannelId, AccountId = account.AccountId });
                         await ctx.SaveChangesAsync();
 
                         // Send password update packet
                         var passwordUpdate = Packet.New<P15PasswordUpdate>();
                         passwordUpdate.KeyHash = packet.KeyHash;
                         passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
-                        await channel.SendMessage(passwordUpdate, account.AccountId);
+                        await loopback.SendMessage(passwordUpdate, account.AccountId);
 
                         await mail;
                         response.ErrorCode = CreateAccountError.Success;
@@ -180,7 +188,7 @@ namespace SkynetServer.Network
                     .Where(m => m.ChannelId == loopback.ChannelId && m.MessageId > lastLoopbackMessage)
                     .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
                 {
-                    await message.SendTo(this);
+                    await SendPacket(message.ToPacket());
                 }
 
                 // Send messages from direct channels
@@ -194,7 +202,7 @@ namespace SkynetServer.Network
                         .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != Account.AccountId)
                         .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
                     {
-                        await message.SendTo(this);
+                        await SendPacket(message.ToPacket());
                     }
                 }
 
@@ -272,6 +280,46 @@ namespace SkynetServer.Network
                         throw new ProtocolException("Loopback channels cannot be created manually");
                     default:
                         throw new ArgumentOutOfRangeException();
+                }
+            }
+        }
+
+        private async Task ForwardAccountChannels(Account alice, Account bob)
+        {
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                Channel aliceChannel = await ctx.Channels.SingleAsync(c => c.ChannelType == ChannelType.AccountData && c.OwnerId == alice.AccountId);
+                Channel bobChannel = await ctx.Channels.SingleAsync(c => c.ChannelType == ChannelType.AccountData && c.OwnerId == bob.AccountId);
+
+                ctx.ChannelMembers.Add(new ChannelMember { ChannelId = aliceChannel.ChannelId, AccountId = bob.AccountId });
+                ctx.ChannelMembers.Add(new ChannelMember { ChannelId = bobChannel.ChannelId, AccountId = alice.AccountId });
+                await ctx.SaveChangesAsync();
+
+                var createAlice = Packet.New<P0ACreateChannel>();
+                createAlice.ChannelId = bobChannel.ChannelId;
+                createAlice.ChannelType = ChannelType.AccountData;
+                await createAlice.SendTo(alice.AccountId, null);
+
+                var createBob = Packet.New<P0ACreateChannel>();
+                createBob.ChannelId = aliceChannel.ChannelId;
+                createBob.ChannelType = ChannelType.AccountData;
+                await createBob.SendTo(bob.AccountId, null);
+
+                await Task.WhenAll(SendAllMessages(bobChannel, alice), SendAllMessages(aliceChannel, bob));
+            }
+        }
+
+        private async Task SendAllMessages(Channel channel, Account account)
+        {
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                foreach (Message message in ctx.Messages
+                    .Where(m => m.ChannelId == channel.ChannelId)
+                    .Where(m => !m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == account.AccountId)
+                    .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != account.AccountId)
+                    .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
+                {
+                    await message.ToPacket().SendTo(account.AccountId, null);
                 }
             }
         }
