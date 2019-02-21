@@ -281,12 +281,14 @@ namespace SkynetServer.Network
                             var createAlice = Packet.New<P0ACreateChannel>();
                             createAlice.ChannelId = channel.ChannelId;
                             createAlice.ChannelType = ChannelType.Direct;
+                            createAlice.OwnerId = Account.AccountId;
                             createAlice.CounterpartId = packet.CounterpartId;
                             await createAlice.SendTo(Account.AccountId, this);
 
                             var createBob = Packet.New<P0ACreateChannel>();
                             createBob.ChannelId = channel.ChannelId;
                             createBob.ChannelType = ChannelType.Direct;
+                            createBob.OwnerId = Account.AccountId;
                             createBob.CounterpartId = Account.AccountId;
                             await createBob.SendTo(packet.CounterpartId, null);
 
@@ -325,11 +327,13 @@ namespace SkynetServer.Network
                 var createAlice = Packet.New<P0ACreateChannel>();
                 createAlice.ChannelId = bobChannel.ChannelId;
                 createAlice.ChannelType = ChannelType.AccountData;
+                createAlice.OwnerId = bob.AccountId;
                 await createAlice.SendTo(alice.AccountId, null);
 
                 var createBob = Packet.New<P0ACreateChannel>();
                 createBob.ChannelId = aliceChannel.ChannelId;
                 createBob.ChannelType = ChannelType.AccountData;
+                createBob.OwnerId = alice.AccountId;
                 await createBob.SendTo(bob.AccountId, null);
 
                 await Task.WhenAll(SendAllMessages(bobChannel, alice), SendAllMessages(aliceChannel, bob));
