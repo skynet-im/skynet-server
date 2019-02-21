@@ -211,23 +211,28 @@ namespace SkynetServer.Network
                 switch (packet.ChannelType)
                 {
                     case ChannelType.Direct:
-                        var counterpart = ctx.Accounts.SingleOrDefault(acc => acc.AccountId == packet.CounterpartId);
+                        var counterpart = await ctx.Accounts.SingleOrDefaultAsync(acc => acc.AccountId == packet.CounterpartId);
                         if (counterpart == null)
                         {
                             response.ErrorCode = CreateChannelError.InvalidCounterpart;
                             await SendPacket(response);
-                            return;
                         }
-                        else if (ctx.BlockedAccounts.Any(b => b.OwnerId == packet.CounterpartId && b.AccountId == Account.AccountId)
-                                 || ctx.BlockedAccounts.Any(b => b.OwnerId == Account.AccountId && b.AccountId == packet.CounterpartId))
+                        else if (await ctx.BlockedAccounts.AnyAsync(b => b.OwnerId == packet.CounterpartId && b.AccountId == Account.AccountId)
+                                 || await ctx.BlockedAccounts.AnyAsync(b => b.OwnerId == Account.AccountId && b.AccountId == packet.CounterpartId))
                         {
                             response.ErrorCode = CreateChannelError.Blocked;
                             await SendPacket(response);
-                            return;
+                        }
+                        else if (await ctx.ChannelMembers
+                            .Where(m => m.AccountId == Account.AccountId || m.AccountId == packet.CounterpartId)
+                            .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                            .Where(c => c.ChannelType == ChannelType.Direct).AnyAsync())
+                        {
+                            response.ErrorCode = CreateChannelError.AlreadyExists;
+                            await SendPacket(response);
                         }
                         else
                         {
-                            // TODO: Check whether a direct channel exists before and after inserting
                             channel = await DatabaseHelper.AddChannel(new Channel
                             {
                                 OwnerId = Account.AccountId,
@@ -237,6 +242,8 @@ namespace SkynetServer.Network
                             ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = Account.AccountId });
                             ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = packet.CounterpartId });
                             await ctx.SaveChangesAsync();
+
+                            // TODO: Check for existing direct channels and delete if another channel was created in the meantime
 
                             var createAlice = Packet.New<P0ACreateChannel>();
                             createAlice.ChannelId = channel.ChannelId;
