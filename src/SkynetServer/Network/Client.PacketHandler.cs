@@ -49,7 +49,7 @@ namespace SkynetServer.Network
                     response.ErrorCode = CreateAccountError.InvalidAccountName;
                 else
                 {
-                    (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount(packet.AccountName, packet.KeyHash);
+                    (var newAccount, var confirmation, bool success) = await DatabaseHelper.AddAccount(packet.AccountName, packet.KeyHash);
                     if (!success)
                         response.ErrorCode = CreateAccountError.AccountNameTaken;
                     else
@@ -59,30 +59,30 @@ namespace SkynetServer.Network
                         Channel loopback = await DatabaseHelper.AddChannel(new Channel
                         {
                             ChannelType = ChannelType.Loopback,
-                            OwnerId = account.AccountId
+                            OwnerId = newAccount.AccountId
                         });
                         Channel accountData = await DatabaseHelper.AddChannel(new Channel
                         {
                             ChannelType = ChannelType.AccountData,
-                            OwnerId = account.AccountId
+                            OwnerId = newAccount.AccountId
                         });
 
-                        ctx.ChannelMembers.Add(new ChannelMember { ChannelId = loopback.ChannelId, AccountId = account.AccountId });
-                        ctx.ChannelMembers.Add(new ChannelMember { ChannelId = accountData.ChannelId, AccountId = account.AccountId });
+                        ctx.ChannelMembers.Add(new ChannelMember { ChannelId = loopback.ChannelId, AccountId = newAccount.AccountId });
+                        ctx.ChannelMembers.Add(new ChannelMember { ChannelId = accountData.ChannelId, AccountId = newAccount.AccountId });
                         await ctx.SaveChangesAsync();
 
                         // Send password update packet
                         var passwordUpdate = Packet.New<P15PasswordUpdate>();
                         passwordUpdate.KeyHash = packet.KeyHash;
                         passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
-                        await loopback.SendMessage(passwordUpdate, account.AccountId);
+                        await loopback.SendMessage(passwordUpdate, newAccount.AccountId);
 
                         // Send email address
                         var mailAddress = Packet.New<P14MailAddress>();
-                        mailAddress.MailAddress = await ctx.MailConfirmations.Where(c => c.AccountId == Account.AccountId)
+                        mailAddress.MailAddress = await ctx.MailConfirmations.Where(c => c.AccountId == newAccount.AccountId)
                             .Select(c => c.MailAddress).SingleAsync();
                         mailAddress.MessageFlags = MessageFlags.Unencrypted;
-                        await accountData.SendMessage(mailAddress, account.AccountId);
+                        await accountData.SendMessage(mailAddress, newAccount.AccountId);
 
                         await mail;
                         response.ErrorCode = CreateAccountError.Success;
