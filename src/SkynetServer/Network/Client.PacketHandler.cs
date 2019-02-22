@@ -243,6 +243,10 @@ namespace SkynetServer.Network
                 var response = Packet.New<P2FCreateChannelResponse>();
                 switch (packet.ChannelType)
                 {
+                    case ChannelType.Loopback:
+                        throw new ProtocolException("Loopback channels cannot be created manually");
+                    case ChannelType.AccountData:
+                        throw new ProtocolException("Account data channels cannot be created manually");
                     case ChannelType.Direct:
                         var counterpart = await ctx.Accounts.SingleOrDefaultAsync(acc => acc.AccountId == packet.CounterpartId);
                         if (counterpart == null)
@@ -251,15 +255,17 @@ namespace SkynetServer.Network
                             await SendPacket(response);
                         }
                         else if (await ctx.BlockedAccounts.AnyAsync(b => b.OwnerId == packet.CounterpartId && b.AccountId == Account.AccountId)
-                                 || await ctx.BlockedAccounts.AnyAsync(b => b.OwnerId == Account.AccountId && b.AccountId == packet.CounterpartId))
+                            || await ctx.BlockedAccounts.AnyAsync(b => b.OwnerId == Account.AccountId && b.AccountId == packet.CounterpartId))
                         {
                             response.ErrorCode = CreateChannelError.Blocked;
                             await SendPacket(response);
                         }
-                        else if (await ctx.ChannelMembers
-                            .Where(m => m.AccountId == Account.AccountId || m.AccountId == packet.CounterpartId)
-                            .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                            .Where(c => c.ChannelType == ChannelType.Direct).AnyAsync())
+                        else if (await ctx.ChannelMembers.Where(m => m.AccountId == packet.CounterpartId)
+                            .Join(ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
+                                .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                                .Where(c => c.ChannelType == ChannelType.Direct),
+                                m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                            .AnyAsync())
                         {
                             response.ErrorCode = CreateChannelError.AlreadyExists;
                             await SendPacket(response);
@@ -305,8 +311,6 @@ namespace SkynetServer.Network
                     case ChannelType.Group:
                     case ChannelType.ProfileData:
                         throw new NotImplementedException();
-                    case ChannelType.Loopback:
-                        throw new ProtocolException("Loopback channels cannot be created manually");
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
