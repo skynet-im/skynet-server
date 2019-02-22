@@ -241,6 +241,8 @@ namespace SkynetServer.Network
             {
                 Channel channel = null;
                 var response = Packet.New<P2FCreateChannelResponse>();
+                response.TempChannelId = packet.ChannelId;
+
                 switch (packet.ChannelType)
                 {
                     case ChannelType.Loopback:
@@ -300,7 +302,6 @@ namespace SkynetServer.Network
 
                             response.ErrorCode = CreateChannelError.Success;
                             response.ChannelId = channel.ChannelId;
-                            response.TempChannelId = packet.ChannelId;
                             await SendPacket(response);
 
                             Task task1 = ForwardAccountChannels(Account, counterpart);
