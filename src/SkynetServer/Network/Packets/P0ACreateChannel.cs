@@ -36,5 +36,10 @@ namespace SkynetServer.Network.Packets
             if (ChannelType == ChannelType.Direct)
                 buffer.WriteLong(CounterpartId);
         }
+
+        public override string ToString()
+        {
+            return $"{{{nameof(P0ACreateChannel)}: ChannelId={ChannelId:x8} Type={ChannelType} Owner={OwnerId:x8} Counterpart={CounterpartId.ToString("x8")}}}";
+        }
     }
 }

@@ -55,14 +55,14 @@ namespace SkynetServer.Network
             if (Session != null && packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
                 throw new ProtocolException($"Authorized clients cannot send packet {id}");
 
-            Console.WriteLine($"Starting to handle packet {packet}");
-
             Packet instance = packet.Create();
 
             using (var buffer = PacketBuffer.CreateStatic(content))
             {
                 instance.ReadPacket(buffer);
             }
+
+            Console.WriteLine($"Starting to handle packet {packet}");
 
             await instance.Handle(this);
         }

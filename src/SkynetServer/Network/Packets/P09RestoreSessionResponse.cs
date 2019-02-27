@@ -25,5 +25,10 @@ namespace SkynetServer.Network.Packets
         {
             buffer.WriteByte((byte)ErrorCode);
         }
+
+        public override string ToString()
+        {
+            return $"{{{nameof(P09RestoreSessionResponse)}: ErrorCode={ErrorCode}}}";
+        }
     }
 }

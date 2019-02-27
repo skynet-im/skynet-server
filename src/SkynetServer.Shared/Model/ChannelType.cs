@@ -7,6 +7,7 @@ namespace SkynetServer.Model
     public enum ChannelType : byte
     {
         Loopback,
+        AccountData,
         Direct,
         Group,
         ProfileData

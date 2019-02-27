@@ -26,5 +26,10 @@ namespace SkynetServer.Network.Packets
             buffer.WriteByte((byte)ErrorCode);
             buffer.WriteLong(ChannelId);
         }
+
+        public override string ToString()
+        {
+            return $"{{{nameof(P2FCreateChannelResponse)}: TempId={TempChannelId:x8} ErrorCode={ErrorCode} ChannelId={ChannelId.ToString("x8")}}}";
+        }
     }
 }

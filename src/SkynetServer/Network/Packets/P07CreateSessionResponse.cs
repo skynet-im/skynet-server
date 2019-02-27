@@ -29,5 +29,10 @@ namespace SkynetServer.Network.Packets
             buffer.WriteLong(SessionId);
             buffer.WriteByte((byte)ErrorCode);
         }
+
+        public override string ToString()
+        {
+            return $"{{{nameof(P07CreateSessionResponse)}: ErrorCode={ErrorCode}}}";
+        }
     }
 }
