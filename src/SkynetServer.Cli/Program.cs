@@ -2,22 +2,26 @@
 using SkynetServer.Cli.Commands;
 using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace SkynetServer.Cli
 {
     internal static class Program
     {
-        static int Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
             if (Debugger.IsAttached)
             {
-                args = new string[] { };
-                int result = CommandLineApplication.Execute<SkynetCommand>(args);
+                Console.Write("Skynet CLI is running in debug mode. Please enter your command: ");
+                args = Console.ReadLine().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                Console.WriteLine();
+                int result = await CommandLineApplication.ExecuteAsync<SkynetCommand>(args);
+                Console.WriteLine();
                 Console.WriteLine("Press any key to exit...");
                 Console.ReadKey(true);
                 return result;
             }
-            else return CommandLineApplication.Execute<SkynetCommand>(args);
+            else return await CommandLineApplication.ExecuteAsync<SkynetCommand>(args);
         }
     }
 }
