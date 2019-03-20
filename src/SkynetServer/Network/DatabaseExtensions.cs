@@ -123,7 +123,8 @@ namespace SkynetServer.Network
                     if (client.Session.AccountId == session.AccountId && client.Session.SessionId == session.SessionId)
                     {
                         found = true;
-                        await client.SendPacket(packet);
+                        if (!ReferenceEquals(client, exclude))
+                            await client.SendPacket(packet);
                         break;
                     }
                 }
