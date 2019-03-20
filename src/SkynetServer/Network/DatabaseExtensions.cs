@@ -2,12 +2,12 @@
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
+using SkynetServer.Network.Fcm;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using VSL;
 
@@ -111,6 +111,32 @@ namespace SkynetServer.Network
             return Task.WhenAll(Program.Clients
                 .Where(c => c.Account != null && accounts.Contains(c.Account.AccountId) && !ReferenceEquals(c, exclude))
                 .Select(c => c.SendPacket(packet)));
+        }
+
+        public static Task SendOrNotify(this Packet packet, IEnumerable<Session> sessions, DatabaseContext ctx, Client exclude)
+        {
+            return Task.WhenAll(sessions.Select(async session =>
+            {
+                bool found = false;
+                foreach (Client client in Program.Clients)
+                {
+                    if (client.Session.AccountId == session.AccountId && client.Session.SessionId == session.SessionId)
+                    {
+                        found = true;
+                        await client.SendPacket(packet);
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    if (!string.IsNullOrWhiteSpace(session.FcmToken) && session.LastFcmMessage < session.LastConnected)
+                    {
+                        await new FcmClient().SendAsync(session.FcmToken);
+                        session.LastFcmMessage = DateTime.Now;
+                        await ctx.SaveChangesAsync();
+                    }
+                }
+            }));
         }
 
         public static async Task<Message> GetLatestPublicKey(this Account account)

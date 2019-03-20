@@ -113,7 +113,7 @@ namespace SkynetServer.Network
                     Session = await DatabaseHelper.AddSession(new Session
                     {
                         AccountId = confirmation.AccountId,
-                        ApplicationIdentifier = applicationIdentifier,
+                        AppIdentifier = applicationIdentifier,
                         CreationTime = DateTime.Now,
                         LastConnected = DateTime.Now,
                         LastVersionCode = versionCode,
@@ -150,6 +150,8 @@ namespace SkynetServer.Network
                         response.ErrorCode = RestoreSessionError.InvalidSession;
                     else
                     {
+                        Session.LastConnected = DateTime.Now;
+                        await ctx.SaveChangesAsync();
                         Account = accountCandidate;
                         response.ErrorCode = RestoreSessionError.Success;
                         await SendPacket(response);
@@ -474,8 +476,10 @@ namespace SkynetServer.Network
                 packet.SenderId = Account.AccountId;
                 packet.MessageId = entity.MessageId;
                 packet.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
-                await packet.SendTo(ctx.ChannelMembers
-                    .Where(m => m.ChannelId == packet.ChannelId).Select(m => m.AccountId), this);
+                IEnumerable<Session> sessions = ctx.ChannelMembers
+                    .Where(m => m.ChannelId == packet.ChannelId)
+                    .Join(ctx.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s);
+                await packet.SendOrNotify(sessions, ctx, exclude: this);
             }
 
             await packet.PostHandling(this, entity);
