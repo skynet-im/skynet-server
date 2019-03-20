@@ -476,10 +476,21 @@ namespace SkynetServer.Network
                 packet.SenderId = Account.AccountId;
                 packet.MessageId = entity.MessageId;
                 packet.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
-                IEnumerable<Session> sessions = ctx.ChannelMembers
-                    .Where(m => m.ChannelId == packet.ChannelId)
-                    .Join(ctx.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s);
-                await packet.SendOrNotify(sessions, ctx, exclude: this);
+
+                if (packet.ContentPacketId == 0x20)
+                {
+                    IEnumerable<Session> sessions = ctx.ChannelMembers
+                        .Where(m => m.ChannelId == packet.ChannelId)
+                        .Join(ctx.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s);
+                    await packet.SendOrNotify(sessions, ctx, exclude: this);
+                }
+                else
+                {
+                    IEnumerable<long> accounts = ctx.ChannelMembers
+                        .Where(m => m.ChannelId == packet.ChannelId)
+                        .Select(m => m.AccountId);
+                    await packet.SendTo(accounts, exclude: this);
+                }
             }
 
             await packet.PostHandling(this, entity);
