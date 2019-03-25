@@ -132,9 +132,16 @@ namespace SkynetServer.Network
                 {
                     if (!string.IsNullOrWhiteSpace(session.FcmToken) && session.LastFcmMessage < session.LastConnected)
                     {
-                        await new FcmClient().SendAsync(session.FcmToken);
-                        session.LastFcmMessage = DateTime.Now;
-                        await ctx.SaveChangesAsync();
+                        try
+                        {
+                            await new FcmClient().SendAsync(session.FcmToken);
+                            session.LastFcmMessage = DateTime.Now;
+                            await ctx.SaveChangesAsync();
+                        }
+                        catch (FcmSharp.Exceptions.FcmMessageException)
+                        {
+                            Console.WriteLine($"Failed to send FCM message to {session.FcmToken.Remove(16)}...");
+                        }
                     }
                 }
             }));

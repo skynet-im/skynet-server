@@ -28,6 +28,7 @@ namespace SkynetServer.Network.Fcm
                     {
                         Priority = AndroidMessagePriorityEnum.HIGH
                     },
+                    Data = new Dictionary<string, string> { { "Action", "FetchMessages" } },
                     Token = token
                 }
             };
