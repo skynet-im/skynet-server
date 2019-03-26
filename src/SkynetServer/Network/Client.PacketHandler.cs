@@ -481,7 +481,7 @@ namespace SkynetServer.Network
                     IEnumerable<Session> sessions = ctx.ChannelMembers
                         .Where(m => m.ChannelId == packet.ChannelId)
                         .Join(ctx.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s);
-                    await packet.SendOrNotify(sessions, exclude: this);
+                    await packet.SendOrNotify(sessions, exclude: this, excludeFcm: Account.AccountId);
                 }
                 else
                 {

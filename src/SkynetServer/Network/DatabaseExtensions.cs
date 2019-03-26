@@ -113,7 +113,7 @@ namespace SkynetServer.Network
                 .Select(c => c.SendPacket(packet)));
         }
 
-        public static Task SendOrNotify(this Packet packet, IEnumerable<Session> sessions, Client exclude)
+        public static Task SendOrNotify(this Packet packet, IEnumerable<Session> sessions, Client exclude, long excludeFcm)
         {
             return Task.WhenAll(sessions.Select(async session =>
             {
@@ -132,7 +132,9 @@ namespace SkynetServer.Network
                 }
                 if (!found)
                 {
-                    if (!string.IsNullOrWhiteSpace(session.FcmToken) && session.LastFcmMessage < session.LastConnected)
+                    if (session.AccountId != excludeFcm
+                        && !string.IsNullOrWhiteSpace(session.FcmToken)
+                        && session.LastFcmMessage < session.LastConnected)
                     {
                         try
                         {
