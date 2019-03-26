@@ -5,7 +5,6 @@ using SkynetServer.Threading;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using Wiry.Base32;
 
@@ -46,8 +45,7 @@ namespace SkynetServer.Database.Tests
                     Session session = new Session()
                     {
                         AccountId = account.AccountId,
-                        AppIdentifier = "windows/SkynetServer.Database.Tests",
-                        CreationTime = DateTime.Now
+                        AppIdentifier = "windows/SkynetServer.Database.Tests"
                     };
                     return DatabaseHelper.AddSession(session);
                 });

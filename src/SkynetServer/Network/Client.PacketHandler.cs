@@ -114,7 +114,6 @@ namespace SkynetServer.Network
                     {
                         AccountId = confirmation.AccountId,
                         AppIdentifier = applicationIdentifier,
-                        CreationTime = DateTime.Now,
                         LastConnected = DateTime.Now,
                         LastVersionCode = versionCode,
                         FcmToken = packet.FcmRegistrationToken
@@ -482,7 +481,7 @@ namespace SkynetServer.Network
                     IEnumerable<Session> sessions = ctx.ChannelMembers
                         .Where(m => m.ChannelId == packet.ChannelId)
                         .Join(ctx.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s);
-                    await packet.SendOrNotify(sessions, ctx, exclude: this);
+                    await packet.SendOrNotify(sessions, exclude: this);
                 }
                 else
                 {

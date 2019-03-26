@@ -113,7 +113,7 @@ namespace SkynetServer.Network
                 .Select(c => c.SendPacket(packet)));
         }
 
-        public static Task SendOrNotify(this Packet packet, IEnumerable<Session> sessions, DatabaseContext ctx, Client exclude)
+        public static Task SendOrNotify(this Packet packet, IEnumerable<Session> sessions, Client exclude)
         {
             return Task.WhenAll(sessions.Select(async session =>
             {
@@ -137,8 +137,14 @@ namespace SkynetServer.Network
                         try
                         {
                             await new FcmClient().SendAsync(session.FcmToken);
-                            session.LastFcmMessage = DateTime.Now;
-                            await ctx.SaveChangesAsync();
+
+                            // Use a separate context to save changes asynchronously for multiple sessions
+                            using (DatabaseContext ctx = new DatabaseContext())
+                            {
+                                session.LastFcmMessage = DateTime.Now;
+                                ctx.Entry(session).Property(s => s.LastFcmMessage).IsModified = true;
+                                await ctx.SaveChangesAsync();
+                            }
                         }
                         catch (FcmSharp.Exceptions.FcmMessageException)
                         {
