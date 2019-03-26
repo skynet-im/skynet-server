@@ -120,7 +120,9 @@ namespace SkynetServer.Network
                 bool found = false;
                 foreach (Client client in Program.Clients)
                 {
-                    if (client.Session.AccountId == session.AccountId && client.Session.SessionId == session.SessionId)
+                    if (client.Session != null
+                        && client.Session.AccountId == session.AccountId
+                        && client.Session.SessionId == session.SessionId)
                     {
                         found = true;
                         if (!ReferenceEquals(client, exclude))
