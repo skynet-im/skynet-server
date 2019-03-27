@@ -40,6 +40,7 @@ namespace SkynetServer.Web
                 app.UseExceptionHandler("/Error");
             }
 
+            app.UseStatusCodePagesWithReExecute("/Status/{0}");
             app.UseStaticFiles();
             app.UseMvc();
         }
