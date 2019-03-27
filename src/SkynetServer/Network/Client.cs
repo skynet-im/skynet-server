@@ -45,24 +45,24 @@ namespace SkynetServer.Network
             if (id >= Packet.Packets.Length)
                 throw new ProtocolException($"Invalid packet ID {id}");
 
-            Packet packet = Packet.Packets[id];
-            if (packet == null || !packet.Policy.HasFlag(PacketPolicy.Receive))
+            Packet prototype = Packet.Packets[id];
+            if (prototype == null || !prototype.Policy.HasFlag(PacketPolicy.Receive))
                 throw new ProtocolException($"Cannot receive packet {id}");
 
-            if (Session == null && !packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
+            if (Session == null && !prototype.Policy.HasFlag(PacketPolicy.Unauthenticated))
                 throw new ProtocolException($"Unauthorized packet {id}");
 
-            if (Session != null && packet.Policy.HasFlag(PacketPolicy.Unauthenticated))
+            if (Session != null && prototype.Policy.HasFlag(PacketPolicy.Unauthenticated))
                 throw new ProtocolException($"Authorized clients cannot send packet {id}");
 
-            Packet instance = packet.Create();
+            Packet instance = prototype.Create();
 
             using (var buffer = PacketBuffer.CreateStatic(content))
             {
                 instance.ReadPacket(buffer);
             }
 
-            Console.WriteLine($"Starting to handle packet {packet}");
+            Console.WriteLine($"Starting to handle packet {instance}");
 
             await instance.Handle(this);
         }

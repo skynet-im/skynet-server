@@ -146,6 +146,7 @@ namespace SkynetServer.Network
                                 session.LastFcmMessage = DateTime.Now;
                                 ctx.Entry(session).Property(s => s.LastFcmMessage).IsModified = true;
                                 await ctx.SaveChangesAsync();
+                                Console.WriteLine($"Successfully sent FCM message to {session.FcmToken.Remove(16)} last connected {session.LastConnected}");
                             }
                         }
                         catch (FcmSharp.Exceptions.FcmMessageException)
