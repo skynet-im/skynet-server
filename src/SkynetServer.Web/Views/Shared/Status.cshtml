@@ -3,7 +3,7 @@
     ViewData["Title"] = $"{Model.StatusCode} {Model.StatusDescription}";
 }
 
-<h2>@Model.StatusCode @Model.StatusDescription</h2>
+<h2>Error @Model.StatusCode - @Model.StatusDescription</h2>
 
 @if (Model.StatusCode == 404)
 {

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using SkynetServer.Web.Models;
 
 namespace SkynetServer.Web.Controllers
@@ -14,8 +15,11 @@ namespace SkynetServer.Web.Controllers
         [HttpGet("{statusCode}")]
         public IActionResult Get(int statusCode)
         {
-            
-            return View("Status", new StatusViewModel { StatusCode = statusCode, StatusDescription = ((HttpStatusCode)statusCode).ToString() });
+            return View("Status", new StatusViewModel
+            {
+                StatusCode = statusCode,
+                StatusDescription = ReasonPhrases.GetReasonPhrase(statusCode)
+            });
         }
     }
 }
