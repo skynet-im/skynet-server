@@ -1,0 +1,11 @@
+﻿@model StatusViewModel
+@{
+    ViewData["Title"] = $"{Model.StatusCode} {Model.StatusDescription}";
+}
+
+<h2>Error @Model.StatusCode - @Model.StatusDescription</h2>
+
+@if (Model.StatusCode == 404)
+{
+    <p>We could not find the page you were looking for.</p>
+}
