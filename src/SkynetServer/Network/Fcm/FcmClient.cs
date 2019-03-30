@@ -1,8 +1,6 @@
 ﻿using FcmSharp.Requests;
-using FcmSharp.Settings;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 using FcmSharpClient = FcmSharp.FcmClient;
 
@@ -14,8 +12,7 @@ namespace SkynetServer.Network.Fcm
 
         public FcmClient()
         {
-            FcmClientSettings settings = FileBasedFcmClientSettings.CreateFromFile("firebase-service-account.json");
-            client = new FcmSharpClient(settings);
+            client = new FcmSharpClient(Program.FcmSettings);
         }
 
         public Task SendAsync(string token)

@@ -62,10 +62,10 @@ namespace SkynetServer.Cli.Commands
         [HelpOption]
         internal class Benchmark
         {
-            [Option(CommandOptionType.SingleValue, Description = "Count of accounts to insert")]
+            [Option(CommandOptionType.SingleValue, Description = "Number of accounts to insert")]
             public int AccountCount { get; set; } = 50;
 
-            [Option(CommandOptionType.SingleValue, Description = "Count of messages to insert")]
+            [Option(CommandOptionType.SingleValue, Description = "Number of messages to insert")]
             public int MessageCount { get; set; } = 100;
 
             private async Task OnExecute(IConsole console)
