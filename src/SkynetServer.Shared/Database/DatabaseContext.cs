@@ -29,8 +29,9 @@ namespace SkynetServer.Database
             var session = modelBuilder.Entity<Session>();
             session.HasKey(s => new { s.AccountId, s.SessionId });
             session.HasOne(s => s.Account).WithMany(a => a.Sessions).HasForeignKey(s => s.AccountId);
+            session.Property(s => s.CreationTime).HasDefaultValueSql("NOW()");
             session.Property(s => s.SessionId).ValueGeneratedNever();
-            session.Property(s => s.ApplicationIdentifier).IsRequired();
+            session.Property(s => s.AppIdentifier).IsRequired();
 
             var channel = modelBuilder.Entity<Channel>();
             channel.HasKey(c => c.ChannelId);

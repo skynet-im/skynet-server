@@ -2,19 +2,19 @@
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SkynetServer.Cli.Commands
 {
     [Command("account")]
     [Subcommand(typeof(Create), typeof(Confirm))]
-    internal class AccountCommand : CommandBase
+    [HelpOption]
+    internal class AccountCommand
     {
         [Command("create")]
-        internal class Create : CommandBase
+        [HelpOption]
+        internal class Create
         {
             [Argument(0)]
             public string AccountName { get; set; }
@@ -42,7 +42,8 @@ namespace SkynetServer.Cli.Commands
         }
 
         [Command("confirm")]
-        internal class Confirm : CommandBase
+        [HelpOption]
+        internal class Confirm
         {
             [Argument(0)]
             public string MailAddress { get; set; }

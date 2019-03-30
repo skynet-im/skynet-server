@@ -1,13 +1,10 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
-using Microsoft.EntityFrameworkCore;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Threading;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using Wiry.Base32;
 
@@ -15,7 +12,8 @@ namespace SkynetServer.Cli.Commands
 {
     [Command("database")]
     [Subcommand(typeof(Create), typeof(Delete), typeof(Benchmark))]
-    internal class DatabaseCommand : CommandBase
+    [HelpOption]
+    internal class DatabaseCommand
     {
         private int OnExecute(CommandLineApplication app)
         {
@@ -23,20 +21,30 @@ namespace SkynetServer.Cli.Commands
             return 1;
         }
 
-        [Command("create")]
-        internal class Create : CommandBase
+        [Command("create", Description = "Creates the database if it does not exist")]
+        [HelpOption]
+        internal class Create
         {
+            [Option(Description = "Forces a recreation of the database")]
+            public bool Force { get; set; }
+
             private void OnExecute()
             {
                 using (DatabaseContext ctx = new DatabaseContext())
                 {
+                    if (Force && Prompt.GetYesNo("Do you really want to delete the Skynet database?", false))
+                    {
+                        ctx.Database.EnsureDeleted();
+                    }
+
                     ctx.Database.EnsureCreated();
                 }
             }
         }
 
         [Command("delete")]
-        internal class Delete : CommandBase
+        [HelpOption]
+        internal class Delete
         {
             private void OnExecute()
             {
@@ -51,12 +59,13 @@ namespace SkynetServer.Cli.Commands
         }
 
         [Command("benchmark")]
-        internal class Benchmark : CommandBase
+        [HelpOption]
+        internal class Benchmark
         {
-            [Option(CommandOptionType.SingleValue, Description = "Count of accounts to insert")]
+            [Option(CommandOptionType.SingleValue, Description = "Number of accounts to insert")]
             public int AccountCount { get; set; } = 50;
 
-            [Option(CommandOptionType.SingleValue, Description = "Count of messages to insert")]
+            [Option(CommandOptionType.SingleValue, Description = "Number of messages to insert")]
             public int MessageCount { get; set; } = 100;
 
             private async Task OnExecute(IConsole console)
