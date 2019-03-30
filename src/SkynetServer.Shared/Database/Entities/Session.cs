@@ -11,7 +11,7 @@ namespace SkynetServer.Database.Entities
 
         public long SessionId { get; set; }
         public DateTime CreationTime { get; set; }
-        public string AppIdentifier { get; set; }
+        public string ApplicationIdentifier { get; set; }
         public string FcmToken { get; set; }
         public DateTime LastFcmMessage { get; set; }
         public DateTime LastConnected { get; set; }

@@ -45,7 +45,7 @@ namespace SkynetServer.Database.Tests
                     Session session = new Session()
                     {
                         AccountId = account.AccountId,
-                        AppIdentifier = "windows/SkynetServer.Database.Tests"
+                        ApplicationIdentifier = "windows/SkynetServer.Database.Tests"
                     };
                     return DatabaseHelper.AddSession(session);
                 });
