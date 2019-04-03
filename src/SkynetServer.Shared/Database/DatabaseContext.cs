@@ -31,7 +31,7 @@ namespace SkynetServer.Database
             session.HasOne(s => s.Account).WithMany(a => a.Sessions).HasForeignKey(s => s.AccountId);
             session.Property(s => s.CreationTime).HasDefaultValueSql("NOW()");
             session.Property(s => s.SessionId).ValueGeneratedNever();
-            session.Property(s => s.AppIdentifier).IsRequired();
+            session.Property(s => s.ApplicationIdentifier).IsRequired();
 
             var channel = modelBuilder.Entity<Channel>();
             channel.HasKey(c => c.ChannelId);
