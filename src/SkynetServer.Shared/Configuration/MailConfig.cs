@@ -5,7 +5,7 @@ using System.Text;
 
 namespace SkynetServer.Configuration
 {
-    internal class MailConfig
+    public class MailConfig
     {
         [Required] public string SenderName { get; set; }
         [Required] public string SenderAddress { get; set; }

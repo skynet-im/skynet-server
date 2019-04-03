@@ -9,6 +9,8 @@ namespace SkynetServer.Database
 {
     public class DatabaseContext : DbContext
     {
+        public static string ConnectionString { get; set; }
+
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Session> Sessions { get; set; }
         public DbSet<Channel> Channels { get; set; }
@@ -80,11 +82,7 @@ namespace SkynetServer.Database
         {
             //optionsBuilder.UseLoggerFactory(new LoggerFactory(new[] { new ConsoleLoggerProvider((category, level) => level >= LogLevel.Information, false) }));
             optionsBuilder.EnableSensitiveDataLogging();
-#if DEBUG
-            optionsBuilder.UseMySql("server=localhost;Port=3306;Database=Skynet;UID=root");
-#else
-            optionsBuilder.UseMySql("server=db;Port=3306;Database=Skynet;UID=root");
-#endif
+            optionsBuilder.UseMySql(ConnectionString);
         }
     }
 }

@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SkynetServer.Configuration;
+using SkynetServer.Database;
 using SkynetServer.Network;
 using System;
 using System.Collections.Generic;
@@ -23,6 +25,8 @@ namespace SkynetServer
             Configuration = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
+
+            DatabaseContext.ConnectionString = Configuration.Get<SkynetConfig>().DbConnectionString;
 
             Clients = ImmutableList.Create<Client>();
 

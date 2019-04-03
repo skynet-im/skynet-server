@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SkynetServer.Configuration
 {
-    internal class VslConfig
+    public class VslConfig
     {
         public ushort TcpPort { get; set; }
         public ushort LatestProductVersion { get; set; }

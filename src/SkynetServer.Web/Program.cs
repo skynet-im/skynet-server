@@ -7,6 +7,8 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using SkynetServer.Configuration;
+using SkynetServer.Database;
 
 namespace SkynetServer.Web
 {
@@ -14,6 +16,12 @@ namespace SkynetServer.Web
     {
         public static void Main(string[] args)
         {
+            var configuration = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .Build();
+
+            DatabaseContext.ConnectionString = configuration.Get<SkynetConfig>().DbConnectionString;
+
             CreateWebHostBuilder(args).Build().Run();
         }
 
