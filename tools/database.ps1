@@ -37,19 +37,23 @@ function Start-DbServer {
 	if ($execPath) {
 		Start-Process -FilePath $execPath -ArgumentList "--standalone","--transaction-isolation=READ-COMMITTED"
 	}
+	$execPath = AssertExistsAndRunning mysqladmin.exe
+	if ($execPath) {
+		Start-Process -FilePath $execPath -ArgumentList "-uroot","password root"
+	}
 }
 
 function Stop-DbServer {
 	$execPath = AssertExistsAndRunning mysqladmin.exe
 	if ($execPath) {
-		Start-Process -FilePath $execPath -ArgumentList "-u root","shutdown"
+		Start-Process -FilePath $execPath -ArgumentList "-uroot","-proot","shutdown"
 	}
 }
 
 function Start-DbCli {
 	$execPath = AssertExistsAndRunning mysql.exe
 	if ($execPath) {
-		Start-Process -FilePath "cmd.exe" -ArgumentList "/c ""$execPath"" -u root Skynet" -WindowStyle Normal
+		Start-Process -FilePath "cmd.exe" -ArgumentList "/c ""$execPath"" -uroot -proot Skynet" -WindowStyle Normal
 	}
 }
 
