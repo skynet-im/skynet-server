@@ -3,7 +3,7 @@
 trigger:
   batch: false
   branches:
-    include: master
+    include: [ 'master' ]
 
 pr:
   autoCancel: true
