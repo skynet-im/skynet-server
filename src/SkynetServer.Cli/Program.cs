@@ -24,13 +24,8 @@ namespace SkynetServer.Cli
                 Console.Write("Skynet CLI is running in debug mode. Please enter your command: ");
                 args = Console.ReadLine().Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 Console.WriteLine();
-                int result = await CommandLineApplication.ExecuteAsync<SkynetCommand>(args);
-                Console.WriteLine();
-                Console.WriteLine("Press any key to exit...");
-                Console.ReadKey(true);
-                return result;
             }
-            else return await CommandLineApplication.ExecuteAsync<SkynetCommand>(args);
+            return await CommandLineApplication.ExecuteAsync<SkynetCommand>(args);
         }
     }
 }

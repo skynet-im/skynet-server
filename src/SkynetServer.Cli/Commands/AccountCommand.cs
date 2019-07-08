@@ -12,6 +12,12 @@ namespace SkynetServer.Cli.Commands
     [HelpOption]
     internal class AccountCommand
     {
+        private int OnExecute(CommandLineApplication app)
+        {
+            app.ShowHelp();
+            return 1;
+        }
+
         [Command("create")]
         [HelpOption]
         internal class Create
