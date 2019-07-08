@@ -1,0 +1,36 @@
+# Azure Pipelines configuration for Skynet Server
+
+trigger:
+  batch: false
+  branches:
+    include: master
+
+pr:
+  autoCancel: true
+
+pool:
+  vmImage: 'ubuntu-16.04'
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+- task: DotNetCoreCLI@2
+  displayName: Restore
+  inputs:
+    command: restore
+    projects: '**/*.csproj'
+    feedsToUse: config
+    nugetConfigPath: NuGet.config
+- task: DotNetCoreCLI@2
+  displayName: Build
+  inputs:
+    command: build
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+- task: DotNetCoreCLI@2
+  displayName: Test
+  inputs:
+    command: Test
+    projects: '**/*Tests.csproj'
+    arguments: '--configuration $(buildConfiguration)'
