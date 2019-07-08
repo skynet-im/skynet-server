@@ -31,7 +31,7 @@ namespace SkynetServer.Database
             var session = modelBuilder.Entity<Session>();
             session.HasKey(s => new { s.AccountId, s.SessionId });
             session.HasOne(s => s.Account).WithMany(a => a.Sessions).HasForeignKey(s => s.AccountId);
-            session.Property(s => s.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            session.Property(s => s.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             session.Property(s => s.SessionId).ValueGeneratedNever();
             session.Property(s => s.ApplicationIdentifier).IsRequired();
 
@@ -40,7 +40,7 @@ namespace SkynetServer.Database
             channel.Property(c => c.ChannelId).ValueGeneratedNever();
             channel.Property(c => c.ChannelType).HasConversion<byte>();
             channel.Property(c => c.MessageIdCounter).IsConcurrencyToken();
-            channel.Property(c => c.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            channel.Property(c => c.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             channel.HasOne(c => c.Owner).WithMany(a => a.OwnedChannels).HasForeignKey(c => c.OwnerId);
 
             var channelMember = modelBuilder.Entity<ChannelMember>();
@@ -62,7 +62,7 @@ namespace SkynetServer.Database
             message.HasKey(m => new { m.ChannelId, m.MessageId });
             message.HasOne(m => m.Channel).WithMany(c => c.Messages).HasForeignKey(m => m.ChannelId);
             message.Property(m => m.MessageId).ValueGeneratedNever();
-            message.Property(m => m.DispatchTime).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            message.Property(m => m.DispatchTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             message.Property(m => m.MessageFlags).HasConversion<byte>();
 
             var messageDependency = modelBuilder.Entity<MessageDependency>();
@@ -75,7 +75,7 @@ namespace SkynetServer.Database
             var mailConfirmation = modelBuilder.Entity<MailConfirmation>();
             mailConfirmation.HasKey(c => c.MailAddress);
             mailConfirmation.HasAlternateKey(c => c.Token);
-            mailConfirmation.Property(c => c.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            mailConfirmation.Property(c => c.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             mailConfirmation.HasOne(c => c.Account).WithMany(a => a.MailConfirmations).HasForeignKey(c => c.AccountId);
         }
 
