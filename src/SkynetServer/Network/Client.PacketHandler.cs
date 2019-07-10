@@ -113,7 +113,7 @@ namespace SkynetServer.Network
                     Session = await DatabaseHelper.AddSession(new Session
                     {
                         AccountId = confirmation.AccountId,
-                        AppIdentifier = applicationIdentifier,
+                        ApplicationIdentifier = applicationIdentifier,
                         LastConnected = DateTime.Now,
                         LastVersionCode = versionCode,
                         FcmToken = packet.FcmRegistrationToken

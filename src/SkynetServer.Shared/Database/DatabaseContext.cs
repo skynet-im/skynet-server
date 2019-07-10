@@ -9,6 +9,8 @@ namespace SkynetServer.Database
 {
     public class DatabaseContext : DbContext
     {
+        public static string ConnectionString { get; set; }
+
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Session> Sessions { get; set; }
         public DbSet<Channel> Channels { get; set; }
@@ -29,16 +31,16 @@ namespace SkynetServer.Database
             var session = modelBuilder.Entity<Session>();
             session.HasKey(s => new { s.AccountId, s.SessionId });
             session.HasOne(s => s.Account).WithMany(a => a.Sessions).HasForeignKey(s => s.AccountId);
-            session.Property(s => s.CreationTime).HasDefaultValueSql("NOW()");
+            session.Property(s => s.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             session.Property(s => s.SessionId).ValueGeneratedNever();
-            session.Property(s => s.AppIdentifier).IsRequired();
+            session.Property(s => s.ApplicationIdentifier).IsRequired();
 
             var channel = modelBuilder.Entity<Channel>();
             channel.HasKey(c => c.ChannelId);
             channel.Property(c => c.ChannelId).ValueGeneratedNever();
             channel.Property(c => c.ChannelType).HasConversion<byte>();
             channel.Property(c => c.MessageIdCounter).IsConcurrencyToken();
-            channel.Property(c => c.CreationTime).HasDefaultValueSql("NOW()");
+            channel.Property(c => c.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             channel.HasOne(c => c.Owner).WithMany(a => a.OwnedChannels).HasForeignKey(c => c.OwnerId);
 
             var channelMember = modelBuilder.Entity<ChannelMember>();
@@ -60,7 +62,7 @@ namespace SkynetServer.Database
             message.HasKey(m => new { m.ChannelId, m.MessageId });
             message.HasOne(m => m.Channel).WithMany(c => c.Messages).HasForeignKey(m => m.ChannelId);
             message.Property(m => m.MessageId).ValueGeneratedNever();
-            message.Property(m => m.DispatchTime).HasDefaultValueSql("NOW()");
+            message.Property(m => m.DispatchTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             message.Property(m => m.MessageFlags).HasConversion<byte>();
 
             var messageDependency = modelBuilder.Entity<MessageDependency>();
@@ -73,6 +75,7 @@ namespace SkynetServer.Database
             var mailConfirmation = modelBuilder.Entity<MailConfirmation>();
             mailConfirmation.HasKey(c => c.MailAddress);
             mailConfirmation.HasAlternateKey(c => c.Token);
+            mailConfirmation.Property(c => c.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             mailConfirmation.HasOne(c => c.Account).WithMany(a => a.MailConfirmations).HasForeignKey(c => c.AccountId);
         }
 
@@ -80,11 +83,7 @@ namespace SkynetServer.Database
         {
             //optionsBuilder.UseLoggerFactory(new LoggerFactory(new[] { new ConsoleLoggerProvider((category, level) => level >= LogLevel.Information, false) }));
             optionsBuilder.EnableSensitiveDataLogging();
-#if DEBUG
-            optionsBuilder.UseMySql("server=localhost;Port=3306;Database=Skynet;UID=root");
-#else
-            optionsBuilder.UseMySql("server=db;Port=3306;Database=Skynet;UID=root");
-#endif
+            optionsBuilder.UseMySql(ConnectionString);
         }
     }
 }

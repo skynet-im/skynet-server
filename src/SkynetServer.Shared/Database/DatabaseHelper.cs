@@ -15,7 +15,7 @@ namespace SkynetServer.Database
         public static async Task<(Account, MailConfirmation, bool)> AddAccount(string mailAddress, byte[] keyHash)
         {
             Account account = new Account { KeyHash = keyHash };
-            MailConfirmation confirmation = new MailConfirmation { Account = account, MailAddress = mailAddress, CreationTime = DateTime.Now };
+            MailConfirmation confirmation = new MailConfirmation { Account = account, MailAddress = mailAddress };
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
