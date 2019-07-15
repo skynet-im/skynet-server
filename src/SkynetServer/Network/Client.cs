@@ -1,4 +1,5 @@
 ﻿using SkynetServer.Database.Entities;
+using SkynetServer.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -10,7 +11,14 @@ namespace SkynetServer.Network
 {
     internal partial class Client : IVSLCallback, IPacketHandler
     {
+        private readonly DeliveryService delivery;
+
         private VSLServer socket;
+
+        public Client(DeliveryService delivery)
+        {
+            this.delivery = delivery;
+        }
 
         public async Task SendPacket(Packet packet)
         {
