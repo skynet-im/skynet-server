@@ -32,7 +32,9 @@ namespace SkynetServer
             return CreateHostBuilder(args).Build().RunAsync();
         }
 
+#pragma warning disable IDE0060 // unused parameter args
         private static IHostBuilder CreateHostBuilder(string[] args)
+#pragma warning restore IDE0060
         {
             HostBuilder builder = new HostBuilder();
             builder.ConfigureAppConfiguration(config =>

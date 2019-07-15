@@ -75,14 +75,14 @@ namespace SkynetServer.Network
                         var passwordUpdate = Packet.New<P15PasswordUpdate>();
                         passwordUpdate.KeyHash = packet.KeyHash;
                         passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
-                        await loopback.SendMessage(passwordUpdate, newAccount.AccountId);
+                        await delivery.SendMessage(passwordUpdate, loopback, newAccount.AccountId);
 
                         // Send email address
                         var mailAddress = Packet.New<P14MailAddress>();
                         mailAddress.MailAddress = await ctx.MailConfirmations.Where(c => c.AccountId == newAccount.AccountId)
                             .Select(c => c.MailAddress).SingleAsync();
                         mailAddress.MessageFlags = MessageFlags.Unencrypted;
-                        await accountData.SendMessage(mailAddress, newAccount.AccountId);
+                        await delivery.SendMessage(mailAddress, accountData, newAccount.AccountId);
 
                         await mail;
                         response.ErrorCode = CreateAccountError.Success;
@@ -103,7 +103,8 @@ namespace SkynetServer.Network
             {
                 var response = Packet.New<P07CreateSessionResponse>();
 
-                var confirmation = ctx.MailConfirmations.Include(c => c.Account).SingleOrDefault(c => c.MailAddress == packet.AccountName);
+                var confirmation = await ctx.MailConfirmations.Include(c => c.Account)
+                    .SingleOrDefaultAsync(c => c.MailAddress == packet.AccountName);
                 if (confirmation == null)
                     response.ErrorCode = CreateSessionError.InvalidCredentials;
                 else if (confirmation.ConfirmationTime == default)
@@ -293,14 +294,14 @@ namespace SkynetServer.Network
                             createAlice.ChannelType = ChannelType.Direct;
                             createAlice.OwnerId = Account.AccountId;
                             createAlice.CounterpartId = packet.CounterpartId;
-                            await createAlice.SendTo(Account.AccountId, this);
+                            await delivery.SendPacket(createAlice, Account.AccountId, this);
 
                             var createBob = Packet.New<P0ACreateChannel>();
                             createBob.ChannelId = channel.ChannelId;
                             createBob.ChannelType = ChannelType.Direct;
                             createBob.OwnerId = Account.AccountId;
                             createBob.CounterpartId = Account.AccountId;
-                            await createBob.SendTo(packet.CounterpartId, null);
+                            await delivery.SendPacket(createBob, packet.CounterpartId, null);
 
                             response.ErrorCode = CreateChannelError.Success;
                             response.ChannelId = channel.ChannelId;
@@ -336,13 +337,13 @@ namespace SkynetServer.Network
             createAlice.ChannelId = bobChannel.ChannelId;
             createAlice.ChannelType = ChannelType.AccountData;
             createAlice.OwnerId = bob.AccountId;
-            await createAlice.SendTo(alice.AccountId, null);
+            await delivery.SendPacket(createAlice, alice.AccountId, null);
 
             var createBob = Packet.New<P0ACreateChannel>();
             createBob.ChannelId = aliceChannel.ChannelId;
             createBob.ChannelType = ChannelType.AccountData;
             createBob.OwnerId = alice.AccountId;
-            await createBob.SendTo(bob.AccountId, null);
+            await delivery.SendPacket(createBob, bob.AccountId, null);
 
             await Task.WhenAll(SendAllMessages(bobChannel, alice), SendAllMessages(aliceChannel, bob));
         }
@@ -358,7 +359,7 @@ namespace SkynetServer.Network
                     .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != account.AccountId)
                     .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
                 {
-                    await message.ToPacket().SendTo(account.AccountId, null);
+                    await delivery.SendPacket(message.ToPacket(), account.AccountId, null);
                 }
             }
         }
@@ -373,7 +374,7 @@ namespace SkynetServer.Network
             refForAlice.MessageFlags = MessageFlags.Loopback | MessageFlags.Unencrypted;
             refForAlice.Dependencies.Add(new Dependency(aliceId, alicePrivate.ChannelId, alicePrivate.MessageId));
             refForAlice.Dependencies.Add(new Dependency(bobId, bobPublic.ChannelId, bobPublic.MessageId));
-            Message msgForAlice = await channel.SendMessage(refForAlice, Account.AccountId);
+            Message msgForAlice = await delivery.SendMessage(refForAlice, channel, Account.AccountId);
 
             Message bobPrivate = await ctx.MessageDependencies
                 .Where(d => d.OwningChannelId == bobPublic.ChannelId && d.OwningMessageId == bobPublic.MessageId)
@@ -383,7 +384,7 @@ namespace SkynetServer.Network
             refForAlice.MessageFlags = MessageFlags.Loopback | MessageFlags.Unencrypted;
             refForBob.Dependencies.Add(new Dependency(bobId, bobPrivate.ChannelId, bobPrivate.MessageId));
             refForBob.Dependencies.Add(new Dependency(aliceId, alicePublic.ChannelId, alicePublic.MessageId));
-            Message msgForBob = await channel.SendMessage(refForBob, bobId);
+            Message msgForBob = await delivery.SendMessage(refForBob, channel, bobId);
 
             // Combine the packets of the last two steps and create one direct channel update
 
@@ -391,7 +392,7 @@ namespace SkynetServer.Network
             update.MessageFlags = MessageFlags.Unencrypted;
             update.Dependencies.Add(new Dependency(aliceId, msgForAlice.ChannelId, msgForAlice.MessageId));
             update.Dependencies.Add(new Dependency(bobId, msgForBob.ChannelId, msgForBob.MessageId));
-            await channel.SendMessage(update, null);
+            await delivery.SendMessage(update, channel, null);
         }
 
         public async Task Handle(P0BChannelMessage packet)
@@ -456,7 +457,7 @@ namespace SkynetServer.Network
                     IEnumerable<long> accounts = ctx.ChannelMembers
                         .Where(m => m.ChannelId == packet.ChannelId)
                         .Select(m => m.AccountId);
-                    await packet.SendTo(accounts, exclude: this);
+                    await delivery.SendPacket(packet, accounts, exclude: this);
                 }
             }
 
