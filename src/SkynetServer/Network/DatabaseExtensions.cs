@@ -112,18 +112,12 @@ namespace SkynetServer.Network
                 .Select(c => c.SendPacket(packet)));
         }
 
-        public static async Task<Message> GetLatestPublicKey(this Account account)
+        public static Task<Message> GetLatestPublicKey(this Account account, DatabaseContext ctx)
         {
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                long loopback = await ctx.Channels
-                    .Where(c => c.OwnerId == account.AccountId && c.ChannelType == ChannelType.Loopback)
-                    .Select(c => c.ChannelId).SingleAsync();
-
-                return await ctx.Messages
-                    .Where(m => m.ChannelId == loopback && m.ContentPacketId == 0x18 && m.SenderId == account.AccountId)
-                    .OrderByDescending(m => m.MessageId).FirstOrDefaultAsync();
-            }
+            return ctx.Channels.Where(c => c.ChannelType == ChannelType.AccountData && c.OwnerId == account.AccountId)
+                .Join(ctx.Messages, c => c.ChannelId, m => m.ChannelId, (c, m) => m)
+                .Where(m => m.ContentPacketId == 0x18)
+                .OrderByDescending(m => m.MessageId).FirstOrDefaultAsync();
         }
     }
 }

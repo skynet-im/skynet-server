@@ -275,6 +275,7 @@ namespace SkynetServer.Network
                         }
                         else
                         {
+                            // Create a new direct channel
                             channel = await DatabaseHelper.AddChannel(new Channel
                             {
                                 OwnerId = Account.AccountId,
@@ -305,9 +306,12 @@ namespace SkynetServer.Network
                             response.ChannelId = channel.ChannelId;
                             await SendPacket(response);
 
-                            Task task1 = ForwardAccountChannels(Account, counterpart);
-                            // Forwarding public keys will not be necessary anymore when we fully switch to account data channels
-                            Task task2 = ForwardPublicKeys(channel, Account, counterpart);
+                            await ForwardAccountChannels(ctx, Account, counterpart);
+
+                            Message alicePublic = await Account.GetLatestPublicKey(ctx);
+                            Message bobPublic = await counterpart.GetLatestPublicKey(ctx);
+
+                            await CreateKeyReferences(ctx, channel, Account.AccountId, alicePublic, counterpart.AccountId, bobPublic);
                         }
                         break;
                     case ChannelType.Group:
@@ -319,37 +323,35 @@ namespace SkynetServer.Network
             }
         }
 
-        private async Task ForwardAccountChannels(Account alice, Account bob)
+        private async Task ForwardAccountChannels(DatabaseContext ctx, Account alice, Account bob)
         {
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                Channel aliceChannel = await ctx.Channels.SingleAsync(c => c.ChannelType == ChannelType.AccountData && c.OwnerId == alice.AccountId);
-                Channel bobChannel = await ctx.Channels.SingleAsync(c => c.ChannelType == ChannelType.AccountData && c.OwnerId == bob.AccountId);
+            Channel aliceChannel = await ctx.Channels.SingleAsync(c => c.ChannelType == ChannelType.AccountData && c.OwnerId == alice.AccountId);
+            Channel bobChannel = await ctx.Channels.SingleAsync(c => c.ChannelType == ChannelType.AccountData && c.OwnerId == bob.AccountId);
 
-                ctx.ChannelMembers.Add(new ChannelMember { ChannelId = aliceChannel.ChannelId, AccountId = bob.AccountId });
-                ctx.ChannelMembers.Add(new ChannelMember { ChannelId = bobChannel.ChannelId, AccountId = alice.AccountId });
-                await ctx.SaveChangesAsync();
+            ctx.ChannelMembers.Add(new ChannelMember { ChannelId = aliceChannel.ChannelId, AccountId = bob.AccountId });
+            ctx.ChannelMembers.Add(new ChannelMember { ChannelId = bobChannel.ChannelId, AccountId = alice.AccountId });
+            await ctx.SaveChangesAsync();
 
-                var createAlice = Packet.New<P0ACreateChannel>();
-                createAlice.ChannelId = bobChannel.ChannelId;
-                createAlice.ChannelType = ChannelType.AccountData;
-                createAlice.OwnerId = bob.AccountId;
-                await createAlice.SendTo(alice.AccountId, null);
+            var createAlice = Packet.New<P0ACreateChannel>();
+            createAlice.ChannelId = bobChannel.ChannelId;
+            createAlice.ChannelType = ChannelType.AccountData;
+            createAlice.OwnerId = bob.AccountId;
+            await createAlice.SendTo(alice.AccountId, null);
 
-                var createBob = Packet.New<P0ACreateChannel>();
-                createBob.ChannelId = aliceChannel.ChannelId;
-                createBob.ChannelType = ChannelType.AccountData;
-                createBob.OwnerId = alice.AccountId;
-                await createBob.SendTo(bob.AccountId, null);
+            var createBob = Packet.New<P0ACreateChannel>();
+            createBob.ChannelId = aliceChannel.ChannelId;
+            createBob.ChannelType = ChannelType.AccountData;
+            createBob.OwnerId = alice.AccountId;
+            await createBob.SendTo(bob.AccountId, null);
 
-                await Task.WhenAll(SendAllMessages(bobChannel, alice), SendAllMessages(aliceChannel, bob));
-            }
+            await Task.WhenAll(SendAllMessages(bobChannel, alice), SendAllMessages(aliceChannel, bob));
         }
 
         private async Task SendAllMessages(Channel channel, Account account)
         {
             using (DatabaseContext ctx = new DatabaseContext())
             {
+                // TODO: Skip accounts with no connected user
                 foreach (Message message in ctx.Messages
                     .Where(m => m.ChannelId == channel.ChannelId)
                     .Where(m => !m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == account.AccountId)
@@ -361,44 +363,10 @@ namespace SkynetServer.Network
             }
         }
 
-        private async Task ForwardPublicKeys(Channel channel, Account alice, Account bob)
-        {
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                Message aliceGlobal = await alice.GetLatestPublicKey();
-                Message bobGlobal = await bob.GetLatestPublicKey();
-                Message alicePublic = null, bobPublic = null;
-
-                if (aliceGlobal != null)
-                {
-                    P18PublicKeys forward = Packet.New<P18PublicKeys>();
-                    forward.ChannelId = channel.ChannelId;
-                    forward.SenderId = Account.AccountId;
-                    forward.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
-                    forward.Dependencies.Add(new Dependency(alice.AccountId, aliceGlobal.ChannelId, aliceGlobal.MessageId));
-                    forward.ContentPacket = aliceGlobal.ContentPacket;
-                    alicePublic = await channel.SendMessage(forward, alice.AccountId);
-                }
-                if (bobGlobal != null)
-                {
-                    P18PublicKeys forward = Packet.New<P18PublicKeys>();
-                    forward.ChannelId = channel.ChannelId;
-                    forward.SenderId = Account.AccountId;
-                    forward.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
-                    forward.Dependencies.Add(new Dependency(bob.AccountId, bobGlobal.ChannelId, bobGlobal.MessageId));
-                    forward.ContentPacket = bobGlobal.ContentPacket;
-                    bobPublic = await channel.SendMessage(forward, bob.AccountId);
-                }
-                if (aliceGlobal == null || bobGlobal == null) return;
-
-                await CreateKeyReferences(ctx, channel, alice.AccountId, aliceGlobal, alicePublic, bob.AccountId, bobGlobal, bobPublic);
-            }
-        }
-
-        private async Task CreateKeyReferences(DatabaseContext ctx, Channel channel, long aliceId, Message aliceGlobal, Message alicePublic, long bobId, Message bobGlobal, Message bobPublic)
+        private async Task CreateKeyReferences(DatabaseContext ctx, Channel channel, long aliceId, Message alicePublic, long bobId, Message bobPublic)
         {
             Message alicePrivate = await ctx.MessageDependencies
-                .Where(d => d.OwningChannelId == aliceGlobal.ChannelId && d.OwningMessageId == aliceGlobal.MessageId)
+                .Where(d => d.OwningChannelId == alicePublic.ChannelId && d.OwningMessageId == alicePublic.MessageId)
                 .Select(d => d.Message).SingleAsync();
 
             var refForAlice = Packet.New<P19KeypairReference>();
@@ -408,7 +376,7 @@ namespace SkynetServer.Network
             Message msgForAlice = await channel.SendMessage(refForAlice, Account.AccountId);
 
             Message bobPrivate = await ctx.MessageDependencies
-                .Where(d => d.OwningChannelId == bobGlobal.ChannelId && d.OwningMessageId == bobGlobal.MessageId)
+                .Where(d => d.OwningChannelId == bobPublic.ChannelId && d.OwningMessageId == bobPublic.MessageId)
                 .Select(d => d.Message).SingleAsync();
 
             var refForBob = Packet.New<P19KeypairReference>();
@@ -544,45 +512,22 @@ namespace SkynetServer.Network
             using (DatabaseContext ctx = new DatabaseContext())
             {
                 // Get all direct channels of Alice
-                foreach (Channel channel in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
+                foreach (Channel channel in ctx.ChannelMembers
+                    .Where(m => m.AccountId == Account.AccountId)
                     .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
                     .Where(c => c.ChannelType == ChannelType.Direct))
                 {
-                    // Forward public keys packet with MessageFlags.NoSenderSync
-                    // We want a dependency on the original packet in the database but not sent to Bob
-                    // So we declare this dependency specific for Alice's account
-
-                    P18PublicKeys forward = Packet.New<P18PublicKeys>();
-                    forward.ChannelId = channel.ChannelId;
-                    forward.SenderId = Account.AccountId;
-                    forward.DispatchTime = DateTime.Now;
-                    forward.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
-                    forward.Dependencies.Add(new Dependency(Account.AccountId, message.ChannelId, message.MessageId));
-                    forward.SignatureKeyFormat = packet.SignatureKeyFormat;
-                    forward.SignatureKey = packet.SignatureKey;
-                    forward.DerivationKeyFormat = packet.DerivationKeyFormat;
-                    forward.DerivationKey = packet.DerivationKey;
-                    Message forwardMsg = await channel.SendMessage(packet, Account.AccountId);
-
-                    long bobId = await ctx.ChannelMembers
+                    Account bob = await ctx.ChannelMembers
                         .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != Account.AccountId)
-                        .Select(m => m.AccountId).SingleAsync();
+                        .Select(m => m.Account).SingleAsync();
 
-                    // Get Bob's latest public key packet in this channel and resolve the dependency to Alice's keypair
+                    // Get Bob's latest public key packet in this channel and take Alice's new public key
 
-                    Message bobPublic = await ctx.Messages
-                        .Where(m => m.ChannelId == channel.ChannelId && m.ContentPacketId == 0x18 && m.SenderId == bobId)
-                        .OrderByDescending(m => m.MessageId).FirstOrDefaultAsync();
+                    Message bobPublic = await bob.GetLatestPublicKey(ctx);
 
                     if (bobPublic == null) continue; // The server will create the DirectChannelUpdate when Bob sends his public key
 
-                    // Resolve the dependency from Bob's public key packet and take the currently forwarded packet of Alice
-
-                    Message bobPublicGlobal = await ctx.MessageDependencies
-                        .Where(d => d.OwningChannelId == bobPublic.ChannelId && d.OwningMessageId == bobPublic.MessageId)
-                        .Select(d => d.Message).SingleAsync();
-
-                    await CreateKeyReferences(ctx, channel, Account.AccountId, message, forwardMsg, bobId, bobPublicGlobal, bobPublic);
+                    await CreateKeyReferences(ctx, channel, Account.AccountId, message, bob.AccountId, bobPublic);
                 }
             }
         }
