@@ -3,10 +3,12 @@
 trigger:
   batch: false
   branches:
-    include: [ 'master' ]
+    include: ['master']
 
 pr:
   autoCancel: true
+  branches:
+    include: ['*']
 
 pool:
   vmImage: 'ubuntu-16.04'
