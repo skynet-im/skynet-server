@@ -11,16 +11,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using VSL;
 
-namespace SkynetServer
+namespace SkynetServer.Services
 {
     internal class ListenerService : IHostedService
     {
         private readonly IConfiguration configuration;
+        private readonly DeliveryService delivery;
         private readonly VSLListener listener;
 
-        public ListenerService(IConfiguration config)
+        public ListenerService(IConfiguration config, DeliveryService delivery)
         {
             configuration = config;
+            this.delivery = delivery;
             listener = CreateListener();
             listener.CacheCapacity = 0;
         }
@@ -53,7 +55,7 @@ namespace SkynetServer
                 CatchApplicationExceptions = !Debugger.IsAttached
             };
 
-            return new VSLListener(endPoints, settings, () => new Client());
+            return new VSLListener(endPoints, settings, () => new Client(delivery));
         }
     }
 }

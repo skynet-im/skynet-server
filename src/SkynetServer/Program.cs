@@ -1,10 +1,10 @@
-﻿using FcmSharp.Settings;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SkynetServer.Configuration;
 using SkynetServer.Database;
 using SkynetServer.Network;
+using SkynetServer.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -16,7 +16,6 @@ namespace SkynetServer
     {
         public static IConfiguration Configuration { get; private set; }
         public static ImmutableList<Client> Clients;
-        public static FcmClientSettings FcmSettings { get; set; }
 
         private static Task Main(string[] args)
         {
@@ -30,12 +29,12 @@ namespace SkynetServer
 
             Clients = ImmutableList.Create<Client>();
 
-            FcmSettings = FileBasedFcmClientSettings.CreateFromFile("firebase-service-account.json");
-
             return CreateHostBuilder(args).Build().RunAsync();
         }
 
+#pragma warning disable IDE0060 // unused parameter args
         private static IHostBuilder CreateHostBuilder(string[] args)
+#pragma warning restore IDE0060
         {
             HostBuilder builder = new HostBuilder();
             builder.ConfigureAppConfiguration(config =>
@@ -44,6 +43,8 @@ namespace SkynetServer
             });
             builder.ConfigureServices(services =>
             {
+                services.AddSingleton<FirebaseService>();
+                services.AddSingleton<DeliveryService>();
                 services.AddHostedService<ListenerService>();
             });
             return builder;
