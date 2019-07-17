@@ -41,7 +41,7 @@ namespace SkynetServer.Services
 
         private VSLListener CreateListener()
         {
-            VslConfig config = configuration.Get<SkynetConfig>().VslConfig;
+            VslOptions config = configuration.Get<SkynetOptions>().VslOptions;
             IPEndPoint[] endPoints = {
                 new IPEndPoint(IPAddress.Any, config.TcpPort),
                 new IPEndPoint(IPAddress.IPv6Any, config.TcpPort)

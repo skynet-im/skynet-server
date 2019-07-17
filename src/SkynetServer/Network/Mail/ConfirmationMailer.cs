@@ -15,14 +15,14 @@ namespace SkynetServer.Network.Mail
 {
     internal class ConfirmationMailer
     {
-        private readonly MailConfig config;
+        private readonly MailOptions config;
 
         public ConfirmationMailer()
         {
-            config = Program.Configuration.Get<SkynetConfig>().MailConfig;
+            config = Program.Configuration.Get<SkynetOptions>().MailOptions;
         }
 
-        public ConfirmationMailer(MailConfig config)
+        public ConfirmationMailer(MailOptions config)
         {
             this.config = config;
         }

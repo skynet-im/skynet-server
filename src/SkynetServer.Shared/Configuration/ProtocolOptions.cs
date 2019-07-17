@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SkynetServer.Configuration
 {
-    public class ProtocolConfig
+    public class ProtocolOptions
     {
         public int ProtocolVersion { get; set; }
 

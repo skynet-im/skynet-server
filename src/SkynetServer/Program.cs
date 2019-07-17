@@ -17,7 +17,7 @@ namespace SkynetServer
         public static IConfiguration Configuration { get; private set; }
         public static ImmutableList<Client> Clients;
 
-        private static Task Main(string[] args)
+        public static void Main(string[] args)
         {
             // The appsettings.json file contained in this repository lacks some secrets that are necessary for production usage.
             // Our debug keypair "<Modulus>jKoWxmIf..." should be used in all client applications to connect to development servers.
@@ -25,11 +25,11 @@ namespace SkynetServer
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
 
-            DatabaseContext.ConnectionString = Configuration.Get<SkynetConfig>().DbConnectionString;
+            DatabaseContext.ConnectionString = Configuration.Get<SkynetOptions>().DatabaseOptions.ConnectionString;
 
             Clients = ImmutableList.Create<Client>();
 
-            return CreateHostBuilder(args).Build().RunAsync();
+            CreateHostBuilder(args).Build().Run();
         }
 
 #pragma warning disable IDE0060 // unused parameter args

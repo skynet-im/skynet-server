@@ -23,7 +23,7 @@ namespace SkynetServer.Network
 
         public Task Handle(P00ConnectionHandshake packet)
         {
-            ProtocolConfig config = Program.Configuration.Get<SkynetConfig>().ProtocolConfig;
+            ProtocolOptions config = Program.Configuration.Get<SkynetOptions>().ProtocolOptions;
             var response = Packet.New<P01ConnectionResponse>();
             response.LatestVersion = config.VersionName;
             response.LatestVersionCode = config.VersionCode;

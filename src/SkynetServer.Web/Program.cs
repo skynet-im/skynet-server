@@ -20,7 +20,7 @@ namespace SkynetServer.Web
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
 
-            DatabaseContext.ConnectionString = configuration.Get<SkynetConfig>().DbConnectionString;
+            DatabaseContext.ConnectionString = configuration.Get<SkynetOptions>().DatabaseOptions.ConnectionString;
 
             CreateWebHostBuilder(args).Build().Run();
         }

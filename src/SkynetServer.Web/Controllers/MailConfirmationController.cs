@@ -25,7 +25,7 @@ namespace SkynetServer.Web.Controllers
             MailConfirmation confirmation = ctx.MailConfirmations.Where(x => x.Token == token).FirstOrDefault();
             if (confirmation == null)
                 return View("Invalid");
-            if (confirmation.ConfirmationTime == default(DateTime))
+            if (confirmation.ConfirmationTime == default)
                 return View("Pending", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
             else
                 return View("Confirmed", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
@@ -37,7 +37,7 @@ namespace SkynetServer.Web.Controllers
             MailConfirmation confirmation = ctx.MailConfirmations.Where(x => x.Token == token).FirstOrDefault();
             if (confirmation == null)
                 return View("Invalid");
-            if (confirmation.ConfirmationTime == default(DateTime))
+            if (confirmation.ConfirmationTime == default)
             {
                 // Remove confirmations that have become obsolete due to an address change
                 // TODO: Add protocol interaction to inform clients about a suceeded address change
