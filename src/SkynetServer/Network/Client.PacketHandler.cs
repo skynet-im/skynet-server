@@ -502,10 +502,21 @@ namespace SkynetServer.Network
             throw new NotImplementedException();
         }
 
-        public Task<MessageSendError> Handle(P18PublicKeys packet)
+        public async Task<MessageSendError> Handle(P18PublicKeys packet)
         {
-            // TODO: Validate dependencies
-            return Task.FromResult(MessageSendError.Success);
+            if (packet.Dependencies.Count != 1)
+                throw new ProtocolException($"Packet {nameof(P18PublicKeys)} must reference the matching private keys.");
+
+            Dependency dep = packet.Dependencies[0];
+            if (dep.AccountId != Account.AccountId)
+                throw new ProtocolException($"The dependency of {nameof(P18PublicKeys)} to private keys must be specific for the sending account.");
+
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                if (!await ctx.Messages.AnyAsync(m => m.ChannelId == dep.ChannelId && m.MessageId == dep.MessageId && m.ContentPacketId == 0x17))
+                    throw new ProtocolException($"Could not find the referenced private keys for {nameof(P18PublicKeys)}.");
+            }
+            return MessageSendError.Success;
         }
 
         public async Task PostHandling(P18PublicKeys packet, Message message) // Alice changes her keypair
