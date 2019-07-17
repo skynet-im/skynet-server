@@ -1,17 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Text;
 
 namespace SkynetServer.Configuration
 {
     public class ProtocolOptions
     {
-        public int ProtocolVersion { get; set; }
+        [Range(2, 2)] public int ProtocolVersion { get; set; }
 
-        public string VersionName { get; set; }
-        public int VersionCode { get; set; }
+        [Required] public List<Platform> Platforms { get; set; }
 
-        public int RecommendUpdateThreshold { get; set; }
-        public int ForceUpdateThreshold { get; set; }
+        public class Platform
+        {
+            [Required] public string Name { get; set; }
+            public int VersionCode { get; set; }
+            [Required] public string VersionName { get; set; }
+
+            public int RecommendUpdateThreshold { get; set; }
+            public int ForceUpdateThreshold { get; set; }
+        }
     }
 }

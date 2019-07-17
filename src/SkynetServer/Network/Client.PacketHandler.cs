@@ -25,11 +25,14 @@ namespace SkynetServer.Network
         {
             ProtocolOptions config = Program.Configuration.Get<SkynetOptions>().ProtocolOptions;
             var response = Packet.New<P01ConnectionResponse>();
-            response.LatestVersion = config.VersionName;
-            response.LatestVersionCode = config.VersionCode;
-            if (packet.ProtocolVersion != config.ProtocolVersion || packet.VersionCode < config.ForceUpdateThreshold)
+            ProtocolOptions.Platform platform = config.Platforms.SingleOrDefault(p => p.Name == packet.ApplicationIdentifier);
+            if (platform == null)
+                throw new ProtocolException($"Unsupported client {packet.ApplicationIdentifier}");
+            response.LatestVersion = platform.VersionName;
+            response.LatestVersionCode = platform.VersionCode;
+            if (packet.ProtocolVersion != config.ProtocolVersion || packet.VersionCode < platform.ForceUpdateThreshold)
                 response.ConnectionState = ConnectionState.MustUpgrade;
-            else if (packet.VersionCode < config.RecommendUpdateThreshold)
+            else if (packet.VersionCode < platform.RecommendUpdateThreshold)
                 response.ConnectionState = ConnectionState.CanUpgrade;
             else
                 response.ConnectionState = ConnectionState.Valid;

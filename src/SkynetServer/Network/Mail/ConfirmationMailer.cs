@@ -29,6 +29,12 @@ namespace SkynetServer.Network.Mail
 
         public async Task SendMailAsync(string address, string token)
         {
+            if (!config.EnableMailing)
+            {
+                Console.WriteLine($"Mailing is disabled. \"{address}\" will not receive the token \"{token}\".");
+                return;
+            }
+
             ValidationContext context = new ValidationContext(config);
             if (!Validator.TryValidateObject(config, context, null))
             {

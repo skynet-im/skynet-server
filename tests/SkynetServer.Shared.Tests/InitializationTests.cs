@@ -38,6 +38,8 @@ namespace SkynetServer.Shared.Tests
             Assert.IsNotNull(options.DatabaseOptions);
             Assert.IsNotNull(options.MailOptions);
             Assert.IsNotNull(options.ProtocolOptions);
+            Assert.IsNotNull(options.ProtocolOptions.Platforms);
+            Assert.IsTrue(options.ProtocolOptions.Platforms.Count > 0);
             Assert.IsNotNull(options.VslOptions);
         }
     }

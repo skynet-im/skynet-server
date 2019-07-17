@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Text;
 
 namespace SkynetServer.Configuration
 {
     public class DatabaseOptions
     {
-        public string ConnectionString { get; set; }
+        [Required] public string ConnectionString { get; set; }
     }
 }
