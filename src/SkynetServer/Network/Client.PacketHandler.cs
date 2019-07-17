@@ -416,7 +416,30 @@ namespace SkynetServer.Network
                     return; // Not all messages can be saved, some return MessageSendError other than Success
             }
 
-            // TODO: Check if the account has the permission to send messages in this channel
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                Channel channel = await ctx.Channels.SingleOrDefaultAsync(c => c.ChannelId == packet.ChannelId);
+                if (channel == null)
+                    throw new ProtocolException("Attempted to send a message to a non existent channel");
+
+                switch (channel.ChannelType)
+                {
+                    case ChannelType.Loopback:
+                    case ChannelType.AccountData:
+                    case ChannelType.ProfileData:
+                        if (channel.OwnerId != Account.AccountId)
+                            throw new ProtocolException("Attempted to send a message to a foreign channel");
+                        break;
+                    case ChannelType.Direct:
+                        if (!await ctx.ChannelMembers.AnyAsync(m => m.ChannelId == packet.ChannelId && m.AccountId == Account.AccountId))
+                            throw new ProtocolException("Attempted to send a message to a foreign channel");
+                        break;
+                    case ChannelType.Group:
+                        throw new NotImplementedException();
+                    default:
+                        throw new ArgumentException($"Invalid value {channel.ChannelType} for enum {nameof(ChannelType)}");
+                }
+            }
 
             Message entity = new Message
             {
