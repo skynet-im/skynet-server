@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SkynetServer.Model;
 using SkynetServer.Network;
 using SkynetServer.Network.Packets;
 using System;
@@ -25,6 +26,18 @@ namespace SkynetServer.Tests
                 else
                     Assert.AreEqual(i, ((P0BChannelMessage)packets[i]).ContentPacketId);
             }
+        }
+
+        [TestMethod]
+        public void TestFlags()
+        {
+            var publicKeys = Packet.New<P18PublicKeys>();
+            Assert.AreEqual(MessageFlags.Unencrypted, publicKeys.MinimumFlags);
+            Assert.AreEqual(MessageFlags.Unencrypted, publicKeys.MaximumFlags);
+
+            var nickname = Packet.New<P25Nickname>();
+            Assert.AreEqual(MessageFlags.None, nickname.MinimumFlags);
+            Assert.AreEqual(MessageFlags.Unencrypted, nickname.MaximumFlags);
         }
     }
 }

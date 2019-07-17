@@ -1,4 +1,5 @@
 ﻿using SkynetServer.Model;
+using SkynetServer.Network.Attributes;
 using SkynetServer.Network.Model;
 using System;
 using System.Collections.Generic;
@@ -22,10 +23,13 @@ namespace SkynetServer.Network.Packets
         public List<Dependency> Dependencies { get; set; } = new List<Dependency>();
 
         public byte PacketVersion { get; set; }
-        public PacketPolicy ContentPacketPolicy { get; set; }
         public byte ContentPacketId { get; set; }
         public byte ContentPacketVersion { get; set; }
         public byte[] ContentPacket { get; set; }
+
+        public PacketPolicy ContentPacketPolicy { get; set; }
+        public MessageFlags MinimumFlags { get; set; } = MessageFlags.None;
+        public MessageFlags MaximumFlags { get; set; } = MessageFlags.All;
 
         public override Packet Create() => new P0BChannelMessage().Init(this);
 
@@ -82,6 +86,8 @@ namespace SkynetServer.Network.Packets
             Policy = source.Policy;
             ContentPacketId = source.ContentPacketId;
             ContentPacketPolicy = source.ContentPacketPolicy;
+            MinimumFlags = source.MinimumFlags;
+            MaximumFlags = source.MaximumFlags;
             return this;
         }
 

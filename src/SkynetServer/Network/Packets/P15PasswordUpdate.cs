@@ -1,4 +1,6 @@
-﻿using SkynetServer.Network.Model;
+﻿using SkynetServer.Model;
+using SkynetServer.Network.Attributes;
+using SkynetServer.Network.Model;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -8,6 +10,7 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Message(0x15, PacketPolicy.Duplex)]
+    [MsgFlags(MessageFlags.Loopback | MessageFlags.Unencrypted)]
     internal sealed class P15PasswordUpdate : P0BChannelMessage
     {
         public byte[] OldKeyHash { get; set; }

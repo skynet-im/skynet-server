@@ -1,4 +1,5 @@
-﻿using SkynetServer.Network.Model;
+﻿using SkynetServer.Model;
+using SkynetServer.Network.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -8,6 +9,7 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Message(0x25, PacketPolicy.Duplex)]
+    [MaxFlags(MessageFlags.Unencrypted)]
     internal sealed class P25Nickname : P0BChannelMessage
     {
         public string Nickname { get; set; }
