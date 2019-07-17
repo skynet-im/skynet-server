@@ -3,6 +3,7 @@
     "ConnectionString": "Server=localhost;Port=3306;Database=Skynet;User=root;Password=root;"
   },
   "MailOptions": {
+    "EnableMailing": true,
     "SenderName": "Skynet Team",
     "SenderAddress": "noreply@skynet-messenger.com",
     "SmtpUsername": "noreply@skynet-messenger.com",

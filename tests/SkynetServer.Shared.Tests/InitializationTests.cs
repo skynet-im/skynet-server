@@ -30,7 +30,7 @@ namespace SkynetServer.Shared.Tests
         public void TestConfiguration()
         {
             var configuration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile("skynetconfig.json", optional: false, reloadOnChange: true)
                 .Build();
 
             var options = configuration.Get<SkynetOptions>();

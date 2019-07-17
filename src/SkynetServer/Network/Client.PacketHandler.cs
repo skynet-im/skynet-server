@@ -1,10 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using SkynetServer.Configuration;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
-using SkynetServer.Network.Mail;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using System;
@@ -23,7 +21,7 @@ namespace SkynetServer.Network
 
         public Task Handle(P00ConnectionHandshake packet)
         {
-            ProtocolOptions config = Program.Configuration.Get<SkynetOptions>().ProtocolOptions;
+            ProtocolOptions config = protocolOptions.Value;
             var response = Packet.New<P01ConnectionResponse>();
             ProtocolOptions.Platform platform = config.Platforms.SingleOrDefault(p => p.Name == packet.ApplicationIdentifier);
             if (platform == null)
@@ -48,7 +46,7 @@ namespace SkynetServer.Network
             using (var ctx = new DatabaseContext())
             {
                 var response = Packet.New<P03CreateAccountResponse>();
-                if (!ConfirmationMailer.IsValidEmail(packet.AccountName))
+                if (!mailing.IsValidEmail(packet.AccountName))
                     response.ErrorCode = CreateAccountError.InvalidAccountName;
                 else
                 {
@@ -57,7 +55,7 @@ namespace SkynetServer.Network
                         response.ErrorCode = CreateAccountError.AccountNameTaken;
                     else
                     {
-                        Task mail = new ConfirmationMailer().SendMailAsync(confirmation.MailAddress, confirmation.Token);
+                        Task mail = mailing.SendMailAsync(confirmation.MailAddress, confirmation.Token);
 
                         Channel loopback = await DatabaseHelper.AddChannel(new Channel
                         {

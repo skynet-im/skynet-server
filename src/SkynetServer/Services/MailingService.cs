@@ -1,44 +1,33 @@
 ﻿using MailKit.Net.Smtp;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using MimeKit;
 using SkynetServer.Configuration;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace SkynetServer.Network.Mail
+namespace SkynetServer.Services
 {
-    internal class ConfirmationMailer
+    internal class MailingService
     {
-        private readonly MailOptions config;
+        private readonly IOptions<MailOptions> mailOptions;
 
-        public ConfirmationMailer()
+        public MailingService(IOptions<MailOptions> mailOptions)
         {
-            config = Program.Configuration.Get<SkynetOptions>().MailOptions;
-        }
-
-        public ConfirmationMailer(MailOptions config)
-        {
-            this.config = config;
+            this.mailOptions = mailOptions;
         }
 
         public async Task SendMailAsync(string address, string token)
         {
+            MailOptions config = mailOptions.Value;
+
             if (!config.EnableMailing)
             {
                 Console.WriteLine($"Mailing is disabled. \"{address}\" will not receive the token \"{token}\".");
-                return;
-            }
-
-            ValidationContext context = new ValidationContext(config);
-            if (!Validator.TryValidateObject(config, context, null))
-            {
-                Console.WriteLine($"Mail configuration is invalid. \"{address}\" will not receive the token \"{token}\".");
                 return;
             }
 
@@ -62,7 +51,7 @@ namespace SkynetServer.Network.Mail
             }
         }
 
-        public static bool IsValidEmail(string email)
+        public bool IsValidEmail(string email)
         {
             if (string.IsNullOrWhiteSpace(email))
                 return false;
@@ -107,16 +96,16 @@ namespace SkynetServer.Network.Mail
             }
         }
 
-        private static string GetMailText()
+        private string GetMailText()
         {
-            Stream stream = typeof(ConfirmationMailer).Assembly.GetManifestResourceStream("SkynetServer.Resources.email.txt");
+            Stream stream = GetType().Assembly.GetManifestResourceStream("SkynetServer.Resources.email.txt");
             using (StreamReader reader = new StreamReader(stream))
                 return reader.ReadToEnd();
         }
 
-        private static string GetMailHtml()
+        private string GetMailHtml()
         {
-            Stream stream = typeof(ConfirmationMailer).Assembly.GetManifestResourceStream("SkynetServer.Resources.email.xhtml");
+            Stream stream = GetType().Assembly.GetManifestResourceStream("SkynetServer.Resources.email.xhtml");
             using (StreamReader reader = new StreamReader(stream))
                 return reader.ReadToEnd();
         }

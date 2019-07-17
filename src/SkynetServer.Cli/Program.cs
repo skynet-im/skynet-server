@@ -1,31 +1,42 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using SkynetServer.Cli.Commands;
-using SkynetServer.Configuration;
-using SkynetServer.Database;
+using SkynetServer.Extensions;
 using System;
 using System.Diagnostics;
-using System.Threading.Tasks;
 
 namespace SkynetServer.Cli
 {
     internal static class Program
     {
-        static async Task<int> Main(string[] args)
+        public static int Main(string[] args)
         {
-            var configuration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .Build();
-
-            DatabaseContext.ConnectionString = configuration.Get<SkynetOptions>().DatabaseOptions.ConnectionString;
-
             if (Debugger.IsAttached)
             {
                 Console.Write("Skynet CLI is running in debug mode. Please enter your command: ");
                 args = Console.ReadLine().Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 Console.WriteLine();
             }
-            return await CommandLineApplication.ExecuteAsync<SkynetCommand>(args);
+
+            return CreateCommandLineApplication().Execute(args);
+        }
+
+        private static CommandLineApplication CreateCommandLineApplication()
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddJsonFile("skynetconfig.json", optional: false, reloadOnChange: true)
+                .Build();
+
+            var services = new ServiceCollection()
+                .AddSingleton(PhysicalConsole.Singleton)
+                .ConfigureSkynet(configuration)
+                .BuildServiceProvider();
+
+            var application = new CommandLineApplication<SkynetCommand>();
+            application.Conventions.UseDefaultConventions();
+            application.Conventions.UseConstructorInjection(services);
+            return application;
         }
     }
 }

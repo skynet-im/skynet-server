@@ -1,9 +1,9 @@
-﻿using SkynetServer.Database.Entities;
+﻿using Microsoft.Extensions.Options;
+using SkynetServer.Configuration;
+using SkynetServer.Database.Entities;
 using SkynetServer.Services;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Text;
 using System.Threading.Tasks;
 using VSL;
 
@@ -12,12 +12,16 @@ namespace SkynetServer.Network
     internal partial class Client : IVSLCallback, IPacketHandler
     {
         private readonly DeliveryService delivery;
+        private readonly MailingService mailing;
+        private readonly IOptions<ProtocolOptions> protocolOptions;
 
         private VSLServer socket;
 
-        public Client(DeliveryService delivery)
+        public Client(DeliveryService delivery, MailingService mailing, IOptions<ProtocolOptions> protocolOptions)
         {
             this.delivery = delivery;
+            this.mailing = mailing;
+            this.protocolOptions = protocolOptions;
         }
 
         public async Task SendPacket(Packet packet)
@@ -39,7 +43,7 @@ namespace SkynetServer.Network
         public void OnInstanceCreated(VSLSocket socket)
         {
             this.socket = (VSLServer)socket;
-            ImmutableInterlocked.Update(ref Program.Clients, list => list.Add(this));
+            delivery.Register(this);
         }
 
         public Task OnConnectionEstablished()
@@ -77,7 +81,7 @@ namespace SkynetServer.Network
 
         public void OnConnectionClosed(ConnectionCloseReason reason, string message, Exception exception)
         {
-            ImmutableInterlocked.Update(ref Program.Clients, list => list.Remove(this));
+            delivery.Unregister(this);
             Console.WriteLine("Connection closed: {0} {1}", message, exception);
             socket.Dispose();
         }
