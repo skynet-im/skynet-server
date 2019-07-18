@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SkynetServer.Configuration;
-using SkynetServer.Database;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -11,21 +10,6 @@ namespace SkynetServer.Shared.Tests
     [TestClass]
     public class InitializationTests
     {
-        [AssemblyInitialize]
-        public static void AssemblyInitialize(TestContext context)
-        {
-            var configuration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .Build();
-
-            DatabaseContext.ConnectionString = configuration.Get<SkynetOptions>().DatabaseOptions.ConnectionString;
-
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                ctx.Database.EnsureCreated();
-            }
-        }
-
         [TestMethod]
         public void TestConfiguration()
         {

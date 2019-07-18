@@ -1,4 +1,6 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SkynetServer.Configuration;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
@@ -14,6 +16,21 @@ namespace SkynetServer.Shared.Tests
     [TestClass]
     public class DatabaseHelperTests
     {
+        [AssemblyInitialize]
+        public static void AssemblyInitialize(TestContext context)
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddJsonFile("skynetconfig.json", optional: false, reloadOnChange: true)
+                .Build();
+
+            DatabaseContext.ConnectionString = configuration.Get<SkynetOptions>().DatabaseOptions.ConnectionString;
+
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                ctx.Database.EnsureCreated();
+            }
+        }
+
         [TestMethod]
         public async Task TestAddAccount()
         {
