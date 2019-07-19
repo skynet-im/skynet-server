@@ -28,8 +28,8 @@ namespace SkynetServer.Network.Packets
         public byte[] ContentPacket { get; set; }
 
         public PacketPolicy ContentPacketPolicy { get; set; }
-        public MessageFlags MinimumFlags { get; set; } = MessageFlags.None;
-        public MessageFlags MaximumFlags { get; set; } = MessageFlags.All;
+        public MessageFlags RequiredFlags { get; set; } = MessageFlags.None;
+        public MessageFlags AllowedFlags { get; set; } = MessageFlags.All;
 
         public override Packet Create() => new P0BChannelMessage().Init(this);
 
@@ -86,8 +86,8 @@ namespace SkynetServer.Network.Packets
             Policy = source.Policy;
             ContentPacketId = source.ContentPacketId;
             ContentPacketPolicy = source.ContentPacketPolicy;
-            MinimumFlags = source.MinimumFlags;
-            MaximumFlags = source.MaximumFlags;
+            RequiredFlags = source.RequiredFlags;
+            AllowedFlags = source.AllowedFlags;
             return this;
         }
 

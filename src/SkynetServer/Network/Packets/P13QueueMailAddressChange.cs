@@ -10,7 +10,7 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Message(0x13, PacketPolicy.Receive)]
-    [MsgFlags(MessageFlags.Loopback | MessageFlags.Unencrypted)]
+    [MessageFlags(MessageFlags.Loopback | MessageFlags.Unencrypted)]
     internal sealed class P13QueueMailAddressChange : P0BChannelMessage
     {
         public string NewMailAddress { get; set; }

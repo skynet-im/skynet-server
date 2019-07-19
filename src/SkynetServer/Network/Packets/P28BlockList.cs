@@ -10,7 +10,7 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Message(0x28, PacketPolicy.Duplex)]
-    [MsgFlags(MessageFlags.Loopback | MessageFlags.Unencrypted)]
+    [MessageFlags(MessageFlags.Loopback | MessageFlags.Unencrypted)]
     internal sealed class P28BlockList : P0BChannelMessage
     {
         List<long> BlockedAccounts { get; set; } = new List<long>();

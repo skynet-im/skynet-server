@@ -40,19 +40,19 @@ namespace SkynetServer.Network
                     instance.ContentPacketId = messageAttribute.PacketId;
                     instance.ContentPacketPolicy = messageAttribute.PacketPolicy;
 
-                    object[] msgFlags = type.GetCustomAttributes(typeof(MsgFlagsAttribute), inherit: true);
-                    MsgFlagsAttribute msgFlagsAttribute = (MsgFlagsAttribute)msgFlags.FirstOrDefault(x => x.GetType() == typeof(MsgFlagsAttribute));
-                    MinFlagsAttribute minFlagsAttribute = (MinFlagsAttribute)msgFlags.FirstOrDefault(x => x.GetType() == typeof(MinFlagsAttribute));
-                    MaxFlagsAttribute maxFlagsAttribute = (MaxFlagsAttribute)msgFlags.FirstOrDefault(x => x.GetType() == typeof(MaxFlagsAttribute));
-                    if (msgFlagsAttribute != null)
+                    object[] flags = type.GetCustomAttributes(typeof(MessageFlagsAttribute), inherit: true);
+                    MessageFlagsAttribute messageFlags = (MessageFlagsAttribute)flags.FirstOrDefault(x => x.GetType() == typeof(MessageFlagsAttribute));
+                    RequiredFlagsAttribute requiredFlags = (RequiredFlagsAttribute)flags.FirstOrDefault(x => x.GetType() == typeof(RequiredFlagsAttribute));
+                    AllowedFlagsAttribute allowedFlags = (AllowedFlagsAttribute)flags.FirstOrDefault(x => x.GetType() == typeof(AllowedFlagsAttribute));
+                    if (messageFlags != null)
                     {
-                        instance.MinimumFlags = msgFlagsAttribute.Flags;
-                        instance.MaximumFlags = msgFlagsAttribute.Flags;
+                        instance.RequiredFlags = messageFlags.Flags;
+                        instance.AllowedFlags = messageFlags.Flags;
                     }
                     else
                     {
-                        if (minFlagsAttribute != null) instance.MinimumFlags = minFlagsAttribute.Flags;
-                        if (maxFlagsAttribute != null) instance.MaximumFlags = maxFlagsAttribute.Flags;
+                        if (requiredFlags != null) instance.RequiredFlags = requiredFlags.Flags;
+                        if (allowedFlags != null) instance.AllowedFlags = allowedFlags.Flags;
                     }
 
                     packets.Add(instance);

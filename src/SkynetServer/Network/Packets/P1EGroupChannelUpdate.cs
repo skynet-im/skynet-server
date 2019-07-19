@@ -10,7 +10,7 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Message(0x1E, PacketPolicy.Duplex)]
-    [MsgFlags(MessageFlags.Unencrypted)]
+    [MessageFlags(MessageFlags.Unencrypted)]
     internal sealed class P1EGroupChannelUpdate : P0BChannelMessage
     {
         public long GroupRevision { get; set; }

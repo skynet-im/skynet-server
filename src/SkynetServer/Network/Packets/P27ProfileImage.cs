@@ -9,8 +9,8 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Message(0x27, PacketPolicy.Duplex)]
-    [MinFlags(MessageFlags.FileAttached)]
-    [MaxFlags(MessageFlags.Unencrypted | MessageFlags.FileAttached)]
+    [RequiredFlags(MessageFlags.FileAttached)]
+    [AllowedFlags(MessageFlags.Unencrypted | MessageFlags.FileAttached)]
     internal sealed class P27ProfileImage : P0BChannelMessage
     {
         public string Caption { get; set; }

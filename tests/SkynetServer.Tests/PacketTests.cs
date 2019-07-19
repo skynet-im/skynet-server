@@ -32,12 +32,12 @@ namespace SkynetServer.Tests
         public void TestFlags()
         {
             var publicKeys = Packet.New<P18PublicKeys>();
-            Assert.AreEqual(MessageFlags.Unencrypted, publicKeys.MinimumFlags);
-            Assert.AreEqual(MessageFlags.Unencrypted, publicKeys.MaximumFlags);
+            Assert.AreEqual(MessageFlags.Unencrypted, publicKeys.RequiredFlags);
+            Assert.AreEqual(MessageFlags.Unencrypted, publicKeys.AllowedFlags);
 
             var nickname = Packet.New<P25Nickname>();
-            Assert.AreEqual(MessageFlags.None, nickname.MinimumFlags);
-            Assert.AreEqual(MessageFlags.Unencrypted, nickname.MaximumFlags);
+            Assert.AreEqual(MessageFlags.None, nickname.RequiredFlags);
+            Assert.AreEqual(MessageFlags.Unencrypted, nickname.AllowedFlags);
         }
     }
 }

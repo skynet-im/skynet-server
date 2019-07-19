@@ -9,7 +9,7 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Message(0x25, PacketPolicy.Duplex)]
-    [MaxFlags(MessageFlags.Unencrypted)]
+    [AllowedFlags(MessageFlags.Unencrypted)]
     internal sealed class P25Nickname : P0BChannelMessage
     {
         public string Nickname { get; set; }

@@ -9,13 +9,13 @@ namespace SkynetServer.Shared.Tests
     public class EnumExtensionsTest
     {
         [TestMethod]
-        public void TestIsInRange()
+        public void TestAreValid()
         {
-            Assert.IsTrue(MessageFlags.None.IsInRange(MessageFlags.None, MessageFlags.None));
-            Assert.IsTrue((MessageFlags.Loopback | MessageFlags.Unencrypted).IsInRange(MessageFlags.Loopback, MessageFlags.All));
+            Assert.IsTrue(MessageFlags.None.AreValid(MessageFlags.None, MessageFlags.None));
+            Assert.IsTrue((MessageFlags.Loopback | MessageFlags.Unencrypted).AreValid(MessageFlags.Loopback, MessageFlags.All));
 
-            Assert.IsFalse(MessageFlags.Loopback.IsInRange(MessageFlags.Unencrypted, MessageFlags.Loopback | MessageFlags.Unencrypted));
-            Assert.IsFalse((MessageFlags.Loopback | MessageFlags.NoSenderSync).IsInRange(MessageFlags.Loopback, MessageFlags.Loopback));
+            Assert.IsFalse(MessageFlags.Loopback.AreValid(MessageFlags.Unencrypted, MessageFlags.Loopback | MessageFlags.Unencrypted));
+            Assert.IsFalse((MessageFlags.Loopback | MessageFlags.NoSenderSync).AreValid(MessageFlags.Loopback, MessageFlags.Loopback));
         }
     }
 }

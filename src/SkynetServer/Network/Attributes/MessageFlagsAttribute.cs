@@ -5,10 +5,13 @@ using System.Text;
 
 namespace SkynetServer.Network.Attributes
 {
+    /// <summary>
+    /// Defines <see cref="MessageFlags"/> which this channel message must have. Any additional flags are forbidden.
+    /// </summary>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-    internal class MsgFlagsAttribute : Attribute
+    internal class MessageFlagsAttribute : Attribute
     {
-        public MsgFlagsAttribute(MessageFlags flags)
+        public MessageFlagsAttribute(MessageFlags flags)
         {
             Flags = flags;
         }

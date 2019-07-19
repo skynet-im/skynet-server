@@ -9,7 +9,7 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Message(0x23, PacketPolicy.Duplex)]
-    [MsgFlags(MessageFlags.Unencrypted)]
+    [MessageFlags(MessageFlags.Unencrypted)]
     internal sealed class P23MessageRead : P0BChannelMessage
     {
         public override Packet Create() => new P23MessageRead().Init(this);

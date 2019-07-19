@@ -401,7 +401,7 @@ namespace SkynetServer.Network
             if (packet.ContentPacketId < 0x13 || packet.ContentPacketId > 0x2A)
                 throw new ProtocolException("Invalid content packet ID");
 
-            if (!packet.MessageFlags.IsInRange(packet.MinimumFlags, packet.MaximumFlags))
+            if (!packet.MessageFlags.AreValid(packet.RequiredFlags, packet.AllowedFlags))
                 throw new ProtocolException($"Invalid MessageFlags{packet.MessageFlags} for content packet ID {packet.ContentPacketId}");
 
             if (packet.MessageFlags.HasFlag(MessageFlags.Unencrypted))
