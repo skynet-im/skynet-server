@@ -1,4 +1,5 @@
-﻿using SkynetServer.Network.Model;
+﻿using SkynetServer.Model;
+using SkynetServer.Network.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -8,6 +9,7 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Message(0x23, PacketPolicy.Duplex)]
+    [MessageFlags(MessageFlags.Unencrypted)]
     internal sealed class P23MessageRead : P0BChannelMessage
     {
         public override Packet Create() => new P23MessageRead().Init(this);

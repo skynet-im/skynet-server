@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\SkynetServer.Shared\SkynetServer.Shared.csproj" />
+    <ProjectReference Include="..\..\src\SkynetServer\SkynetServer.csproj" />
   </ItemGroup>
 
 </Project>

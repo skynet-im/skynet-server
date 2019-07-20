@@ -1,4 +1,5 @@
 ﻿using SkynetServer.Model;
+using SkynetServer.Network.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Text;

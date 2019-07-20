@@ -1,4 +1,5 @@
-﻿using SkynetServer.Network.Packets;
+﻿using SkynetServer.Network.Attributes;
+using SkynetServer.Network.Packets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,6 +39,22 @@ namespace SkynetServer.Network
                     instance.Policy = packetAttribute.PacketPolicy;
                     instance.ContentPacketId = messageAttribute.PacketId;
                     instance.ContentPacketPolicy = messageAttribute.PacketPolicy;
+
+                    object[] flags = type.GetCustomAttributes(typeof(MessageFlagsAttribute), inherit: true);
+                    MessageFlagsAttribute messageFlags = (MessageFlagsAttribute)flags.FirstOrDefault(x => x.GetType() == typeof(MessageFlagsAttribute));
+                    RequiredFlagsAttribute requiredFlags = (RequiredFlagsAttribute)flags.FirstOrDefault(x => x.GetType() == typeof(RequiredFlagsAttribute));
+                    AllowedFlagsAttribute allowedFlags = (AllowedFlagsAttribute)flags.FirstOrDefault(x => x.GetType() == typeof(AllowedFlagsAttribute));
+                    if (messageFlags != null)
+                    {
+                        instance.RequiredFlags = messageFlags.Flags;
+                        instance.AllowedFlags = messageFlags.Flags;
+                    }
+                    else
+                    {
+                        if (requiredFlags != null) instance.RequiredFlags = requiredFlags.Flags;
+                        if (allowedFlags != null) instance.AllowedFlags = allowedFlags.Flags;
+                    }
+
                     packets.Add(instance);
                     max = Math.Max(max, messageAttribute.PacketId);
                 }

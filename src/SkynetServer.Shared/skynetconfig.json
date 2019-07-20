@@ -1,5 +1,9 @@
 {
-  "MailConfig": {
+  "DatabaseOptions": {
+    "ConnectionString": "Server=localhost;Port=3306;Database=Skynet;User=root;Password=root;"
+  },
+  "MailOptions": {
+    "EnableMailing": true,
     "SenderName": "Skynet Team",
     "SenderAddress": "noreply@skynet-messenger.com",
     "SmtpUsername": "noreply@skynet-messenger.com",
@@ -8,18 +12,22 @@
     "SmtpHost": "smtp.strato.de",
     "SmtpPort": 465
   },
-  "ProtocolConfig": {
+  "ProtocolOptions": {
     "ProtocolVersion": 2,
-    "VersionName": "0.8.0",
-    "VersionCode": 55,
-    "RecommendUpdateThreshold": 55,
-    "ForceUpdateThreshold": 55
+    "Platforms": [
+      {
+        "Name": "android/de.vectordata.skynet",
+        "VersionCode": 55,
+        "VersionName": "0.8.0",
+        "RecommendUpdateThreshold": 55,
+        "ForceUpdateThreshold": 55
+      }
+    ]
   },
-  "VslConfig": {
+  "VslOptions": {
     "TcpPort": 32761,
     "LatestProductVersion": 2,
     "OldestProductVersion": 2,
     "RsaXmlKey": "<RSAKeyValue><Modulus>jKoWxmIfePGQaCHE87/gVp2Xqv1dwowj5jm7r4rI6NzSMyYwSqYHb8u5RtKOGiUPAz80rgym5rrVezkP+eiGZN1oC2yPfgRk9WrFN2x1o205J6TRBWx3zgwVqgjzfb9j/WHZlY7s51nZOcUKC4XTST8F1Mx37s5Ginjv9veBcRzVOdSpfyQAAKMf6zT6x+H5/77eYdjFyWiAEg1o5o8zgRh+HqGKfXEwFTYFHKpeg4I/RKbE9QAVOfMj2ZqTScozcNeUdIraJ7uuCJvHVwvNDVqC38ZLXuuaqlYB4cc0TRYhbN50M74lWuGF7w1EWcdYSnWgidJaF0AZkdza2vz2Lw==</Modulus><Exponent>AQAB</Exponent><P>upB4cTiVHIgR7bSoN1w2W3HTGcRlSHNHorJg0+oHbH8pMX7KY9gyuXbL3gg0uviUgXmge7WIZ/9IfqJA/uFtpiYL0UYJwQgLhwYwes8hDTqb9o4k+QjOHZl59381lvhHD92LoywZvRyUBVFXzTKAvx9/AhziaZxXX2dyv3Zic+M=</P><Q>wQRaLGTiutc/Z+yW4LfW8LO2kDxclJ8+bfyI9bxxF4myr3qtWSKJUh4pkaiPxSgiq6XDKmei/kAN0cZevIUplDEVtdQ+1WwaZtzCKeJEr9regyhPRDt8I0uCPIV8l7YqA84GPtEnFHiz88WiHaBcDNK2SUaj96Uf8pDrcO0OfkU=</Q><DP>bc/BhOsIIZ4Z529xn/w/5n1OAxmtgAKSxLn38mQK8Jq8dWyq1jAYU0AQaWUtHGxahQdBJe/JFWWWlysL1Lp9ntFAHXL7JMqGdnh3KqImUzIPQQWTz52WLKf8uWf/9Be5RCZkHaxEjiJ3IdYqNxal31k7mdPElOM4Lmimivm0o38=</DP><DQ>sGH6yVDUBKvIrH5+jhJRoBqKPZp7e/FdyoKY4f73VewmVseDe83csScRE6N25lM8A6FyDOEyCKeeOVHOpvYFPf/w9/1iAgRMyCz6Xe4AmLco2bBPZ2n4kgRhmk7dwYHdOSbffC4DSWjYAW9cKzishadUnvenxRmnbTHThZmLwgU=</DQ><InverseQ>IE7ehnkv7kYY+w5s6bCgy0cFSi4EZNG52emEntjEt0DuULADptmTzoPb5E4+JPmD8jZWK6Mr3QbOdtRBXvqak+Hr8u2yjg+AgImfgpLSeG9UtrvAKpnMv132vy6vQYmT5wKX22XYo3TplWJoMv9yMB8v7LM1aGNKcCjpRBKofPI=</InverseQ><D>AAwgwJ7HpCw6sEmFoLXK29diOJgGa3is+MiAvJSCEVmJz4qYlMo3+RRA7qAANLSxASkDtIoVHtizz6rANfp/CbKCtJ7ANa6FxW9GM01fBUNii9nd48jkhZ5nR0TotGGUhCWmDxbxK9ExiLL13SEsaRpDaer6sdG8QIZwG4SU6N69YO40/QXYN2OhzXGs5j1ZjA6sLSzcfRC7/yRnmdG2CSbnuVghue+YdAqf9vH2gyD1aDJhqajzGoVc5XCmu7JTX5fI1EruVUX0LATW5966CRPj6RMgEo8MadyS0M+QdF+Et2jzmCj3NvnbkxegvpBvbSFEVgVT8LbbG2ro+7yzfQ==</D></RSAKeyValue>"
-  },
-  "DbConnectionString": "Server=localhost;Port=3306;Database=Skynet;User=root;Password=root;"
+  }
 }

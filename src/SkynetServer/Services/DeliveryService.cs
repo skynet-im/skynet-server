@@ -6,8 +6,8 @@ using SkynetServer.Network;
 using SkynetServer.Network.Packets;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using VSL;
 
@@ -16,10 +16,22 @@ namespace SkynetServer.Services
     internal class DeliveryService
     {
         private readonly FirebaseService firebase;
+        private ImmutableList<Client> clients;
 
         public DeliveryService(FirebaseService firebase)
         {
             this.firebase = firebase;
+            clients = ImmutableList.Create<Client>();
+        }
+
+        public void Register(Client client)
+        {
+            ImmutableInterlocked.Update(ref clients, list => list.Add(client));
+        }
+
+        public void Unregister(Client client)
+        {
+            ImmutableInterlocked.Update(ref clients, list => list.Remove(client));
         }
 
         public async Task<Message> SendMessage(P0BChannelMessage packet, Channel channel, long? senderId)
@@ -58,7 +70,7 @@ namespace SkynetServer.Services
                 long[] members = await ctx.ChannelMembers.Where(m => m.ChannelId == channel.ChannelId).Select(m => m.AccountId).ToArrayAsync();
                 bool isLoopback = packet.MessageFlags.HasFlag(MessageFlags.Loopback);
                 bool isNoSenderSync = packet.MessageFlags.HasFlag(MessageFlags.NoSenderSync);
-                await Task.WhenAll(Program.Clients
+                await Task.WhenAll(clients
                     .Where(c => c.Account != null && members.Contains(c.Account.AccountId))
                     .Where(c => !isLoopback || c.Account.AccountId == senderId)
                     .Where(c => !isNoSenderSync || c.Account.AccountId != senderId)
@@ -70,14 +82,14 @@ namespace SkynetServer.Services
 
         public Task SendPacket(Packet packet, long accountId, Client exclude)
         {
-            return Task.WhenAll(Program.Clients
+            return Task.WhenAll(clients
                 .Where(c => c.Account != null && c.Account.AccountId == accountId && !ReferenceEquals(c, exclude))
                 .Select(c => c.SendPacket(packet)));
         }
 
         public Task SendPacket(Packet packet, IEnumerable<long> accounts, Client exclude)
         {
-            return Task.WhenAll(Program.Clients
+            return Task.WhenAll(clients
                 .Where(c => c.Account != null && accounts.Contains(c.Account.AccountId) && !ReferenceEquals(c, exclude))
                 .Select(c => c.SendPacket(packet)));
         }
@@ -87,7 +99,7 @@ namespace SkynetServer.Services
             return Task.WhenAll(sessions.Select(async session =>
             {
                 bool found = false;
-                foreach (Client client in Program.Clients)
+                foreach (Client client in clients)
                 {
                     if (client.Session != null
                         && client.Session.AccountId == session.AccountId

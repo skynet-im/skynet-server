@@ -1,4 +1,6 @@
-﻿using SkynetServer.Network.Model;
+﻿using SkynetServer.Model;
+using SkynetServer.Network.Attributes;
+using SkynetServer.Network.Model;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -8,6 +10,7 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Message(0x28, PacketPolicy.Duplex)]
+    [MessageFlags(MessageFlags.Loopback | MessageFlags.Unencrypted)]
     internal sealed class P28BlockList : P0BChannelMessage
     {
         List<long> BlockedAccounts { get; set; } = new List<long>();

@@ -11,6 +11,7 @@ namespace SkynetServer.Model
         Loopback = 1,
         Unencrypted = 2,
         FileAttached = 4,
-        NoSenderSync = 8
+        NoSenderSync = 8,
+        All = Loopback | Unencrypted | FileAttached | NoSenderSync
     }
 }

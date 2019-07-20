@@ -1,12 +1,12 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using SkynetServer.Configuration;
 using SkynetServer.Network;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using VSL;
@@ -15,14 +15,14 @@ namespace SkynetServer.Services
 {
     internal class ListenerService : IHostedService
     {
-        private readonly IConfiguration configuration;
-        private readonly DeliveryService delivery;
+        private readonly IOptions<VslOptions> vslOptions;
+        private readonly IServiceProvider serviceProvider;
         private readonly VSLListener listener;
 
-        public ListenerService(IConfiguration config, DeliveryService delivery)
+        public ListenerService(IOptions<VslOptions> vslOptions, IServiceProvider serviceProvider)
         {
-            configuration = config;
-            this.delivery = delivery;
+            this.vslOptions = vslOptions;
+            this.serviceProvider = serviceProvider;
             listener = CreateListener();
             listener.CacheCapacity = 0;
         }
@@ -41,7 +41,7 @@ namespace SkynetServer.Services
 
         private VSLListener CreateListener()
         {
-            VslConfig config = configuration.Get<SkynetConfig>().VslConfig;
+            VslOptions config = vslOptions.Value;
             IPEndPoint[] endPoints = {
                 new IPEndPoint(IPAddress.Any, config.TcpPort),
                 new IPEndPoint(IPAddress.IPv6Any, config.TcpPort)
@@ -55,7 +55,7 @@ namespace SkynetServer.Services
                 CatchApplicationExceptions = !Debugger.IsAttached
             };
 
-            return new VSLListener(endPoints, settings, () => new Client(delivery));
+            return new VSLListener(endPoints, settings, () => ActivatorUtilities.CreateInstance<Client>(serviceProvider));
         }
     }
 }

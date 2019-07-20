@@ -5,8 +5,9 @@ using System.Text;
 
 namespace SkynetServer.Configuration
 {
-    public class MailConfig
+    public class MailOptions
     {
+        public bool EnableMailing { get; set; }
         [Required] public string SenderName { get; set; }
         [Required] public string SenderAddress { get; set; }
 
@@ -14,6 +15,6 @@ namespace SkynetServer.Configuration
         [Required] public string SmtpPassword { get; set; }
         public bool UseSsl { get; set; }
         [Required] public string SmtpHost { get; set; }
-        public ushort SmtpPort { get; set; }
+        [Range(0, 65535)] public ushort SmtpPort { get; set; }
     }
 }

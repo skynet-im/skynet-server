@@ -1,10 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using SkynetServer.Configuration;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
-using SkynetServer.Network.Mail;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using System;
@@ -23,13 +21,16 @@ namespace SkynetServer.Network
 
         public Task Handle(P00ConnectionHandshake packet)
         {
-            ProtocolConfig config = Program.Configuration.Get<SkynetConfig>().ProtocolConfig;
+            ProtocolOptions config = protocolOptions.Value;
             var response = Packet.New<P01ConnectionResponse>();
-            response.LatestVersion = config.VersionName;
-            response.LatestVersionCode = config.VersionCode;
-            if (packet.ProtocolVersion != config.ProtocolVersion || packet.VersionCode < config.ForceUpdateThreshold)
+            ProtocolOptions.Platform platform = config.Platforms.SingleOrDefault(p => p.Name == packet.ApplicationIdentifier);
+            if (platform == null)
+                throw new ProtocolException($"Unsupported client {packet.ApplicationIdentifier}");
+            response.LatestVersion = platform.VersionName;
+            response.LatestVersionCode = platform.VersionCode;
+            if (packet.ProtocolVersion != config.ProtocolVersion || packet.VersionCode < platform.ForceUpdateThreshold)
                 response.ConnectionState = ConnectionState.MustUpgrade;
-            else if (packet.VersionCode < config.RecommendUpdateThreshold)
+            else if (packet.VersionCode < platform.RecommendUpdateThreshold)
                 response.ConnectionState = ConnectionState.CanUpgrade;
             else
                 response.ConnectionState = ConnectionState.Valid;
@@ -45,7 +46,7 @@ namespace SkynetServer.Network
             using (var ctx = new DatabaseContext())
             {
                 var response = Packet.New<P03CreateAccountResponse>();
-                if (!ConfirmationMailer.IsValidEmail(packet.AccountName))
+                if (!mailing.IsValidEmail(packet.AccountName))
                     response.ErrorCode = CreateAccountError.InvalidAccountName;
                 else
                 {
@@ -54,7 +55,7 @@ namespace SkynetServer.Network
                         response.ErrorCode = CreateAccountError.AccountNameTaken;
                     else
                     {
-                        Task mail = new ConfirmationMailer().SendMailAsync(confirmation.MailAddress, confirmation.Token);
+                        Task mail = mailing.SendMailAsync(confirmation.MailAddress, confirmation.Token);
 
                         Channel loopback = await DatabaseHelper.AddChannel(new Channel
                         {
@@ -400,6 +401,9 @@ namespace SkynetServer.Network
             if (packet.ContentPacketId < 0x13 || packet.ContentPacketId > 0x2A)
                 throw new ProtocolException("Invalid content packet ID");
 
+            if (!packet.MessageFlags.AreValid(packet.RequiredFlags, packet.AllowedFlags))
+                throw new ProtocolException($"Invalid MessageFlags{packet.MessageFlags} for content packet ID {packet.ContentPacketId}");
+
             if (packet.MessageFlags.HasFlag(MessageFlags.Unencrypted))
             {
                 if (!(Packet.Packets[packet.ContentPacketId] is P0BChannelMessage message)
@@ -415,7 +419,30 @@ namespace SkynetServer.Network
                     return; // Not all messages can be saved, some return MessageSendError other than Success
             }
 
-            // TODO: Check if the account has the permission to send messages in this channel
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                Channel channel = await ctx.Channels.SingleOrDefaultAsync(c => c.ChannelId == packet.ChannelId);
+                if (channel == null)
+                    throw new ProtocolException("Attempted to send a message to a non existent channel");
+
+                switch (channel.ChannelType)
+                {
+                    case ChannelType.Loopback:
+                    case ChannelType.AccountData:
+                    case ChannelType.ProfileData:
+                        if (channel.OwnerId != Account.AccountId)
+                            throw new ProtocolException("Attempted to send a message to a foreign channel");
+                        break;
+                    case ChannelType.Direct:
+                        if (!await ctx.ChannelMembers.AnyAsync(m => m.ChannelId == packet.ChannelId && m.AccountId == Account.AccountId))
+                            throw new ProtocolException("Attempted to send a message to a foreign channel");
+                        break;
+                    case ChannelType.Group:
+                        throw new NotImplementedException();
+                    default:
+                        throw new ArgumentException($"Invalid value {channel.ChannelType} for enum {nameof(ChannelType)}");
+                }
+            }
 
             Message entity = new Message
             {
@@ -502,10 +529,21 @@ namespace SkynetServer.Network
             throw new NotImplementedException();
         }
 
-        public Task<MessageSendError> Handle(P18PublicKeys packet)
+        public async Task<MessageSendError> Handle(P18PublicKeys packet)
         {
-            // TODO: Validate dependencies
-            return Task.FromResult(MessageSendError.Success);
+            if (packet.Dependencies.Count != 1)
+                throw new ProtocolException($"Packet {nameof(P18PublicKeys)} must reference the matching private keys.");
+
+            Dependency dep = packet.Dependencies[0];
+            if (dep.AccountId != Account.AccountId)
+                throw new ProtocolException($"The dependency of {nameof(P18PublicKeys)} to private keys must be specific for the sending account.");
+
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                if (!await ctx.Messages.AnyAsync(m => m.ChannelId == dep.ChannelId && m.MessageId == dep.MessageId && m.ContentPacketId == 0x17))
+                    throw new ProtocolException($"Could not find the referenced private keys for {nameof(P18PublicKeys)}.");
+            }
+            return MessageSendError.Success;
         }
 
         public async Task PostHandling(P18PublicKeys packet, Message message) // Alice changes her keypair

@@ -1,4 +1,6 @@
-﻿using SkynetServer.Network.Model;
+﻿using SkynetServer.Model;
+using SkynetServer.Network.Attributes;
+using SkynetServer.Network.Model;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -8,6 +10,7 @@ using VSL;
 namespace SkynetServer.Network.Packets
 {
     [Message(0x1E, PacketPolicy.Duplex)]
+    [MessageFlags(MessageFlags.Unencrypted)]
     internal sealed class P1EGroupChannelUpdate : P0BChannelMessage
     {
         public long GroupRevision { get; set; }

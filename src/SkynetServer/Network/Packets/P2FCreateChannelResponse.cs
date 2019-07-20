@@ -1,8 +1,9 @@
-﻿using System;
+﻿using SkynetServer.Network.Attributes;
+using SkynetServer.Network.Model;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using SkynetServer.Network.Model;
 using VSL;
 
 namespace SkynetServer.Network.Packets
