@@ -573,6 +573,11 @@ namespace SkynetServer.Network
             throw new NotImplementedException();
         }
 
+        public Task Handle(P34SetClientState packet)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task Handle(P2DSearchAccount packet)
         {
             using (var ctx = new DatabaseContext())
@@ -591,6 +596,11 @@ namespace SkynetServer.Network
         }
 
         public Task Handle(P30FileUpload packet)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Handle(P32DeviceListRequest packet)
         {
             throw new NotImplementedException();
         }

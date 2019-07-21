@@ -44,10 +44,15 @@ namespace SkynetServer.Network
         //Task<MessageSendError> Handle(P27ProfileImage packet);
         Task<MessageSendError> Handle(P28BlockList packet);
         //Task<MessageSendError> Handle(P29DeviceList packet);
+        //Task<MessageSendError> Handle(P2BOnlineState packet);
+
+        //Task Handle(P2CChannelAction packet);
+        Task Handle(P34SetClientState packet);
 
         Task Handle(P2DSearchAccount packet);
         //Task Handle(P2ESearchAccountResponse packet);
         Task Handle(P30FileUpload packet);
         //Task Handle(P31FileUploadResponse packet);
+        Task Handle(P32DeviceListRequest packet);
     }
 }
