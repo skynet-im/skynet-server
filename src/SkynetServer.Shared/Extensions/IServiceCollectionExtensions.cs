@@ -24,7 +24,7 @@ namespace SkynetServer.Extensions
                     if (!mailOptions.EnableMailing) return true;
                     ValidationContext context = new ValidationContext(mailOptions);
                     return Validator.TryValidateObject(mailOptions, context, null);
-                });
+                }, "Validation of MailOptions failed");
             services.AddOptions<ProtocolOptions>()
                 .Bind(configuration.GetSection(nameof(ProtocolOptions)))
                 .ValidateDataAnnotations();
