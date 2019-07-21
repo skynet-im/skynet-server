@@ -29,6 +29,7 @@ namespace SkynetServer
                 services.ConfigureSkynet(context.Configuration);
                 services.AddSingleton<FirebaseService>();
                 services.AddSingleton<DeliveryService>();
+                services.AddSingleton<MailingService>();
                 services.AddHostedService<ListenerService>();
             });
             return builder;
