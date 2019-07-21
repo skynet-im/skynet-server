@@ -35,5 +35,10 @@ namespace SkynetServer.Network.Packets
         {
             throw new NotImplementedException();
         }
+
+        public override string ToString()
+        {
+            return $"{{{nameof(P08RestoreSession)}: AccountId={AccountId:x8} SessionId={SessionId.ToString("x8")}}}";
+        }
     }
 }

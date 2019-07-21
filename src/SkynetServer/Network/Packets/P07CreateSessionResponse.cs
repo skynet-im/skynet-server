@@ -33,7 +33,7 @@ namespace SkynetServer.Network.Packets
 
         public override string ToString()
         {
-            return $"{{{nameof(P07CreateSessionResponse)}: ErrorCode={ErrorCode}}}";
+            return $"{{{nameof(P07CreateSessionResponse)}: AccountId={AccountId:x8} SessionId={SessionId:x8} ErrorCode={ErrorCode}}}";
         }
     }
 }

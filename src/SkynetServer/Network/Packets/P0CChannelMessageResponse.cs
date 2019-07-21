@@ -36,5 +36,10 @@ namespace SkynetServer.Network.Packets
             buffer.WriteLong(SkipCount);
             buffer.WriteDate(DispatchTime);
         }
+
+        public override string ToString()
+        {
+            return $"{{{nameof(P0CChannelMessageResponse)}: ErrorCode={ErrorCode}}}";
+        }
     }
 }
