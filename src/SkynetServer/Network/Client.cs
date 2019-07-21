@@ -24,7 +24,7 @@ namespace SkynetServer.Network
             this.protocolOptions = protocolOptions;
         }
 
-        public async Task SendPacket(Packet packet)
+        public async Task<bool> SendPacket(Packet packet)
         {
             using (var buffer = PacketBuffer.CreateDynamic())
             {
@@ -34,6 +34,7 @@ namespace SkynetServer.Network
                     Console.WriteLine($"Successfully sent packet {packet}");
                 else
                     Console.WriteLine($"Failed to send packet {packet}");
+                return success;
             }
         }
 

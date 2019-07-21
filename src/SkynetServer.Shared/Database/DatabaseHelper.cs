@@ -137,27 +137,25 @@ namespace SkynetServer.Database
             }
         }
 
-        public static async Task<Message> AddMessage(Message message, IEnumerable<MessageDependency> dependencies)
+        public static async Task<Message> AddMessage(Message message, List<MessageDependency> dependencies)
         {
             using (DatabaseContext ctx = new DatabaseContext())
             {
                 message.MessageId = GetMessageId(message.ChannelId);
                 ctx.Messages.Add(message);
-                
-                IEnumerable<MessageDependency> transform()
+
+                foreach (MessageDependency dependency in dependencies)
                 {
-                    foreach (MessageDependency dependency in dependencies)
-                    {
-                        dependency.OwningChannelId = message.ChannelId;
-                        dependency.OwningMessageId = message.MessageId;
-                        yield return dependency;
-                    }
+                    dependency.OwningChannelId = message.ChannelId;
+                    dependency.OwningMessageId = message.MessageId;
                 }
 
-                ctx.MessageDependencies.AddRange(transform());
+                ctx.MessageDependencies.AddRange(dependencies);
                 await ctx.SaveChangesAsync();
-                return message;
             }
+
+            message.Dependencies = dependencies;
+            return message;
         }
 
         private static long RandomId()

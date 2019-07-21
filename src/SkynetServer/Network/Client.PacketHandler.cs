@@ -76,14 +76,14 @@ namespace SkynetServer.Network
                         var passwordUpdate = Packet.New<P15PasswordUpdate>();
                         passwordUpdate.KeyHash = packet.KeyHash;
                         passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
-                        await delivery.SendMessage(passwordUpdate, loopback, newAccount.AccountId);
+                        await delivery.CreateMessage(passwordUpdate, loopback, newAccount.AccountId);
 
                         // Send email address
                         var mailAddress = Packet.New<P14MailAddress>();
                         mailAddress.MailAddress = await ctx.MailConfirmations.Where(c => c.AccountId == newAccount.AccountId)
                             .Select(c => c.MailAddress).SingleAsync();
                         mailAddress.MessageFlags = MessageFlags.Unencrypted;
-                        await delivery.SendMessage(mailAddress, accountData, newAccount.AccountId);
+                        await delivery.CreateMessage(mailAddress, accountData, newAccount.AccountId);
 
                         await mail;
                         response.ErrorCode = CreateAccountError.Success;
@@ -198,7 +198,7 @@ namespace SkynetServer.Network
                     .Where(m => m.ChannelId == loopback.ChannelId && m.MessageId > lastLoopbackMessage)
                     .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
                 {
-                    await SendPacket(message.ToPacket());
+                    await SendPacket(message.ToPacket(Account.AccountId));
                 }
 
                 // Send messages from account data channels
@@ -233,7 +233,7 @@ namespace SkynetServer.Network
                     .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != Account.AccountId)
                     .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
                 {
-                    await SendPacket(message.ToPacket());
+                    await SendPacket(message.ToPacket(Account.AccountId));
                 }
             }
         }
@@ -360,7 +360,7 @@ namespace SkynetServer.Network
                     .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != account.AccountId)
                     .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
                 {
-                    await delivery.SendPacket(message.ToPacket(), account.AccountId, null);
+                    await delivery.SendPacket(message.ToPacket(account.AccountId), account.AccountId, null);
                 }
             }
         }
@@ -375,7 +375,7 @@ namespace SkynetServer.Network
             refForAlice.MessageFlags = MessageFlags.Loopback | MessageFlags.Unencrypted;
             refForAlice.Dependencies.Add(new Dependency(aliceId, alicePrivate.ChannelId, alicePrivate.MessageId));
             refForAlice.Dependencies.Add(new Dependency(bobId, bobPublic.ChannelId, bobPublic.MessageId));
-            Message msgForAlice = await delivery.SendMessage(refForAlice, channel, Account.AccountId);
+            Message msgForAlice = await delivery.CreateMessage(refForAlice, channel, Account.AccountId);
 
             Message bobPrivate = await ctx.MessageDependencies
                 .Where(d => d.OwningChannelId == bobPublic.ChannelId && d.OwningMessageId == bobPublic.MessageId)
@@ -385,7 +385,7 @@ namespace SkynetServer.Network
             refForAlice.MessageFlags = MessageFlags.Loopback | MessageFlags.Unencrypted;
             refForBob.Dependencies.Add(new Dependency(bobId, bobPrivate.ChannelId, bobPrivate.MessageId));
             refForBob.Dependencies.Add(new Dependency(aliceId, alicePublic.ChannelId, alicePublic.MessageId));
-            Message msgForBob = await delivery.SendMessage(refForBob, channel, bobId);
+            Message msgForBob = await delivery.CreateMessage(refForBob, channel, bobId);
 
             // Combine the packets of the last two steps and create one direct channel update
 
@@ -393,7 +393,7 @@ namespace SkynetServer.Network
             update.MessageFlags = MessageFlags.Unencrypted;
             update.Dependencies.Add(new Dependency(aliceId, msgForAlice.ChannelId, msgForAlice.MessageId));
             update.Dependencies.Add(new Dependency(bobId, msgForBob.ChannelId, msgForBob.MessageId));
-            await delivery.SendMessage(update, channel, null);
+            await delivery.CreateMessage(update, channel, null);
         }
 
         public async Task Handle(P0BChannelMessage packet)
@@ -473,19 +473,9 @@ namespace SkynetServer.Network
                 packet.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
 
                 if (packet.ContentPacketId == 0x20)
-                {
-                    IEnumerable<Session> sessions = ctx.ChannelMembers
-                        .Where(m => m.ChannelId == packet.ChannelId)
-                        .Join(ctx.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s);
-                    await delivery.SendPacketOrNotify(packet, sessions, exclude: this, excludeFcm: Account.AccountId);
-                }
+                    await delivery.SendPriorityMessage(entity, exclude: this, excludeFcm: Account);
                 else
-                {
-                    IEnumerable<long> accounts = ctx.ChannelMembers
-                        .Where(m => m.ChannelId == packet.ChannelId)
-                        .Select(m => m.AccountId);
-                    await delivery.SendPacket(packet, accounts, exclude: this);
-                }
+                    await delivery.SendMessage(entity, exclude: this);
             }
 
             await packet.PostHandling(this, entity);
