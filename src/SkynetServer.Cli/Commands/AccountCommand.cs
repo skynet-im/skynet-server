@@ -35,7 +35,7 @@ namespace SkynetServer.Cli.Commands
                     if (success)
                     {
                         console.Out.WriteLine($"Created account with ID {account.AccountId}");
-                        console.Out.WriteLine($"Visit https://api.skynet-messenger.com/confirm/{confirmation.Token} to confirm the mail address");
+                        console.Out.WriteLine($"Visit https://account.skynet.app/confirm/{confirmation.Token} to confirm the mail address");
                         return 0;
                     }
                     else
