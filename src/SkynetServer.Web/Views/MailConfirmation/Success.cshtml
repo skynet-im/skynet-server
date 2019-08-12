@@ -1,13 +1,15 @@
-﻿@model MailConfirmationViewModel
+﻿@using Microsoft.AspNetCore.Mvc.Localization
+@using SkynetServer.Web.Controllers
+
+@inject IHtmlLocalizer<MailConfirmationController> localizer
+
+@model MailConfirmationViewModel
 @{
-    ViewData["Title"] = "Successfully confirmed";
+    ViewData["Title"] = localizer["SuccessTitle"];
 }
 
-<h2 class="main-header">Successfully confirmed</h2>
+<h2 class="main-header">@localizer["SuccessHeader"]</h2>
 
 <div class="content">
-    <p>
-        Your mail address <a href="mailto:@Model.MailAddress">@Model.MailAddress</a> has been successfully confirmed.
-        Now you can log in for the first time. Enjoy using Skynet!
-    </p>
+    <p>@localizer["SuccessContent", Model.MailAddress]</p>
 </div>

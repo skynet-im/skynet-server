@@ -1,10 +1,14 @@
-﻿
+﻿@using Microsoft.AspNetCore.Mvc.Localization
+@using SkynetServer.Web.Controllers
+
+@inject IHtmlLocalizer<MailConfirmationController> localizer
+
 @{
-    ViewData["Title"] = "Invalid token";
+    ViewData["Title"] = localizer["InvalidTitle"];
 }
 
-<h2 class="main-header">Invalid confirmation code</h2>
+<h2 class="main-header">@localizer["InvalidHeader"]</h2>
 
 <div class="content">
-    <p>The confirmation code you entered is invalid. Please note that after creating your account, the confirmation code is only valid for 24 hours.</p>
+    <p>@localizer["InvalidContent"]</p>
 </div>

@@ -1,20 +1,25 @@
-﻿@model MailConfirmationViewModel
+﻿@using Microsoft.AspNetCore.Mvc.Localization
+@using SkynetServer.Web.Controllers
+
+@inject IHtmlLocalizer<MailConfirmationController> localizer
+
+@model MailConfirmationViewModel
 @{
-    ViewData["Title"] = "Confirmation pending";
+    ViewData["Title"] = localizer["PendingTitle"];
 }
 
-<h2 class="main-header">Confirmation pending</h2>
+<h2 class="main-header">@localizer["PendingTitle"]</h2>
 
 <div class="content">
-    <p>The confirmation for your mail address <a href="mailto:@Model.MailAddress">@Model.MailAddress</a> is pending.</p>
+    <p>@localizer["PendingContent", Model.MailAddress]</p>
     <noscript>
         <div class="alert alert-warning" role="alert">
-            <p><b>JavaScript disabled:</b> Please click the button to complete the mail address confirmation.</p>
+            <p>@localizer["PendingJSWarning"]</p>
         </div>
     </noscript>
 
     <form class="auto-submit" method="post">
-        <input type="submit" class="btn btn-primary" value="Complete confirmation" />
+        <input type="submit" class="btn btn-primary" value="@localizer["PendingButton"]" />
     </form>
 </div>
 

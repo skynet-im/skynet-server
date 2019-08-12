@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,8 +25,23 @@ namespace SkynetServer.Web
         public void ConfigureServices(IServiceCollection services)
         {
             services.ConfigureSkynet(Configuration);
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+
+            services.AddLocalization(options => options.ResourcesPath = "Resources");
+            services.AddMvc()
+                .AddViewLocalization()
+                .SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+
             services.AddDbContext<DatabaseContext>();
+
+            services.Configure<RequestLocalizationOptions>(options =>
+            {
+                var cultures = new[] { new CultureInfo("en-US"), new CultureInfo("de") };
+
+                options.DefaultRequestCulture = new RequestCulture("en-US");
+                options.SupportedCultures = cultures;
+                options.SupportedUICultures = cultures;
+                options.RequestCultureProviders = new[] { new AcceptLanguageHeaderRequestCultureProvider() };
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -39,6 +56,7 @@ namespace SkynetServer.Web
                 app.UseExceptionHandler("/Error");
             }
 
+            app.UseRequestLocalization();
             app.UseStatusCodePagesWithReExecute("/Status/{0}");
             app.UseStaticFiles();
             app.UseMvc();
