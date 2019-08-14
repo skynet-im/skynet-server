@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SkynetServer.Cli.Commands;
 using SkynetServer.Extensions;
+using SkynetServer.Services;
 using System;
 using System.Diagnostics;
 
@@ -31,6 +32,7 @@ namespace SkynetServer.Cli
             var services = new ServiceCollection()
                 .AddSingleton(PhysicalConsole.Singleton)
                 .ConfigureSkynet(configuration)
+                .AddSingleton<MailingService>()
                 .BuildServiceProvider();
 
             var application = new CommandLineApplication<SkynetCommand>();

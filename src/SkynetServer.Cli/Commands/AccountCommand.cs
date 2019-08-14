@@ -1,6 +1,7 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
+using SkynetServer.Services;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -25,8 +26,17 @@ namespace SkynetServer.Cli.Commands
             [Argument(0)]
             public string AccountName { get; set; }
 
-            private async Task<int> OnExecute(IConsole console)
+            [Option("-m|--send-mail", "Send a confirmation mail", CommandOptionType.NoValue)]
+            public bool SendMail { get; set; }
+
+            private async Task<int> OnExecute(IConsole console, MailingService mailingService)
             {
+                if (!mailingService.IsValidEmail(AccountName))
+                {
+                    console.Error.WriteLine("Please use a valid email address!");
+                    return 1;
+                }
+
                 console.Out.WriteLine("WARNING: Argon2 hash is currently not supported!");
 
                 using (DatabaseContext ctx = new DatabaseContext())
@@ -36,6 +46,12 @@ namespace SkynetServer.Cli.Commands
                     {
                         console.Out.WriteLine($"Created account with ID {account.AccountId}");
                         console.Out.WriteLine($"Visit https://account.skynet.app/confirm/{confirmation.Token} to confirm the mail address");
+
+                        if (SendMail)
+                        {
+                            console.Out.WriteLine("Sending confirmation mail...");
+                            await mailingService.SendMailAsync(AccountName, confirmation.Token);
+                        }
                         return 0;
                     }
                     else
@@ -61,7 +77,7 @@ namespace SkynetServer.Cli.Commands
                     MailConfirmation confirmation = ctx.MailConfirmations.SingleOrDefault(c => c.MailAddress == MailAddress);
                     if (confirmation != null)
                     {
-                        if (confirmation.ConfirmationTime == default(DateTime))
+                        if (confirmation.ConfirmationTime == default)
                         {
                             confirmation.ConfirmationTime = DateTime.Now;
                             await ctx.SaveChangesAsync();
