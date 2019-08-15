@@ -1,11 +1,15 @@
-﻿@model MailConfirmationViewModel
+﻿@using Microsoft.AspNetCore.Mvc.Localization
+@using SkynetServer.Web.Controllers
+
+@inject IHtmlLocalizer<MailConfirmationController> localizer
+
+@model MailConfirmationViewModel
 @{
-    ViewData["Title"] = "Address confirmed";
+    ViewData["Title"] = localizer["ConfirmedTitle"];
 }
 
-<h2 class="main-header">Address already confirmed</h2>
+<h2 class="main-header">@localizer["ConfirmedHeader"]</h2>
 
-<p>
-    Your mail address <a href="mailto:@Model.MailAddress">@Model.MailAddress</a> has already been confirmed before.
-    Simply open the Skynet app and login. Enjoy using Skynet!
-</p>
+<div class="content">
+    <p>@localizer["ConfirmedContent", Model.MailAddress]</p>
+</div>
