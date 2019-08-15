@@ -37,7 +37,38 @@ namespace SkynetServer.Services
         public void Unregister(Client client)
         {
             ImmutableInterlocked.Update(ref clients, list => list.Remove(client));
+            if (client.ChannelAction != ChannelAction.None) OnChannelActionChanged(client, 0, ChannelAction.None);
             if (client.Active) OnActiveChanged(client, active: false);
+        }
+
+        public void OnChannelActionChanged(Client client, long channelId, ChannelAction action)
+        {
+            if (client.Account == null) throw new ArgumentNullException(nameof(client.Account));
+
+            if (client.FocusedChannelId != channelId)
+                notifyChannel(client.FocusedChannelId, ChannelAction.None);
+
+            notifyChannel(channelId, action);
+
+            client.FocusedChannelId = channelId;
+            client.ChannelAction = action;
+
+            void notifyChannel(long _channelId, ChannelAction _action) => Task.Run(async () =>
+            {
+                using (DatabaseContext ctx = new DatabaseContext())
+                {
+                    long[] members = await ctx.ChannelMembers.Where(m => m.ChannelId == _channelId).Select(m => m.AccountId).ToArrayAsync();
+                    if (!members.Contains(client.Account.AccountId))
+                        return; // This is a protocol violation but throwing an exception would be useless in an async context.
+                    var packet = Packet.New<P2CChannelAction>();
+                    packet.ChannelId = _channelId;
+                    packet.AccountId = client.Account.AccountId;
+                    packet.Action = action;
+                    await Task.WhenAll(clients
+                        .Where(c => c.Account != null && members.Contains(c.Account.AccountId) && !ReferenceEquals(c, client))
+                        .Select(c => c.SendPacket(packet)));
+                }
+            });
         }
 
         public void OnActiveChanged(Client client, bool active)
@@ -144,7 +175,7 @@ namespace SkynetServer.Services
                     using (DatabaseContext ctx = new DatabaseContext())
                     {
                         foreach (Session session in ctx.Sessions
-                            .Where(s => s.AccountId == accountId && s.FcmToken != null 
+                            .Where(s => s.AccountId == accountId && s.FcmToken != null
                                 && (s.LastFcmMessage < s.LastConnected || options.NotifyForEveryMessage)))
                         {
                             try

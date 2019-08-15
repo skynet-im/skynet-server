@@ -575,6 +575,9 @@ namespace SkynetServer.Network
 
         public Task Handle(P34SetClientState packet)
         {
+            if (FocusedChannelId != packet.ChannelId || ChannelAction != packet.Action)
+                delivery.OnChannelActionChanged(this, packet.ChannelId, packet.Action);
+
             if (Active != (packet.OnlineState == OnlineState.Active))
                 delivery.OnActiveChanged(this, packet.OnlineState == OnlineState.Active);
 

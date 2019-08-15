@@ -11,9 +11,9 @@ namespace SkynetServer.Network.Packets
     [Packet(0x2C, PacketPolicy.Send)]
     internal class P2CChannelAction : Packet
     {
-        long ChannelId { get; set; }
-        long AccountId { get; set; }
-        ChannelAction Action { get; set; }
+        public long ChannelId { get; set; }
+        public long AccountId { get; set; }
+        public ChannelAction Action { get; set; }
 
         public override Packet Create() => new P2CChannelAction().Init(this);
 

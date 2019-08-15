@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
 using SkynetServer.Configuration;
 using SkynetServer.Database.Entities;
+using SkynetServer.Network.Model;
 using SkynetServer.Services;
 using System;
 using System.Collections.Generic;
@@ -46,6 +47,8 @@ namespace SkynetServer.Network
         public Account Account { get; private set; }
         public Session Session { get; private set; }
         public bool Active { get; set; }
+        public long FocusedChannelId { get; set; }
+        public ChannelAction ChannelAction { get; set; }
 
         public void OnInstanceCreated(VSLSocket socket)
         {
