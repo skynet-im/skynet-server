@@ -45,6 +45,7 @@ namespace SkynetServer.Network
 
         public Account Account { get; private set; }
         public Session Session { get; private set; }
+        public bool Active { get; set; }
 
         public void OnInstanceCreated(VSLSocket socket)
         {

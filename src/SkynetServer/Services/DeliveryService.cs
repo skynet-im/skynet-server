@@ -5,6 +5,7 @@ using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
 using SkynetServer.Network;
+using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using System;
 using System.Collections.Generic;
@@ -36,6 +37,29 @@ namespace SkynetServer.Services
         public void Unregister(Client client)
         {
             ImmutableInterlocked.Update(ref clients, list => list.Remove(client));
+            if (client.Active) OnActiveChanged(client, active: false);
+        }
+
+        public void OnActiveChanged(Client client, bool active)
+        {
+            if (client.Account == null) throw new ArgumentNullException(nameof(client.Account));
+
+            bool notify = !clients.Any(c => c.Account != null && c.Account.AccountId == client.Account.AccountId
+                && !ReferenceEquals(c, client) && c.Active);
+            client.Active = active;
+
+            Task.Run(async () =>
+            {
+                using (DatabaseContext ctx = new DatabaseContext())
+                {
+                    Channel channel = await ctx.Channels.SingleAsync(c => c.OwnerId == client.Account.AccountId && c.ChannelType == ChannelType.AccountData);
+                    var packet = Packet.New<P2BOnlineState>();
+                    packet.OnlineState = active ? OnlineState.Active : OnlineState.Inactive;
+                    packet.LastActive = DateTime.Now;
+                    packet.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
+                    await CreateMessage(packet, channel, client.Account.AccountId);
+                }
+            });
         }
 
         public async Task<Message> CreateMessage(P0BChannelMessage packet, Channel channel, long? senderId)

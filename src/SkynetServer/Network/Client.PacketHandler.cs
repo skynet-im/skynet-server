@@ -575,7 +575,10 @@ namespace SkynetServer.Network
 
         public Task Handle(P34SetClientState packet)
         {
-            throw new NotImplementedException();
+            if (Active != (packet.OnlineState == OnlineState.Active))
+                delivery.OnActiveChanged(this, packet.OnlineState == OnlineState.Active);
+
+            return Task.CompletedTask;
         }
 
         public Task Handle(P2DSearchAccount packet)
