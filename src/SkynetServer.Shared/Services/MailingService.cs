@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Services
 {
-    internal class MailingService
+    public class MailingService
     {
         private readonly IOptions<MailOptions> mailOptions;
 

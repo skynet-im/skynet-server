@@ -5,11 +5,11 @@
   "MailOptions": {
     "EnableMailing": true,
     "SenderName": "Skynet Team",
-    "SenderAddress": "noreply@skynet-messenger.com",
-    "SmtpUsername": "noreply@skynet-messenger.com",
+    "SenderAddress": "noreply@skynet.app",
+    "SmtpUsername": "noreply@skynet.app",
     "SmtpPassword": "",
     "UseSsl": true,
-    "SmtpHost": "smtp.strato.de",
+    "SmtpHost": "smtp.udag.de",
     "SmtpPort": 465
   },
   "ProtocolOptions": {

@@ -15,9 +15,9 @@ namespace SkynetServer.Web.Controllers
     {
         private readonly DatabaseContext ctx;
 
-        public MailConfirmationController(DatabaseContext database)
+        public MailConfirmationController(DatabaseContext ctx)
         {
-            ctx = database;
+            this.ctx = ctx;
         }
 
         [HttpGet("{token}")]
