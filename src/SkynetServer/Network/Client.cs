@@ -38,6 +38,11 @@ namespace SkynetServer.Network
             }
         }
 
+        public void CloseConnection(string message)
+        {
+            socket.CloseConnection(message);
+        }
+
         public Account Account { get; private set; }
         public Session Session { get; private set; }
 

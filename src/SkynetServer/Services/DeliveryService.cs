@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using SkynetServer.Configuration;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
@@ -16,11 +18,13 @@ namespace SkynetServer.Services
     internal class DeliveryService
     {
         private readonly FirebaseService firebase;
+        private readonly IOptions<FcmOptions> fcmOptions;
         private ImmutableList<Client> clients;
 
-        public DeliveryService(FirebaseService firebase)
+        public DeliveryService(FirebaseService firebase, IOptions<FcmOptions> fcmOptions)
         {
             this.firebase = firebase;
+            this.fcmOptions = fcmOptions;
             clients = ImmutableList.Create<Client>();
         }
 
@@ -92,6 +96,7 @@ namespace SkynetServer.Services
         public async Task SendPriorityMessage(Message message, Client exclude, Account excludeFcm)
         {
             long[] accounts;
+            FcmOptions options = fcmOptions.Value;
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
@@ -110,12 +115,13 @@ namespace SkynetServer.Services
                             found = true;
                     }));
 
-                if (!found && accountId != excludeFcm.AccountId)
+                if ((!found && accountId != excludeFcm.AccountId) || options.NotifyAllDevices)
                 {
                     using (DatabaseContext ctx = new DatabaseContext())
                     {
                         foreach (Session session in ctx.Sessions
-                            .Where(s => s.AccountId == accountId && s.FcmToken != null && s.LastFcmMessage < s.LastConnected))
+                            .Where(s => s.AccountId == accountId && s.FcmToken != null 
+                                && (s.LastFcmMessage < s.LastConnected || options.NotifyForEveryMessage)))
                         {
                             try
                             {
@@ -126,9 +132,19 @@ namespace SkynetServer.Services
                                 await ctx.SaveChangesAsync();
                                 Console.WriteLine($"Successfully sent FCM message to {session.FcmToken.Remove(16)} last connected {session.LastConnected}");
                             }
-                            catch (FirebaseAdmin.FirebaseException)
+                            catch (FirebaseAdmin.FirebaseException ex)
                             {
-                                Console.WriteLine($"Failed to send FCM message to {session.FcmToken.Remove(16)}...");
+                                Console.WriteLine($"Failed to send FCM message to {session.FcmToken.Remove(16)}... {ex.Message}");
+                                if (options.DeleteSessionOnError)
+                                {
+                                    foreach (Client client in clients)
+                                    {
+                                        if (client.Session != null && client.Session.AccountId == session.AccountId && client.Session.SessionId == session.SessionId)
+                                            client.CloseConnection("Session deleted");
+                                    }
+                                    ctx.Sessions.Remove(session);
+                                    await ctx.SaveChangesAsync();
+                                }
                             }
                         }
                     }
