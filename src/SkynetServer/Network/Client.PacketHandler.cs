@@ -313,7 +313,8 @@ namespace SkynetServer.Network
                             Message alicePublic = await Account.GetLatestPublicKey(ctx);
                             Message bobPublic = await counterpart.GetLatestPublicKey(ctx);
 
-                            await CreateKeyReferences(ctx, channel, Account.AccountId, alicePublic, counterpart.AccountId, bobPublic);
+                            if (alicePublic != null && bobPublic != null)
+                                await CreateDirectChannelUpdate(ctx, channel, Account.AccountId, alicePublic, counterpart.AccountId, bobPublic);
                         }
                         break;
                     case ChannelType.Group:
@@ -365,34 +366,22 @@ namespace SkynetServer.Network
             }
         }
 
-        private async Task CreateKeyReferences(DatabaseContext ctx, Channel channel, long aliceId, Message alicePublic, long bobId, Message bobPublic)
+        private async Task CreateDirectChannelUpdate(DatabaseContext ctx, Channel channel, long aliceId, Message alicePublic, long bobId, Message bobPublic)
         {
             Message alicePrivate = await ctx.MessageDependencies
                 .Where(d => d.OwningChannelId == alicePublic.ChannelId && d.OwningMessageId == alicePublic.MessageId)
                 .Select(d => d.Message).SingleAsync();
 
-            var refForAlice = Packet.New<P19KeypairReference>();
-            refForAlice.MessageFlags = MessageFlags.Loopback | MessageFlags.Unencrypted;
-            refForAlice.Dependencies.Add(new Dependency(aliceId, alicePrivate.ChannelId, alicePrivate.MessageId));
-            refForAlice.Dependencies.Add(new Dependency(bobId, bobPublic.ChannelId, bobPublic.MessageId));
-            Message msgForAlice = await delivery.CreateMessage(refForAlice, channel, Account.AccountId);
-
             Message bobPrivate = await ctx.MessageDependencies
                 .Where(d => d.OwningChannelId == bobPublic.ChannelId && d.OwningMessageId == bobPublic.MessageId)
                 .Select(d => d.Message).SingleAsync();
 
-            var refForBob = Packet.New<P19KeypairReference>();
-            refForAlice.MessageFlags = MessageFlags.Loopback | MessageFlags.Unencrypted;
-            refForBob.Dependencies.Add(new Dependency(bobId, bobPrivate.ChannelId, bobPrivate.MessageId));
-            refForBob.Dependencies.Add(new Dependency(aliceId, alicePublic.ChannelId, alicePublic.MessageId));
-            Message msgForBob = await delivery.CreateMessage(refForBob, channel, bobId);
-
-            // Combine the packets of the last two steps and create one direct channel update
-
             var update = Packet.New<P1BDirectChannelUpdate>();
             update.MessageFlags = MessageFlags.Unencrypted;
-            update.Dependencies.Add(new Dependency(aliceId, msgForAlice.ChannelId, msgForAlice.MessageId));
-            update.Dependencies.Add(new Dependency(bobId, msgForBob.ChannelId, msgForBob.MessageId));
+            update.Dependencies.Add(new Dependency(aliceId, alicePrivate.ChannelId, alicePrivate.MessageId));
+            update.Dependencies.Add(new Dependency(aliceId, bobPublic.ChannelId, bobPublic.MessageId));
+            update.Dependencies.Add(new Dependency(bobId, bobPrivate.ChannelId, bobPrivate.MessageId));
+            update.Dependencies.Add(new Dependency(bobId, alicePublic.ChannelId, alicePublic.MessageId));
             await delivery.CreateMessage(update, channel, null);
         }
 
@@ -556,7 +545,7 @@ namespace SkynetServer.Network
 
                     if (bobPublic == null) continue; // The server will create the DirectChannelUpdate when Bob sends his public key
 
-                    await CreateKeyReferences(ctx, channel, Account.AccountId, message, bob.AccountId, bobPublic);
+                    await CreateDirectChannelUpdate(ctx, channel, Account.AccountId, message, bob.AccountId, bobPublic);
                 }
             }
         }

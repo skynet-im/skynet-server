@@ -13,7 +13,7 @@ namespace SkynetServer.Network.Packets
     [MessageFlags(MessageFlags.Loopback | MessageFlags.Unencrypted)]
     internal sealed class P15PasswordUpdate : P0BChannelMessage
     {
-        public byte[] OldKeyHash { get; set; }
+        public byte[] LoopbackKeyNotify { get; set; }
         public byte[] KeyHash { get; set; }
 
         public override Packet Create() => new P15PasswordUpdate().Init(this);
@@ -22,7 +22,7 @@ namespace SkynetServer.Network.Packets
 
         public override void ReadMessage(PacketBuffer buffer)
         {
-            OldKeyHash = buffer.ReadByteArray(32);
+            LoopbackKeyNotify = buffer.ReadByteArray(32);
             KeyHash = buffer.ReadByteArray(32);
         }
 

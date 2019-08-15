@@ -34,7 +34,6 @@ namespace SkynetServer.Network
         Task<MessageSendError> Handle(P15PasswordUpdate packet);
         Task<MessageSendError> Handle(P18PublicKeys packet);
         Task PostHandling(P18PublicKeys packet, Database.Entities.Message message);
-        //Task<MessageSendError> Handle(P19DerivationKey packet);
         //Task<MessageSendError> Handle(P1BDirectChannelUpdate packet);
         Task<MessageSendError> Handle(P1EGroupChannelUpdate packet);
         //Task<MessageSendError> Handle(P22MessageReceived packet);
