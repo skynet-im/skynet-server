@@ -2,6 +2,11 @@
   "DatabaseOptions": {
     "ConnectionString": "Server=localhost;Port=3306;Database=Skynet;User=root;Password=root;"
   },
+  "FcmOptions": {
+    "NotifyAllDevices": false,
+    "NotifyForEveryMessage": false,
+    "DeleteSessionOnError": false
+  },
   "MailOptions": {
     "EnableMailing": true,
     "SenderName": "Skynet Team",

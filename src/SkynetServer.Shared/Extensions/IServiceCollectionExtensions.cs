@@ -17,6 +17,9 @@ namespace SkynetServer.Extensions
             services.AddOptions<DatabaseOptions>()
                 .Bind(configuration.GetSection(nameof(DatabaseOptions)))
                 .ValidateDataAnnotations();
+            services.AddOptions<FcmOptions>()
+                .Bind(configuration.GetSection(nameof(FcmOptions)))
+                .ValidateDataAnnotations();
             services.AddOptions<MailOptions>()
                 .Bind(configuration.GetSection(nameof(MailOptions)))
                 .Validate(mailOptions =>

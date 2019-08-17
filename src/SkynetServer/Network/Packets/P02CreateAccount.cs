@@ -27,5 +27,10 @@ namespace SkynetServer.Network.Packets
         {
             throw new NotImplementedException();
         }
+
+        public override string ToString()
+        {
+            return $"{{{nameof(P02CreateAccount)}: AccountName={AccountName}}}";
+        }
     }
 }

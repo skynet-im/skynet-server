@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
 using SkynetServer.Configuration;
 using SkynetServer.Database.Entities;
+using SkynetServer.Network.Model;
 using SkynetServer.Services;
 using System;
 using System.Collections.Generic;
@@ -24,7 +25,7 @@ namespace SkynetServer.Network
             this.protocolOptions = protocolOptions;
         }
 
-        public async Task SendPacket(Packet packet)
+        public async Task<bool> SendPacket(Packet packet)
         {
             using (var buffer = PacketBuffer.CreateDynamic())
             {
@@ -34,11 +35,20 @@ namespace SkynetServer.Network
                     Console.WriteLine($"Successfully sent packet {packet}");
                 else
                     Console.WriteLine($"Failed to send packet {packet}");
+                return success;
             }
+        }
+
+        public void CloseConnection(string message)
+        {
+            socket.CloseConnection(message);
         }
 
         public Account Account { get; private set; }
         public Session Session { get; private set; }
+        public bool Active { get; set; }
+        public long FocusedChannelId { get; set; }
+        public ChannelAction ChannelAction { get; set; }
 
         public void OnInstanceCreated(VSLSocket socket)
         {

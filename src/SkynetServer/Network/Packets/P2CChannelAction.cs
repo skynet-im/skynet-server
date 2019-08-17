@@ -8,14 +8,14 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x07, PacketPolicy.Send)]
-    internal sealed class P07CreateSessionResponse : Packet
+    [Packet(0x2C, PacketPolicy.Send)]
+    internal class P2CChannelAction : Packet
     {
+        public long ChannelId { get; set; }
         public long AccountId { get; set; }
-        public long SessionId { get; set; }
-        public CreateSessionError ErrorCode { get; set; }
+        public ChannelAction Action { get; set; }
 
-        public override Packet Create() => new P07CreateSessionResponse().Init(this);
+        public override Packet Create() => new P2CChannelAction().Init(this);
 
         public override Task Handle(IPacketHandler handler) => throw new NotImplementedException();
 
@@ -26,14 +26,9 @@ namespace SkynetServer.Network.Packets
 
         public override void WritePacket(PacketBuffer buffer)
         {
+            buffer.WriteLong(ChannelId);
             buffer.WriteLong(AccountId);
-            buffer.WriteLong(SessionId);
-            buffer.WriteByte((byte)ErrorCode);
-        }
-
-        public override string ToString()
-        {
-            return $"{{{nameof(P07CreateSessionResponse)}: AccountId={AccountId:x8} SessionId={SessionId:x8} ErrorCode={ErrorCode}}}";
+            buffer.WriteByte((byte)Action);
         }
     }
 }

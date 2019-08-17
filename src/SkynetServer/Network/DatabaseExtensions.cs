@@ -13,28 +13,22 @@ namespace SkynetServer.Network
 {
     internal static class DatabaseExtensions
     {
-        public static IEnumerable<MessageDependency> ToDatabase(this IEnumerable<Dependency> dependencies)
+        public static List<MessageDependency> ToDatabase(this List<Dependency> dependencies)
         {
-            foreach (Dependency dependency in dependencies)
+            MessageDependency[] result = new MessageDependency[dependencies.Count];
+            for (int i = 0; i < dependencies.Count; i++)
             {
-                yield return new MessageDependency()
+                result[i] = new MessageDependency
                 {
-                    ChannelId = dependency.ChannelId,
-                    MessageId = dependency.MessageId,
-                    AccountId = dependency.AccountId == 0 ? null : new long?(dependency.AccountId)
+                    ChannelId = dependencies[i].ChannelId,
+                    MessageId = dependencies[i].MessageId,
+                    AccountId = dependencies[i].AccountId == 0 ? null : new long?(dependencies[i].AccountId)
                 };
             }
+            return new List<MessageDependency>(result);
         }
 
-        public static IEnumerable<Dependency> ToProtocol(this IEnumerable<MessageDependency> dependencies)
-        {
-            foreach (MessageDependency dependency in dependencies)
-            {
-                yield return new Dependency(dependency.AccountId ?? 0, dependency.ChannelId, dependency.MessageId);
-            }
-        }
-
-        public static P0BChannelMessage ToPacket(this Message message)
+        public static P0BChannelMessage ToPacket(this Message message, long accountId)
         {
             var packet = Packet.New<P0BChannelMessage>();
             packet.ChannelId = message.ChannelId;
@@ -44,7 +38,9 @@ namespace SkynetServer.Network
             packet.DispatchTime = DateTime.SpecifyKind(message.DispatchTime, DateTimeKind.Local);
             packet.MessageFlags = message.MessageFlags;
             packet.FileId = 0; // Files are not implemented yet
-            packet.Dependencies.AddRange(message.Dependencies.ToProtocol());
+            packet.Dependencies.AddRange(message.Dependencies
+                .Where(d => d.AccountId == null || d.AccountId == accountId)
+                .Select(d => new Dependency(d.AccountId ?? 0, d.ChannelId, d.MessageId)));
             packet.ContentPacketId = message.ContentPacketId;
             packet.ContentPacketVersion = message.ContentPacketVersion;
             packet.ContentPacket = message.ContentPacket;
