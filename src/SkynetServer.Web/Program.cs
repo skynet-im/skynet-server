@@ -4,6 +4,7 @@ using System.IO;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 
 namespace SkynetServer.Web
 {
@@ -14,8 +15,8 @@ namespace SkynetServer.Web
             CreateWebHostBuilder(args).Build().Run();
         }
 
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
+        public static IHostBuilder CreateWebHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration(config =>
                 {
                     // Unlike all other .NET projects, ASP.NET Core uses the project root as working directory instead of the build directory.
@@ -29,6 +30,9 @@ namespace SkynetServer.Web
                     else
                         throw new FileNotFoundException("Configuration file not found", primary.FullName);
                 })
-                .UseStartup<Startup>();
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                });
     }
 }
