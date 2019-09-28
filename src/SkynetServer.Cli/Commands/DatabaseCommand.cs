@@ -30,15 +30,13 @@ namespace SkynetServer.Cli.Commands
 
             private void OnExecute()
             {
-                using (DatabaseContext ctx = new DatabaseContext())
+                using DatabaseContext ctx = new DatabaseContext();
+                if (Force && Prompt.GetYesNo("Do you really want to delete the Skynet database?", false))
                 {
-                    if (Force && Prompt.GetYesNo("Do you really want to delete the Skynet database?", false))
-                    {
-                        ctx.Database.EnsureDeleted();
-                    }
-
-                    ctx.Database.EnsureCreated();
+                    ctx.Database.EnsureDeleted();
                 }
+
+                ctx.Database.EnsureCreated();
             }
         }
 
@@ -50,10 +48,8 @@ namespace SkynetServer.Cli.Commands
             {
                 if (Prompt.GetYesNo("Do you really want to delete the Skynet database?", false))
                 {
-                    using (DatabaseContext ctx = new DatabaseContext())
-                    {
-                        ctx.Database.EnsureDeleted();
-                    }
+                    using DatabaseContext ctx = new DatabaseContext();
+                    ctx.Database.EnsureDeleted();
                 }
             }
         }
@@ -117,12 +113,10 @@ namespace SkynetServer.Cli.Commands
 
             private string RandomAddress()
             {
-                using (var random = RandomNumberGenerator.Create())
-                {
-                    byte[] value = new byte[10];
-                    random.GetBytes(value);
-                    return Base32Encoding.Standard.GetString(value).ToLower();
-                }
+                using var random = RandomNumberGenerator.Create();
+                byte[] value = new byte[10];
+                random.GetBytes(value);
+                return Base32Encoding.Standard.GetString(value).ToLower();
             }
         }
     }

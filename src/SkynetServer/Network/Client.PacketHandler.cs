@@ -43,54 +43,52 @@ namespace SkynetServer.Network
 
         public async Task Handle(P02CreateAccount packet)
         {
-            using (var ctx = new DatabaseContext())
+            using DatabaseContext ctx = new DatabaseContext();
+            var response = Packet.New<P03CreateAccountResponse>();
+            if (!mailing.IsValidEmail(packet.AccountName))
+                response.ErrorCode = CreateAccountError.InvalidAccountName;
+            else
             {
-                var response = Packet.New<P03CreateAccountResponse>();
-                if (!mailing.IsValidEmail(packet.AccountName))
-                    response.ErrorCode = CreateAccountError.InvalidAccountName;
+                (var newAccount, var confirmation, bool success) = await DatabaseHelper.AddAccount(packet.AccountName, packet.KeyHash);
+                if (!success)
+                    response.ErrorCode = CreateAccountError.AccountNameTaken;
                 else
                 {
-                    (var newAccount, var confirmation, bool success) = await DatabaseHelper.AddAccount(packet.AccountName, packet.KeyHash);
-                    if (!success)
-                        response.ErrorCode = CreateAccountError.AccountNameTaken;
-                    else
+                    Task mail = mailing.SendMailAsync(confirmation.MailAddress, confirmation.Token);
+
+                    Channel loopback = await DatabaseHelper.AddChannel(new Channel
                     {
-                        Task mail = mailing.SendMailAsync(confirmation.MailAddress, confirmation.Token);
+                        ChannelType = ChannelType.Loopback,
+                        OwnerId = newAccount.AccountId
+                    });
+                    Channel accountData = await DatabaseHelper.AddChannel(new Channel
+                    {
+                        ChannelType = ChannelType.AccountData,
+                        OwnerId = newAccount.AccountId
+                    });
 
-                        Channel loopback = await DatabaseHelper.AddChannel(new Channel
-                        {
-                            ChannelType = ChannelType.Loopback,
-                            OwnerId = newAccount.AccountId
-                        });
-                        Channel accountData = await DatabaseHelper.AddChannel(new Channel
-                        {
-                            ChannelType = ChannelType.AccountData,
-                            OwnerId = newAccount.AccountId
-                        });
+                    ctx.ChannelMembers.Add(new ChannelMember { ChannelId = loopback.ChannelId, AccountId = newAccount.AccountId });
+                    ctx.ChannelMembers.Add(new ChannelMember { ChannelId = accountData.ChannelId, AccountId = newAccount.AccountId });
+                    await ctx.SaveChangesAsync();
 
-                        ctx.ChannelMembers.Add(new ChannelMember { ChannelId = loopback.ChannelId, AccountId = newAccount.AccountId });
-                        ctx.ChannelMembers.Add(new ChannelMember { ChannelId = accountData.ChannelId, AccountId = newAccount.AccountId });
-                        await ctx.SaveChangesAsync();
+                    // Send password update packet
+                    var passwordUpdate = Packet.New<P15PasswordUpdate>();
+                    passwordUpdate.KeyHash = packet.KeyHash;
+                    passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
+                    await delivery.CreateMessage(passwordUpdate, loopback, newAccount.AccountId);
 
-                        // Send password update packet
-                        var passwordUpdate = Packet.New<P15PasswordUpdate>();
-                        passwordUpdate.KeyHash = packet.KeyHash;
-                        passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
-                        await delivery.CreateMessage(passwordUpdate, loopback, newAccount.AccountId);
+                    // Send email address
+                    var mailAddress = Packet.New<P14MailAddress>();
+                    mailAddress.MailAddress = await ctx.MailConfirmations.Where(c => c.AccountId == newAccount.AccountId)
+                        .Select(c => c.MailAddress).SingleAsync();
+                    mailAddress.MessageFlags = MessageFlags.Unencrypted;
+                    await delivery.CreateMessage(mailAddress, accountData, newAccount.AccountId);
 
-                        // Send email address
-                        var mailAddress = Packet.New<P14MailAddress>();
-                        mailAddress.MailAddress = await ctx.MailConfirmations.Where(c => c.AccountId == newAccount.AccountId)
-                            .Select(c => c.MailAddress).SingleAsync();
-                        mailAddress.MessageFlags = MessageFlags.Unencrypted;
-                        await delivery.CreateMessage(mailAddress, accountData, newAccount.AccountId);
-
-                        await mail;
-                        response.ErrorCode = CreateAccountError.Success;
-                    }
+                    await mail;
+                    response.ErrorCode = CreateAccountError.Success;
                 }
-                await SendPacket(response);
             }
+            await SendPacket(response);
         }
 
         public Task Handle(P04DeleteAccount packet)
@@ -100,229 +98,219 @@ namespace SkynetServer.Network
 
         public async Task Handle(P06CreateSession packet)
         {
-            using (var ctx = new DatabaseContext())
+            using DatabaseContext ctx = new DatabaseContext();
+            var response = Packet.New<P07CreateSessionResponse>();
+
+            var confirmation = await ctx.MailConfirmations.Include(c => c.Account)
+                .SingleOrDefaultAsync(c => c.MailAddress == packet.AccountName);
+            if (confirmation == null)
+                response.ErrorCode = CreateSessionError.InvalidCredentials;
+            else if (confirmation.ConfirmationTime == default)
+                response.ErrorCode = CreateSessionError.UnconfirmedAccount;
+            else if (packet.KeyHash.SafeEquals(confirmation.Account.KeyHash))
             {
-                var response = Packet.New<P07CreateSessionResponse>();
-
-                var confirmation = await ctx.MailConfirmations.Include(c => c.Account)
-                    .SingleOrDefaultAsync(c => c.MailAddress == packet.AccountName);
-                if (confirmation == null)
-                    response.ErrorCode = CreateSessionError.InvalidCredentials;
-                else if (confirmation.ConfirmationTime == default)
-                    response.ErrorCode = CreateSessionError.UnconfirmedAccount;
-                else if (packet.KeyHash.SafeEquals(confirmation.Account.KeyHash))
+                Session = await DatabaseHelper.AddSession(new Session
                 {
-                    Session = await DatabaseHelper.AddSession(new Session
-                    {
-                        AccountId = confirmation.AccountId,
-                        ApplicationIdentifier = applicationIdentifier,
-                        LastConnected = DateTime.Now,
-                        LastVersionCode = versionCode,
-                        FcmToken = packet.FcmRegistrationToken
-                    });
+                    AccountId = confirmation.AccountId,
+                    ApplicationIdentifier = applicationIdentifier,
+                    LastConnected = DateTime.Now,
+                    LastVersionCode = versionCode,
+                    FcmToken = packet.FcmRegistrationToken
+                });
 
-                    Account = confirmation.Account;
+                Account = confirmation.Account;
 
-                    response.AccountId = Account.AccountId;
-                    response.SessionId = Session.SessionId;
-                    response.ErrorCode = CreateSessionError.Success;
-                    await SendPacket(response);
-                    await SendMessages(new List<(long channelId, long messageId)>());
-                    return;
-                }
-                else
-                    response.ErrorCode = CreateSessionError.InvalidCredentials;
+                response.AccountId = Account.AccountId;
+                response.SessionId = Session.SessionId;
+                response.ErrorCode = CreateSessionError.Success;
                 await SendPacket(response);
+                await SendMessages(new List<(long channelId, long messageId)>());
+                return;
             }
+            else
+                response.ErrorCode = CreateSessionError.InvalidCredentials;
+            await SendPacket(response);
         }
 
         public async Task Handle(P08RestoreSession packet)
         {
-            using (var ctx = new DatabaseContext())
+            using DatabaseContext ctx = new DatabaseContext();
+            var accountCandidate = ctx.Accounts.SingleOrDefault(acc => acc.AccountId == packet.AccountId);
+            var response = Packet.New<P09RestoreSessionResponse>();
+            if (accountCandidate != null && packet.KeyHash.SafeEquals(accountCandidate.KeyHash))
             {
-                var accountCandidate = ctx.Accounts.SingleOrDefault(acc => acc.AccountId == packet.AccountId);
-                var response = Packet.New<P09RestoreSessionResponse>();
-                if (accountCandidate != null && packet.KeyHash.SafeEquals(accountCandidate.KeyHash))
-                {
-                    Session = ctx.Sessions.SingleOrDefault(s =>
-                        s.AccountId == packet.AccountId && s.SessionId == packet.SessionId);
+                Session = ctx.Sessions.SingleOrDefault(s =>
+                    s.AccountId == packet.AccountId && s.SessionId == packet.SessionId);
 
-                    if (Session == null)
-                        response.ErrorCode = RestoreSessionError.InvalidSession;
-                    else
-                    {
-                        Session.LastConnected = DateTime.Now;
-                        await ctx.SaveChangesAsync();
-                        Account = accountCandidate;
-                        response.ErrorCode = RestoreSessionError.Success;
-                        await SendPacket(response);
-                        await SendMessages(packet.Channels);
-                        return;
-                    }
-                }
+                if (Session == null)
+                    response.ErrorCode = RestoreSessionError.InvalidSession;
                 else
-                    response.ErrorCode = RestoreSessionError.InvalidCredentials;
-                await SendPacket(response);
+                {
+                    Session.LastConnected = DateTime.Now;
+                    await ctx.SaveChangesAsync();
+                    Account = accountCandidate;
+                    response.ErrorCode = RestoreSessionError.Success;
+                    await SendPacket(response);
+                    await SendMessages(packet.Channels);
+                    return;
+                }
             }
+            else
+                response.ErrorCode = RestoreSessionError.InvalidCredentials;
+            await SendPacket(response);
         }
 
         public async Task SendMessages(List<(long channelId, long messageId)> currentState)
         {
-            using (DatabaseContext ctx = new DatabaseContext())
+            using DatabaseContext ctx = new DatabaseContext();
+            Channel[] channels = ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
+                .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c).ToArray();
+
+            foreach (Channel channel in channels)
             {
-                Channel[] channels = ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
-                    .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c).ToArray();
-
-                foreach (Channel channel in channels)
+                if (!currentState.Any(s => s.channelId == channel.ChannelId))
                 {
-                    if (!currentState.Any(s => s.channelId == channel.ChannelId))
-                    {
-                        // Notify client about new channels
-                        var packet = Packet.New<P0ACreateChannel>();
-                        packet.ChannelId = channel.ChannelId;
-                        packet.ChannelType = channel.ChannelType;
-                        packet.OwnerId = channel.OwnerId ?? 0;
-                        if (packet.ChannelType == ChannelType.Direct)
-                            packet.CounterpartId = await ctx.ChannelMembers
-                                .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != Account.AccountId)
-                                .Select(m => m.AccountId).SingleAsync();
-                        await SendPacket(packet);
-                        currentState.Add((channel.ChannelId, 0));
-                    }
+                    // Notify client about new channels
+                    var packet = Packet.New<P0ACreateChannel>();
+                    packet.ChannelId = channel.ChannelId;
+                    packet.ChannelType = channel.ChannelType;
+                    packet.OwnerId = channel.OwnerId ?? 0;
+                    if (packet.ChannelType == ChannelType.Direct)
+                        packet.CounterpartId = await ctx.ChannelMembers
+                            .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != Account.AccountId)
+                            .Select(m => m.AccountId).SingleAsync();
+                    await SendPacket(packet);
+                    currentState.Add((channel.ChannelId, 0));
                 }
-
-                // Send messages from loopback channel
-                Channel loopback = channels.Single(c => c.ChannelType == ChannelType.Loopback);
-                long lastLoopbackMessage = currentState.Single(s => s.channelId == loopback.ChannelId).messageId;
-                foreach (Message message in ctx.Messages
-                    .Where(m => m.ChannelId == loopback.ChannelId && m.MessageId > lastLoopbackMessage)
-                    .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
-                {
-                    await SendPacket(message.ToPacket(Account.AccountId));
-                }
-
-                // Send messages from account data channels
-                foreach (long channelId in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
-                    .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                    .Where(c => c.ChannelType == ChannelType.AccountData).Select(c => c.ChannelId))
-                {
-                    long lastMessage = currentState.Single(s => s.channelId == channelId).messageId;
-                    await SendMessages(channelId, lastMessage);
-                }
-
-                // Send messages from direct channels
-                foreach (long channelId in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
-                    .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                    .Where(c => c.ChannelType == ChannelType.Direct).Select(c => c.ChannelId))
-                {
-                    long lastMessage = currentState.Single(s => s.channelId == channelId).messageId;
-                    await SendMessages(channelId, lastMessage);
-                }
-
-                await SendPacket(Packet.New<P0FSyncFinished>());
             }
+
+            // Send messages from loopback channel
+            Channel loopback = channels.Single(c => c.ChannelType == ChannelType.Loopback);
+            long lastLoopbackMessage = currentState.Single(s => s.channelId == loopback.ChannelId).messageId;
+            foreach (Message message in ctx.Messages
+                .Where(m => m.ChannelId == loopback.ChannelId && m.MessageId > lastLoopbackMessage)
+                .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
+            {
+                await SendPacket(message.ToPacket(Account.AccountId));
+            }
+
+            // Send messages from account data channels
+            foreach (long channelId in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
+                .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                .Where(c => c.ChannelType == ChannelType.AccountData).Select(c => c.ChannelId))
+            {
+                long lastMessage = currentState.Single(s => s.channelId == channelId).messageId;
+                await SendMessages(channelId, lastMessage);
+            }
+
+            // Send messages from direct channels
+            foreach (long channelId in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
+                .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                .Where(c => c.ChannelType == ChannelType.Direct).Select(c => c.ChannelId))
+            {
+                long lastMessage = currentState.Single(s => s.channelId == channelId).messageId;
+                await SendMessages(channelId, lastMessage);
+            }
+
+            await SendPacket(Packet.New<P0FSyncFinished>());
         }
 
         private async Task SendMessages(long channelId, long lastMessage)
         {
-            using (DatabaseContext ctx = new DatabaseContext())
+            using DatabaseContext ctx = new DatabaseContext();
+            foreach (Message message in ctx.Messages
+                .Where(m => m.ChannelId == channelId && m.MessageId > lastMessage)
+                .Where(m => !m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == Account.AccountId)
+                .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != Account.AccountId)
+                .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
             {
-                foreach (Message message in ctx.Messages
-                    .Where(m => m.ChannelId == channelId && m.MessageId > lastMessage)
-                    .Where(m => !m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == Account.AccountId)
-                    .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != Account.AccountId)
-                    .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
-                {
-                    await SendPacket(message.ToPacket(Account.AccountId));
-                }
+                await SendPacket(message.ToPacket(Account.AccountId));
             }
         }
 
         public async Task Handle(P0ACreateChannel packet)
         {
-            using (var ctx = new DatabaseContext())
+            using DatabaseContext ctx = new DatabaseContext();
+            Channel channel = null;
+            var response = Packet.New<P2FCreateChannelResponse>();
+            response.TempChannelId = packet.ChannelId;
+
+            switch (packet.ChannelType)
             {
-                Channel channel = null;
-                var response = Packet.New<P2FCreateChannelResponse>();
-                response.TempChannelId = packet.ChannelId;
-
-                switch (packet.ChannelType)
-                {
-                    case ChannelType.Loopback:
-                        throw new ProtocolException("Loopback channels cannot be created manually");
-                    case ChannelType.AccountData:
-                        throw new ProtocolException("Account data channels cannot be created manually");
-                    case ChannelType.Direct:
-                        var counterpart = await ctx.Accounts.SingleOrDefaultAsync(acc => acc.AccountId == packet.CounterpartId);
-                        if (counterpart == null)
+                case ChannelType.Loopback:
+                    throw new ProtocolException("Loopback channels cannot be created manually");
+                case ChannelType.AccountData:
+                    throw new ProtocolException("Account data channels cannot be created manually");
+                case ChannelType.Direct:
+                    var counterpart = await ctx.Accounts.SingleOrDefaultAsync(acc => acc.AccountId == packet.CounterpartId);
+                    if (counterpart == null)
+                    {
+                        response.ErrorCode = CreateChannelError.InvalidCounterpart;
+                        await SendPacket(response);
+                    }
+                    else if (await ctx.BlockedAccounts.AnyAsync(b => b.OwnerId == packet.CounterpartId && b.AccountId == Account.AccountId)
+                        || await ctx.BlockedAccounts.AnyAsync(b => b.OwnerId == Account.AccountId && b.AccountId == packet.CounterpartId))
+                    {
+                        response.ErrorCode = CreateChannelError.Blocked;
+                        await SendPacket(response);
+                    }
+                    else if (await ctx.ChannelMembers.Where(m => m.AccountId == packet.CounterpartId)
+                        .Join(ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
+                            .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                            .Where(c => c.ChannelType == ChannelType.Direct),
+                            m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                        .AnyAsync())
+                    {
+                        response.ErrorCode = CreateChannelError.AlreadyExists;
+                        await SendPacket(response);
+                    }
+                    else
+                    {
+                        // Create a new direct channel
+                        channel = await DatabaseHelper.AddChannel(new Channel
                         {
-                            response.ErrorCode = CreateChannelError.InvalidCounterpart;
-                            await SendPacket(response);
-                        }
-                        else if (await ctx.BlockedAccounts.AnyAsync(b => b.OwnerId == packet.CounterpartId && b.AccountId == Account.AccountId)
-                            || await ctx.BlockedAccounts.AnyAsync(b => b.OwnerId == Account.AccountId && b.AccountId == packet.CounterpartId))
-                        {
-                            response.ErrorCode = CreateChannelError.Blocked;
-                            await SendPacket(response);
-                        }
-                        else if (await ctx.ChannelMembers.Where(m => m.AccountId == packet.CounterpartId)
-                            .Join(ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
-                                .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                                .Where(c => c.ChannelType == ChannelType.Direct),
-                                m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                            .AnyAsync())
-                        {
-                            response.ErrorCode = CreateChannelError.AlreadyExists;
-                            await SendPacket(response);
-                        }
-                        else
-                        {
-                            // Create a new direct channel
-                            channel = await DatabaseHelper.AddChannel(new Channel
-                            {
-                                OwnerId = Account.AccountId,
-                                ChannelType = ChannelType.Direct
-                            });
+                            OwnerId = Account.AccountId,
+                            ChannelType = ChannelType.Direct
+                        });
 
-                            ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = Account.AccountId });
-                            ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = packet.CounterpartId });
-                            await ctx.SaveChangesAsync();
+                        ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = Account.AccountId });
+                        ctx.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = packet.CounterpartId });
+                        await ctx.SaveChangesAsync();
 
-                            // TODO: Check for existing direct channels and delete if another channel was created in the meantime
+                        // TODO: Check for existing direct channels and delete if another channel was created in the meantime
 
-                            var createAlice = Packet.New<P0ACreateChannel>();
-                            createAlice.ChannelId = channel.ChannelId;
-                            createAlice.ChannelType = ChannelType.Direct;
-                            createAlice.OwnerId = Account.AccountId;
-                            createAlice.CounterpartId = packet.CounterpartId;
-                            await delivery.SendPacket(createAlice, Account.AccountId, this);
+                        var createAlice = Packet.New<P0ACreateChannel>();
+                        createAlice.ChannelId = channel.ChannelId;
+                        createAlice.ChannelType = ChannelType.Direct;
+                        createAlice.OwnerId = Account.AccountId;
+                        createAlice.CounterpartId = packet.CounterpartId;
+                        await delivery.SendPacket(createAlice, Account.AccountId, this);
 
-                            var createBob = Packet.New<P0ACreateChannel>();
-                            createBob.ChannelId = channel.ChannelId;
-                            createBob.ChannelType = ChannelType.Direct;
-                            createBob.OwnerId = Account.AccountId;
-                            createBob.CounterpartId = Account.AccountId;
-                            await delivery.SendPacket(createBob, packet.CounterpartId, null);
+                        var createBob = Packet.New<P0ACreateChannel>();
+                        createBob.ChannelId = channel.ChannelId;
+                        createBob.ChannelType = ChannelType.Direct;
+                        createBob.OwnerId = Account.AccountId;
+                        createBob.CounterpartId = Account.AccountId;
+                        await delivery.SendPacket(createBob, packet.CounterpartId, null);
 
-                            response.ErrorCode = CreateChannelError.Success;
-                            response.ChannelId = channel.ChannelId;
-                            await SendPacket(response);
+                        response.ErrorCode = CreateChannelError.Success;
+                        response.ChannelId = channel.ChannelId;
+                        await SendPacket(response);
 
-                            await ForwardAccountChannels(ctx, Account, counterpart);
+                        await ForwardAccountChannels(ctx, Account, counterpart);
 
-                            Message alicePublic = await Account.GetLatestPublicKey(ctx);
-                            Message bobPublic = await counterpart.GetLatestPublicKey(ctx);
+                        Message alicePublic = await Account.GetLatestPublicKey(ctx);
+                        Message bobPublic = await counterpart.GetLatestPublicKey(ctx);
 
-                            if (alicePublic != null && bobPublic != null)
-                                await CreateDirectChannelUpdate(ctx, channel, Account.AccountId, alicePublic, counterpart.AccountId, bobPublic);
-                        }
-                        break;
-                    case ChannelType.Group:
-                    case ChannelType.ProfileData:
-                        throw new NotImplementedException();
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+                        if (alicePublic != null && bobPublic != null)
+                            await CreateDirectChannelUpdate(ctx, channel, Account.AccountId, alicePublic, counterpart.AccountId, bobPublic);
+                    }
+                    break;
+                case ChannelType.Group:
+                case ChannelType.ProfileData:
+                    throw new NotImplementedException();
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
@@ -352,17 +340,15 @@ namespace SkynetServer.Network
 
         private async Task SendAllMessages(Channel channel, Account account)
         {
-            using (DatabaseContext ctx = new DatabaseContext())
+            using DatabaseContext ctx = new DatabaseContext();
+            // TODO: Skip accounts with no connected user
+            foreach (Message message in ctx.Messages
+                .Where(m => m.ChannelId == channel.ChannelId)
+                .Where(m => !m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == account.AccountId)
+                .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != account.AccountId)
+                .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
             {
-                // TODO: Skip accounts with no connected user
-                foreach (Message message in ctx.Messages
-                    .Where(m => m.ChannelId == channel.ChannelId)
-                    .Where(m => !m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == account.AccountId)
-                    .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != account.AccountId)
-                    .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
-                {
-                    await delivery.SendPacket(message.ToPacket(account.AccountId), account.AccountId, null);
-                }
+                await delivery.SendPacket(message.ToPacket(account.AccountId), account.AccountId, null);
             }
         }
 
@@ -527,26 +513,24 @@ namespace SkynetServer.Network
 
         public async Task PostHandling(P18PublicKeys packet, Message message) // Alice changes her keypair
         {
-            using (DatabaseContext ctx = new DatabaseContext())
+            using DatabaseContext ctx = new DatabaseContext();
+            // Get all direct channels of Alice
+            foreach (Channel channel in ctx.ChannelMembers
+                .Where(m => m.AccountId == Account.AccountId)
+                .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                .Where(c => c.ChannelType == ChannelType.Direct))
             {
-                // Get all direct channels of Alice
-                foreach (Channel channel in ctx.ChannelMembers
-                    .Where(m => m.AccountId == Account.AccountId)
-                    .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                    .Where(c => c.ChannelType == ChannelType.Direct))
-                {
-                    Account bob = await ctx.ChannelMembers
-                        .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != Account.AccountId)
-                        .Select(m => m.Account).SingleAsync();
+                Account bob = await ctx.ChannelMembers
+                    .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != Account.AccountId)
+                    .Select(m => m.Account).SingleAsync();
 
-                    // Get Bob's latest public key packet in this channel and take Alice's new public key
+                // Get Bob's latest public key packet in this channel and take Alice's new public key
 
-                    Message bobPublic = await bob.GetLatestPublicKey(ctx);
+                Message bobPublic = await bob.GetLatestPublicKey(ctx);
 
-                    if (bobPublic == null) continue; // The server will create the DirectChannelUpdate when Bob sends his public key
+                if (bobPublic == null) continue; // The server will create the DirectChannelUpdate when Bob sends his public key
 
-                    await CreateDirectChannelUpdate(ctx, channel, Account.AccountId, message, bob.AccountId, bobPublic);
-                }
+                await CreateDirectChannelUpdate(ctx, channel, Account.AccountId, message, bob.AccountId, bobPublic);
             }
         }
 
@@ -575,19 +559,17 @@ namespace SkynetServer.Network
 
         public Task Handle(P2DSearchAccount packet)
         {
-            using (var ctx = new DatabaseContext())
-            {
-                var results = ctx.MailConfirmations
-                    .Where(c => c.AccountId != Account.AccountId
-                        && c.MailAddress.Contains(packet.Query)
-                        && c.ConfirmationTime != default) // Exclude unconfirmed accounts
-                    .Take(100); // Limit to 100 entries
-                var response = Packet.New<P2ESearchAccountResponse>();
-                foreach (var result in results)
-                    response.Results.Add(new SearchResult(result.AccountId, result.MailAddress));
-                // Forward public packets to fully implement the Skynet protocol v5
-                return SendPacket(response);
-            }
+            using DatabaseContext ctx = new DatabaseContext();
+            var results = ctx.MailConfirmations
+                .Where(c => c.AccountId != Account.AccountId
+                    && c.MailAddress.Contains(packet.Query)
+                    && c.ConfirmationTime != default) // Exclude unconfirmed accounts
+                .Take(100); // Limit to 100 entries
+            var response = Packet.New<P2ESearchAccountResponse>();
+            foreach (var result in results)
+                response.Results.Add(new SearchResult(result.AccountId, result.MailAddress));
+            // Forward public packets to fully implement the Skynet protocol v5
+            return SendPacket(response);
         }
 
         public Task Handle(P30FileUpload packet)

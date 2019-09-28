@@ -55,19 +55,17 @@ namespace SkynetServer.Services
 
             void notifyChannel(long _channelId, ChannelAction _action) => Task.Run(async () =>
             {
-                using (DatabaseContext ctx = new DatabaseContext())
-                {
-                    long[] members = await ctx.ChannelMembers.Where(m => m.ChannelId == _channelId).Select(m => m.AccountId).ToArrayAsync();
-                    if (!members.Contains(client.Account.AccountId))
-                        return; // This is a protocol violation but throwing an exception would be useless in an async context.
-                    var packet = Packet.New<P2CChannelAction>();
-                    packet.ChannelId = _channelId;
-                    packet.AccountId = client.Account.AccountId;
-                    packet.Action = action;
-                    await Task.WhenAll(clients
-                        .Where(c => c.Account != null && members.Contains(c.Account.AccountId) && !ReferenceEquals(c, client))
-                        .Select(c => c.SendPacket(packet)));
-                }
+                using DatabaseContext ctx = new DatabaseContext();
+                long[] members = await ctx.ChannelMembers.Where(m => m.ChannelId == _channelId).Select(m => m.AccountId).ToArrayAsync();
+                if (!members.Contains(client.Account.AccountId))
+                    return; // This is a protocol violation but throwing an exception would be useless in an async context.
+                var packet = Packet.New<P2CChannelAction>();
+                packet.ChannelId = _channelId;
+                packet.AccountId = client.Account.AccountId;
+                packet.Action = action;
+                await Task.WhenAll(clients
+                    .Where(c => c.Account != null && members.Contains(c.Account.AccountId) && !ReferenceEquals(c, client))
+                    .Select(c => c.SendPacket(packet)));
             });
         }
 
@@ -81,15 +79,13 @@ namespace SkynetServer.Services
 
             Task.Run(async () =>
             {
-                using (DatabaseContext ctx = new DatabaseContext())
-                {
-                    Channel channel = await ctx.Channels.SingleAsync(c => c.OwnerId == client.Account.AccountId && c.ChannelType == ChannelType.AccountData);
-                    var packet = Packet.New<P2BOnlineState>();
-                    packet.OnlineState = active ? OnlineState.Active : OnlineState.Inactive;
-                    packet.LastActive = DateTime.Now;
-                    packet.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
-                    await CreateMessage(packet, channel, client.Account.AccountId);
-                }
+                using DatabaseContext ctx = new DatabaseContext();
+                Channel channel = await ctx.Channels.SingleAsync(c => c.OwnerId == client.Account.AccountId && c.ChannelType == ChannelType.AccountData);
+                var packet = Packet.New<P2BOnlineState>();
+                packet.OnlineState = active ? OnlineState.Active : OnlineState.Inactive;
+                packet.LastActive = DateTime.Now;
+                packet.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
+                await CreateMessage(packet, channel, client.Account.AccountId);
             });
         }
 
@@ -99,11 +95,9 @@ namespace SkynetServer.Services
             packet.MessageFlags |= MessageFlags.Unencrypted;
             if (packet.ContentPacket == null)
             {
-                using (PacketBuffer buffer = PacketBuffer.CreateDynamic())
-                {
-                    packet.WriteMessage(buffer);
-                    packet.ContentPacket = buffer.ToArray();
-                }
+                using PacketBuffer buffer = PacketBuffer.CreateDynamic();
+                packet.WriteMessage(buffer);
+                packet.ContentPacket = buffer.ToArray();
             }
 
             Message message = new Message()
@@ -172,34 +166,32 @@ namespace SkynetServer.Services
 
                 if ((!found && accountId != excludeFcm.AccountId) || options.NotifyAllDevices)
                 {
-                    using (DatabaseContext ctx = new DatabaseContext())
+                    using DatabaseContext ctx = new DatabaseContext();
+                    foreach (Session session in ctx.Sessions
+                        .Where(s => s.AccountId == accountId && s.FcmToken != null
+                            && (s.LastFcmMessage < s.LastConnected || options.NotifyForEveryMessage)))
                     {
-                        foreach (Session session in ctx.Sessions
-                            .Where(s => s.AccountId == accountId && s.FcmToken != null
-                                && (s.LastFcmMessage < s.LastConnected || options.NotifyForEveryMessage)))
+                        try
                         {
-                            try
-                            {
-                                await firebase.SendAsync(session.FcmToken);
+                            await firebase.SendAsync(session.FcmToken);
 
-                                session.LastFcmMessage = DateTime.Now;
-                                ctx.Entry(session).Property(s => s.LastFcmMessage).IsModified = true;
-                                await ctx.SaveChangesAsync();
-                                Console.WriteLine($"Successfully sent FCM message to {session.FcmToken.Remove(16)} last connected {session.LastConnected}");
-                            }
-                            catch (FirebaseAdmin.FirebaseException ex)
+                            session.LastFcmMessage = DateTime.Now;
+                            ctx.Entry(session).Property(s => s.LastFcmMessage).IsModified = true;
+                            await ctx.SaveChangesAsync();
+                            Console.WriteLine($"Successfully sent FCM message to {session.FcmToken.Remove(16)} last connected {session.LastConnected}");
+                        }
+                        catch (FirebaseAdmin.FirebaseException ex)
+                        {
+                            Console.WriteLine($"Failed to send FCM message to {session.FcmToken.Remove(16)}... {ex.Message}");
+                            if (options.DeleteSessionOnError)
                             {
-                                Console.WriteLine($"Failed to send FCM message to {session.FcmToken.Remove(16)}... {ex.Message}");
-                                if (options.DeleteSessionOnError)
+                                foreach (Client client in clients)
                                 {
-                                    foreach (Client client in clients)
-                                    {
-                                        if (client.Session != null && client.Session.AccountId == session.AccountId && client.Session.SessionId == session.SessionId)
-                                            client.CloseConnection("Session deleted");
-                                    }
-                                    ctx.Sessions.Remove(session);
-                                    await ctx.SaveChangesAsync();
+                                    if (client.Session != null && client.Session.AccountId == session.AccountId && client.Session.SessionId == session.SessionId)
+                                        client.CloseConnection("Session deleted");
                                 }
+                                ctx.Sessions.Remove(session);
+                                await ctx.SaveChangesAsync();
                             }
                         }
                     }

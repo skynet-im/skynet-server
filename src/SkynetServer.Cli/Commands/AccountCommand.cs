@@ -39,26 +39,24 @@ namespace SkynetServer.Cli.Commands
 
                 console.Out.WriteLine("WARNING: Argon2 hash is currently not supported!");
 
-                using (DatabaseContext ctx = new DatabaseContext())
+                using DatabaseContext ctx = new DatabaseContext();
+                (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount(AccountName, new byte[0]);
+                if (success)
                 {
-                    (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount(AccountName, new byte[0]);
-                    if (success)
-                    {
-                        console.Out.WriteLine($"Created account with ID {account.AccountId}");
-                        console.Out.WriteLine($"Visit https://account.skynet.app/confirm/{confirmation.Token} to confirm the mail address");
+                    console.Out.WriteLine($"Created account with ID {account.AccountId}");
+                    console.Out.WriteLine($"Visit https://account.skynet.app/confirm/{confirmation.Token} to confirm the mail address");
 
-                        if (SendMail)
-                        {
-                            console.Out.WriteLine("Sending confirmation mail...");
-                            await mailingService.SendMailAsync(AccountName, confirmation.Token);
-                        }
-                        return 0;
-                    }
-                    else
+                    if (SendMail)
                     {
-                        console.Error.WriteLine($"The AccountName {AccountName} already exists!");
-                        return 1;
+                        console.Out.WriteLine("Sending confirmation mail...");
+                        await mailingService.SendMailAsync(AccountName, confirmation.Token);
                     }
+                    return 0;
+                }
+                else
+                {
+                    console.Error.WriteLine($"The AccountName {AccountName} already exists!");
+                    return 1;
                 }
             }
         }
@@ -72,27 +70,25 @@ namespace SkynetServer.Cli.Commands
 
             private async Task<int> OnExecute(IConsole console)
             {
-                using (DatabaseContext ctx = new DatabaseContext())
+                using DatabaseContext ctx = new DatabaseContext();
+                MailConfirmation confirmation = ctx.MailConfirmations.SingleOrDefault(c => c.MailAddress == MailAddress);
+                if (confirmation != null)
                 {
-                    MailConfirmation confirmation = ctx.MailConfirmations.SingleOrDefault(c => c.MailAddress == MailAddress);
-                    if (confirmation != null)
+                    if (confirmation.ConfirmationTime == default)
                     {
-                        if (confirmation.ConfirmationTime == default)
-                        {
-                            confirmation.ConfirmationTime = DateTime.Now;
-                            await ctx.SaveChangesAsync();
-                        }
-                        else
-                        {
-                            console.Out.WriteLine($"The address {MailAddress} has already been confirmed on {confirmation.ConfirmationTime}");
-                        }
-                        return 0;
+                        confirmation.ConfirmationTime = DateTime.Now;
+                        await ctx.SaveChangesAsync();
                     }
                     else
                     {
-                        console.Error.WriteLine($"There is no confirmation pending for {MailAddress}");
-                        return 1;
+                        console.Out.WriteLine($"The address {MailAddress} has already been confirmed on {confirmation.ConfirmationTime}");
                     }
+                    return 0;
+                }
+                else
+                {
+                    console.Error.WriteLine($"There is no confirmation pending for {MailAddress}");
+                    return 1;
                 }
             }
         }
