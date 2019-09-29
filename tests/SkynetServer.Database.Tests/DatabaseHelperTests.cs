@@ -7,6 +7,7 @@ using SkynetServer.Model;
 using SkynetServer.Threading;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Wiry.Base32;
@@ -17,6 +18,7 @@ namespace SkynetServer.Shared.Tests
     public class DatabaseHelperTests
     {
         [AssemblyInitialize]
+        [SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Required to match test framework's expected signature")]
         public static void AssemblyInitialize(TestContext context)
         {
             var configuration = new ConfigurationBuilder()
@@ -25,10 +27,8 @@ namespace SkynetServer.Shared.Tests
 
             DatabaseContext.ConnectionString = configuration.Get<SkynetOptions>().DatabaseOptions.ConnectionString;
 
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                ctx.Database.EnsureCreated();
-            }
+            using DatabaseContext ctx = new DatabaseContext();
+            ctx.Database.EnsureCreated();
         }
 
         [TestMethod]
@@ -126,17 +126,15 @@ namespace SkynetServer.Shared.Tests
                 message = await DatabaseHelper.AddMessage(message);
                 if (previous != null)
                 {
-                    using (DatabaseContext ctx = new DatabaseContext())
+                    using DatabaseContext ctx = new DatabaseContext();
+                    ctx.MessageDependencies.Add(new MessageDependency()
                     {
-                        ctx.MessageDependencies.Add(new MessageDependency()
-                        {
-                            OwningChannelId = channel.ChannelId,
-                            OwningMessageId = message.MessageId,
-                            ChannelId = channel.ChannelId,
-                            MessageId = previous.MessageId,
-                        });
-                        await ctx.SaveChangesAsync();
-                    }
+                        OwningChannelId = channel.ChannelId,
+                        OwningMessageId = message.MessageId,
+                        ChannelId = channel.ChannelId,
+                        MessageId = previous.MessageId,
+                    });
+                    await ctx.SaveChangesAsync();
                 }
                 previous = message;
             });
@@ -144,12 +142,10 @@ namespace SkynetServer.Shared.Tests
 
         private string RandomAddress()
         {
-            using (var random = RandomNumberGenerator.Create())
-            {
-                byte[] value = new byte[10];
-                random.GetBytes(value);
-                return Base32Encoding.Standard.GetString(value).ToLower();
-            }
+            using var random = RandomNumberGenerator.Create();
+            byte[] value = new byte[10];
+            random.GetBytes(value);
+            return Base32Encoding.Standard.GetString(value).ToLower();
         }
     }
 }

@@ -27,16 +27,14 @@ namespace SkynetServer.Network
 
         public async Task<bool> SendPacket(Packet packet)
         {
-            using (var buffer = PacketBuffer.CreateDynamic())
-            {
-                packet.WritePacket(buffer);
-                bool success = await socket.SendPacketAsync(packet.Id, buffer.ToArray());
-                if (success)
-                    Console.WriteLine($"Successfully sent packet {packet}");
-                else
-                    Console.WriteLine($"Failed to send packet {packet}");
-                return success;
-            }
+            using var buffer = PacketBuffer.CreateDynamic();
+            packet.WritePacket(buffer);
+            bool success = await socket.SendPacketAsync(packet.Id, buffer.ToArray());
+            if (success)
+                Console.WriteLine($"Successfully sent packet {packet}");
+            else
+                Console.WriteLine($"Failed to send packet {packet}");
+            return success;
         }
 
         public void CloseConnection(string message)

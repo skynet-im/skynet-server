@@ -17,79 +17,73 @@ namespace SkynetServer.Database
             Account account = new Account { KeyHash = keyHash };
             MailConfirmation confirmation = new MailConfirmation { Account = account, MailAddress = mailAddress };
 
-            using (DatabaseContext ctx = new DatabaseContext())
+            using DatabaseContext ctx = new DatabaseContext();
+            bool saved = false;
+            do
             {
-                bool saved = false;
-                do
+                try
                 {
-                    try
-                    {
-                        long id = RandomId();
-                        string token = RandomToken();
-                        account.AccountId = id;
-                        confirmation.Token = token;
-                        ctx.Accounts.Add(account);
-                        ctx.MailConfirmations.Add(confirmation);
-                        await ctx.SaveChangesAsync();
-                        saved = true;
-                    }
-                    catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
-                    {
-                        // Return false if unique constraint violation is caused by the mail address
-                        // An example for mex.Message is "Duplicate entry 'concurrency@unit.test' for key 'PRIMARY'"
+                    long id = RandomId();
+                    string token = RandomToken();
+                    account.AccountId = id;
+                    confirmation.Token = token;
+                    ctx.Accounts.Add(account);
+                    ctx.MailConfirmations.Add(confirmation);
+                    await ctx.SaveChangesAsync();
+                    saved = true;
+                }
+                catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
+                {
+                    // Return false if unique constraint violation is caused by the mail address
+                    // An example for mex.Message is "Duplicate entry 'concurrency@unit.test' for key 'PRIMARY'"
 
-                        if (mex.Message.Contains('@'))
-                            return (null, null, false);
-                    }
-                } while (!saved);
-                return (account, confirmation, true);
-            }
+                    if (mex.Message.Contains('@'))
+                        return (null, null, false);
+                }
+            } while (!saved);
+            return (account, confirmation, true);
         }
 
         public static async Task<Session> AddSession(Session session)
         {
-            using (DatabaseContext ctx = new DatabaseContext())
+            using DatabaseContext ctx = new DatabaseContext();
+            bool saved = false;
+            do
             {
-                bool saved = false;
-                do
+                try
                 {
-                    try
-                    {
-                        long id = RandomId();
-                        session.SessionId = id;
-                        ctx.Sessions.Add(session);
-                        await ctx.SaveChangesAsync();
-                        saved = true;
-                    }
-                    catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
-                    {
-                    }
-                } while (!saved);
-                return session;
-            }
+                    long id = RandomId();
+                    session.SessionId = id;
+                    ctx.Sessions.Add(session);
+                    await ctx.SaveChangesAsync();
+                    saved = true;
+                }
+                catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
+                {
+                }
+            } while (!saved);
+            return session;
         }
 
         public static async Task<Channel> AddChannel(Channel channel)
         {
-            using (DatabaseContext ctx = new DatabaseContext())
+            using DatabaseContext ctx = new DatabaseContext();
+            bool saved = false;
+            do
             {
-                bool saved = false;
-                do
+                try
                 {
-                    try
-                    {
-                        long id = RandomId();
-                        channel.ChannelId = id;
-                        ctx.Channels.Add(channel);
-                        await ctx.SaveChangesAsync();
-                        saved = true;
-                    }
-                    catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
-                    {
-                    }
-                } while (!saved);
-                return channel;
-            }
+                    long id = RandomId();
+                    channel.ChannelId = id;
+                    ctx.Channels.Add(channel);
+                    await ctx.SaveChangesAsync();
+                    saved = true;
+                }
+                catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
+                {
+                }
+            } while (!saved);
+            return channel;
         }
 
         private static long GetMessageId(long channelId)
@@ -99,42 +93,38 @@ namespace SkynetServer.Database
             //       If this issue is limited to benchmarks it is sufficient to change the AsyncParallel implementation
             //       Otherwise I would recommend to use an async Semaphore to limit the number of tasks running in parallel
 
-            using (DatabaseContext ctx = new DatabaseContext())
+            using DatabaseContext ctx = new DatabaseContext();
+            bool saved = false;
+            Channel channel = ctx.Channels.Single(c => c.ChannelId == channelId);
+            long messageId = ++channel.MessageIdCounter;
+            do
             {
-                bool saved = false;
-                Channel channel = ctx.Channels.Single(c => c.ChannelId == channelId);
-                long messageId = ++channel.MessageIdCounter;
-                do
+                try
                 {
-                    try
-                    {
-                        ctx.SaveChanges();
-                        saved = true;
-                    }
-                    catch (DbUpdateConcurrencyException ex)
-                    {
-                        var entry = ex.Entries.Single();
-                        var proposedValues = entry.CurrentValues;
-                        var databaseValues = entry.GetDatabaseValues();
-                        const string name = nameof(Channel.MessageIdCounter);
-                        proposedValues[name] = messageId = (long)databaseValues[name] + 1;
-                        entry.OriginalValues.SetValues(databaseValues);
-                    }
+                    ctx.SaveChanges();
+                    saved = true;
+                }
+                catch (DbUpdateConcurrencyException ex)
+                {
+                    var entry = ex.Entries.Single();
+                    var proposedValues = entry.CurrentValues;
+                    var databaseValues = entry.GetDatabaseValues();
+                    const string name = nameof(Channel.MessageIdCounter);
+                    proposedValues[name] = messageId = (long)databaseValues[name] + 1;
+                    entry.OriginalValues.SetValues(databaseValues);
+                }
 
-                } while (!saved);
-                return messageId;
-            }
+            } while (!saved);
+            return messageId;
         }
 
         public static async Task<Message> AddMessage(Message message)
         {
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                message.MessageId = GetMessageId(message.ChannelId);
-                ctx.Messages.Add(message);
-                await ctx.SaveChangesAsync();
-                return message;
-            }
+            using DatabaseContext ctx = new DatabaseContext();
+            message.MessageId = GetMessageId(message.ChannelId);
+            ctx.Messages.Add(message);
+            await ctx.SaveChangesAsync();
+            return message;
         }
 
         public static async Task<Message> AddMessage(Message message, List<MessageDependency> dependencies)
@@ -160,28 +150,24 @@ namespace SkynetServer.Database
 
         private static long RandomId()
         {
-            using (var random = RandomNumberGenerator.Create())
+            using var random = RandomNumberGenerator.Create();
+            long result;
+            do
             {
-                long result;
-                do
-                {
-                    Span<byte> value = stackalloc byte[8];
-                    random.GetBytes(value);
-                    result = BitConverter.ToInt64(value);
+                Span<byte> value = stackalloc byte[8];
+                random.GetBytes(value);
+                result = BitConverter.ToInt64(value);
 
-                } while (result == 0);
-                return result;
-            }
+            } while (result == 0);
+            return result;
         }
 
         private static string RandomToken()
         {
-            using (var random = RandomNumberGenerator.Create())
-            {
-                byte[] value = new byte[10];
-                random.GetBytes(value);
-                return Base32Encoding.Standard.GetString(value).ToLower();
-            }
+            using var random = RandomNumberGenerator.Create();
+            byte[] value = new byte[10];
+            random.GetBytes(value);
+            return Base32Encoding.Standard.GetString(value).ToLower();
         }
     }
 }

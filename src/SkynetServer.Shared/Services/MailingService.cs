@@ -42,13 +42,11 @@ namespace SkynetServer.Services
             };
             message.Body = builder.ToMessageBody();
 
-            using (var client = new SmtpClient())
-            {
-                await client.ConnectAsync(config.SmtpHost, config.SmtpPort, config.UseSsl);
-                await client.AuthenticateAsync(config.SmtpUsername, config.SmtpPassword);
-                await client.SendAsync(message);
-                await client.DisconnectAsync(quit: true);
-            }
+            using var client = new SmtpClient();
+            await client.ConnectAsync(config.SmtpHost, config.SmtpPort, config.UseSsl);
+            await client.AuthenticateAsync(config.SmtpUsername, config.SmtpPassword);
+            await client.SendAsync(message);
+            await client.DisconnectAsync(quit: true);
         }
 
         public bool IsValidEmail(string email)
@@ -63,7 +61,7 @@ namespace SkynetServer.Services
                     RegexOptions.None, TimeSpan.FromMilliseconds(200));
 
                 // Examines the domain part of the email and normalizes it.
-                string DomainMapper(Match match)
+                static string DomainMapper(Match match)
                 {
                     // Use IdnMapping class to convert Unicode domain names.
                     var idn = new IdnMapping();
@@ -99,15 +97,15 @@ namespace SkynetServer.Services
         private string GetMailText()
         {
             Stream stream = GetType().Assembly.GetManifestResourceStream("SkynetServer.Resources.email.txt");
-            using (StreamReader reader = new StreamReader(stream))
-                return reader.ReadToEnd();
+            using StreamReader reader = new StreamReader(stream);
+            return reader.ReadToEnd();
         }
 
         private string GetMailHtml()
         {
             Stream stream = GetType().Assembly.GetManifestResourceStream("SkynetServer.Resources.email.xhtml");
-            using (StreamReader reader = new StreamReader(stream))
-                return reader.ReadToEnd();
+            using StreamReader reader = new StreamReader(stream);
+            return reader.ReadToEnd();
         }
     }
 }
