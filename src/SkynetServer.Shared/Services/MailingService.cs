@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -47,6 +46,11 @@ namespace SkynetServer.Services
             await client.AuthenticateAsync(config.SmtpUsername, config.SmtpPassword);
             await client.SendAsync(message);
             await client.DisconnectAsync(quit: true);
+        }
+
+        public string SimplifyAddress(string address)
+        {
+            return address.Replace("@googlemail.com", "@gmail.com");
         }
 
         public bool IsValidEmail(string email)
