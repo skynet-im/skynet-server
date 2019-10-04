@@ -49,6 +49,7 @@ namespace SkynetServer.Network
                 response.ErrorCode = CreateAccountError.InvalidAccountName;
             else
             {
+                packet.AccountName = mailing.SimplifyAddress(packet.AccountName);
                 (var newAccount, var confirmation, bool success) = await DatabaseHelper.AddAccount(packet.AccountName, packet.KeyHash);
                 if (!success)
                     response.ErrorCode = CreateAccountError.AccountNameTaken;
@@ -99,6 +100,7 @@ namespace SkynetServer.Network
         public async Task Handle(P06CreateSession packet)
         {
             using DatabaseContext ctx = new DatabaseContext();
+            packet.AccountName = mailing.SimplifyAddress(packet.AccountName);
             var response = Packet.New<P07CreateSessionResponse>();
 
             var confirmation = await ctx.MailConfirmations.Include(c => c.Account)

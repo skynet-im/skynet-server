@@ -1,4 +1,5 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
+using Microsoft.EntityFrameworkCore;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Services;
@@ -9,7 +10,7 @@ using System.Threading.Tasks;
 namespace SkynetServer.Cli.Commands
 {
     [Command("account")]
-    [Subcommand(typeof(Create), typeof(Confirm))]
+    [Subcommand(typeof(Create), typeof(Confirm), typeof(Resend))]
     [HelpOption]
     internal class AccountCommand
     {
@@ -71,7 +72,7 @@ namespace SkynetServer.Cli.Commands
             private async Task<int> OnExecute(IConsole console)
             {
                 using DatabaseContext ctx = new DatabaseContext();
-                MailConfirmation confirmation = ctx.MailConfirmations.SingleOrDefault(c => c.MailAddress == MailAddress);
+                MailConfirmation confirmation = await ctx.MailConfirmations.SingleOrDefaultAsync(c => c.MailAddress == MailAddress);
                 if (confirmation != null)
                 {
                     if (confirmation.ConfirmationTime == default)
@@ -88,6 +89,31 @@ namespace SkynetServer.Cli.Commands
                 else
                 {
                     console.Error.WriteLine($"There is no confirmation pending for {MailAddress}");
+                    return 1;
+                }
+            }
+        }
+
+        [Command("resend")]
+        [HelpOption]
+        internal class Resend
+        {
+            [Argument(0)]
+            public string MailAddress { get; set; }
+
+            private async Task<int> OnExecute(IConsole console, MailingService mailingService)
+            {
+                using DatabaseContext ctx = new DatabaseContext();
+                MailConfirmation confirmation = await ctx.MailConfirmations.SingleOrDefaultAsync(c => c.MailAddress == MailAddress);
+                if (confirmation != null)
+                {
+                    console.Out.WriteLine("Sending confirmation mail...");
+                    await mailingService.SendMailAsync(MailAddress, confirmation.Token);
+                    return 0;
+                }
+                else
+                {
+                    console.Out.WriteLine($"The AccountName {MailAddress} does not exist!");
                     return 1;
                 }
             }

@@ -167,9 +167,11 @@ namespace SkynetServer.Services
                 if ((!found && accountId != excludeFcm.AccountId) || options.NotifyAllDevices)
                 {
                     using DatabaseContext ctx = new DatabaseContext();
-                    foreach (Session session in ctx.Sessions
+                    Session[] sessions = await ctx.Sessions
                         .Where(s => s.AccountId == accountId && s.FcmToken != null
-                            && (s.LastFcmMessage < s.LastConnected || options.NotifyForEveryMessage)))
+                            && (s.LastFcmMessage < s.LastConnected || options.NotifyForEveryMessage))
+                        .ToArrayAsync();
+                    foreach (Session session in sessions)
                     {
                         try
                         {
