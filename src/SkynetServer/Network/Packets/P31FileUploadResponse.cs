@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x31, PacketPolicy.Send)]
+    [Packet(0x31, PacketPolicies.Send)]
     internal sealed class P31FileUploadResponse : Packet
     {
         public long FileId { get; set; }

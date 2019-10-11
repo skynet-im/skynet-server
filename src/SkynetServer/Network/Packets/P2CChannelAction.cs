@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x2C, PacketPolicy.Send)]
+    [Packet(0x2C, PacketPolicies.Send)]
     internal class P2CChannelAction : Packet
     {
         public long ChannelId { get; set; }

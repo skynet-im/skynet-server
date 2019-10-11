@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x12, PacketPolicy.Receive)]
+    [Packet(0x12, PacketPolicies.Receive)]
     internal sealed class P12UnsubscribeChannel : Packet
     {
         public long ChannelId { get; set; }

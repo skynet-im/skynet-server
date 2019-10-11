@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x0E, PacketPolicy.Receive)]
+    [Packet(0x0E, PacketPolicies.Receive)]
     internal sealed class P0ERequestMessages : Packet
     {
         public long ChannelId { get; set; }

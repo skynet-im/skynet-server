@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x04, PacketPolicy.Receive)]
+    [Packet(0x04, PacketPolicies.Receive)]
     internal sealed class P04DeleteAccount : Packet
     {
         public byte[] KeyHash { get; set; }

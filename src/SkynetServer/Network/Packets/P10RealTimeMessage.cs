@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x10, PacketPolicy.Duplex)]
+    [Packet(0x10, PacketPolicies.Duplex)]
     internal sealed class P10RealTimeMessage : Packet
     {
         public long ChannelId { get; set; }

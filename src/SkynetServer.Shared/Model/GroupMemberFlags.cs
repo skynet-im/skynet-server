@@ -5,7 +5,7 @@ using System.Text;
 namespace SkynetServer.Model
 {
     [Flags]
-    public enum GroupMemberFlags : byte
+    public enum GroupMemberFlags
     {
         None = 0,
         Administrator = 1,

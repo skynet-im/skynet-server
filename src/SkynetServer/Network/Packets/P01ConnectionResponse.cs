@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x01, PacketPolicy.Send)]
+    [Packet(0x01, PacketPolicies.Send)]
     internal sealed class P01ConnectionResponse : Packet
     {
         public ConnectionState ConnectionState { get; set; }

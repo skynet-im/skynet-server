@@ -8,7 +8,7 @@ namespace SkynetServer.Cli.Commands
     [Command("skynet", Description = "Skynet Server Management Console")]
     [Subcommand(typeof(AccountCommand), typeof(DatabaseCommand))]
     [HelpOption]
-    internal class SkynetCommand
+    public class SkynetCommand
     {
         private int OnExecute(CommandLineApplication app)
         {

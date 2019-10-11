@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x2E, PacketPolicy.Send)]
+    [Packet(0x2E, PacketPolicies.Send)]
     internal sealed class P2ESearchAccountResponse : Packet
     {
         public List<SearchResult> Results { get; set; } = new List<SearchResult>();

@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Message(0x26, PacketPolicy.Duplex)]
+    [Message(0x26, PacketPolicies.Duplex)]
     [AllowedFlags(MessageFlags.Unencrypted)]
     internal sealed class P26PersonalMessage : P0BChannelMessage
     {

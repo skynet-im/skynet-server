@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x07, PacketPolicy.Send)]
+    [Packet(0x07, PacketPolicies.Send)]
     internal sealed class P07CreateSessionResponse : Packet
     {
         public long AccountId { get; set; }

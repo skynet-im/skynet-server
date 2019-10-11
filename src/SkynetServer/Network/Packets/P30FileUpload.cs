@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x30, PacketPolicy.Receive)]
+    [Packet(0x30, PacketPolicies.Receive)]
     internal sealed class P30FileUpload : Packet
     {
         public override Packet Create() => new P30FileUpload().Init(this);

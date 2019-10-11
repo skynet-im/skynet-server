@@ -37,7 +37,7 @@ namespace SkynetServer.Database
                     // Return false if unique constraint violation is caused by the mail address
                     // An example for mex.Message is "Duplicate entry 'concurrency@unit.test' for key 'PRIMARY'"
 
-                    if (mex.Message.Contains('@'))
+                    if (mex.Message.Contains('@', StringComparison.Ordinal))
                         return (null, null, false);
                 }
             } while (!saved);
@@ -167,7 +167,7 @@ namespace SkynetServer.Database
             using var random = RandomNumberGenerator.Create();
             byte[] value = new byte[10];
             random.GetBytes(value);
-            return Base32Encoding.Standard.GetString(value).ToLower();
+            return Base32Encoding.Standard.GetString(value).ToLowerInvariant();
         }
     }
 }

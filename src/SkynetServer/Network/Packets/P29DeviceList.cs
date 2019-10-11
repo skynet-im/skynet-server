@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Message(0x29, PacketPolicy.Send)]
+    [Message(0x29, PacketPolicies.Send)]
     internal sealed class P29DeviceList : P0BChannelMessage
     {
         List<SessionInformation> Sessions { get; set; } = new List<SessionInformation>();

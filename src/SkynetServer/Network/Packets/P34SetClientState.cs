@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x34, PacketPolicy.Receive)]
+    [Packet(0x34, PacketPolicies.Receive)]
     internal class P34SetClientState : Packet
     {
         public OnlineState OnlineState { get; set; }

@@ -5,7 +5,7 @@ using System.Text;
 namespace SkynetServer.Model
 {
     [Flags]
-    public enum MessageFlags : byte
+    public enum MessageFlags
     {
         None = 0,
         Loopback = 1,

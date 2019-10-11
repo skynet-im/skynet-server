@@ -7,13 +7,13 @@ namespace SkynetServer.Network.Attributes
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
     internal class PacketAttribute : Attribute
     {
-        public PacketAttribute(byte packedId, PacketPolicy packetPolicy)
+        public PacketAttribute(byte packedId, PacketPolicies packetPolicies)
         {
             PacketId = packedId;
-            PacketPolicy = packetPolicy;
+            PacketPolicy = packetPolicies;
         }
 
         public byte PacketId { get; }
-        public PacketPolicy PacketPolicy { get; }
+        public PacketPolicies PacketPolicy { get; }
     }
 }

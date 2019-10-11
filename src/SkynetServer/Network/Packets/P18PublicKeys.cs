@@ -9,7 +9,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Message(0x18, PacketPolicy.Duplex)]
+    [Message(0x18, PacketPolicies.Duplex)]
     [MessageFlags(MessageFlags.Unencrypted)]
     internal sealed class P18PublicKeys : P0BChannelMessage
     {

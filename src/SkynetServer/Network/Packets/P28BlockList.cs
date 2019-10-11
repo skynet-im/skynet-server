@@ -9,7 +9,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Message(0x28, PacketPolicy.Duplex)]
+    [Message(0x28, PacketPolicies.Duplex)]
     [MessageFlags(MessageFlags.Loopback | MessageFlags.Unencrypted)]
     internal sealed class P28BlockList : P0BChannelMessage
     {

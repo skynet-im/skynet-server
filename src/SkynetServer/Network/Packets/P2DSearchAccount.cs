@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x2D, PacketPolicy.Receive)]
+    [Packet(0x2D, PacketPolicies.Receive)]
     internal sealed class P2DSearchAccount : Packet
     {
         public string Query { get; set; }

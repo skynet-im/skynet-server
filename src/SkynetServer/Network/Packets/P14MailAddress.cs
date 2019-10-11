@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Message(0x14, PacketPolicy.Send)]
+    [Message(0x14, PacketPolicies.Send)]
     internal sealed class P14MailAddress : P0BChannelMessage
     {
         public string MailAddress { get; set; }

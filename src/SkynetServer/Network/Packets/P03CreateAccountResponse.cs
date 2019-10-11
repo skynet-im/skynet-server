@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x03, PacketPolicy.Send)]
+    [Packet(0x03, PacketPolicies.Send)]
     internal sealed class P03CreateAccountResponse : Packet
     {
         public CreateAccountError ErrorCode { get; set; }

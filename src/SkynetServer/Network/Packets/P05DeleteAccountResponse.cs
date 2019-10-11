@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x05, PacketPolicy.Send)]
+    [Packet(0x05, PacketPolicies.Send)]
     internal sealed class P05DeleteAccountResponse : Packet
     {
         public DeleteAccountError ErrorCode { get; set; }

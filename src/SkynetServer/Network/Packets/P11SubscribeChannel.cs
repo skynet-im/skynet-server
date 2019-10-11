@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x11, PacketPolicy.Receive)]
+    [Packet(0x11, PacketPolicies.Receive)]
     internal sealed class P11SubscribeChannel : Packet
     {
         public long ChannelId { get; set; }

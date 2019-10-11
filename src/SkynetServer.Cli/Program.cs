@@ -20,7 +20,8 @@ namespace SkynetServer.Cli
                 Console.WriteLine();
             }
 
-            return CreateCommandLineApplication().Execute(args);
+            using CommandLineApplication cli = CreateCommandLineApplication();
+            return cli.Execute(args);
         }
 
         private static CommandLineApplication CreateCommandLineApplication()

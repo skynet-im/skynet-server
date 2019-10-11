@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Message(0x2B, PacketPolicy.Send)]
+    [Message(0x2B, PacketPolicies.Send)]
     internal class P2BOnlineState : P0BChannelMessage
     {
         public OnlineState OnlineState { get; set; }

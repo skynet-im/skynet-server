@@ -9,7 +9,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x0B, PacketPolicy.Duplex)]
+    [Packet(0x0B, PacketPolicies.Duplex)]
     internal class P0BChannelMessage : Packet
     {
         public long ChannelId { get; set; }
@@ -27,7 +27,7 @@ namespace SkynetServer.Network.Packets
         public byte ContentPacketVersion { get; set; }
         public byte[] ContentPacket { get; set; }
 
-        public PacketPolicy ContentPacketPolicy { get; set; }
+        public PacketPolicies ContentPacketPolicy { get; set; }
         public MessageFlags RequiredFlags { get; set; } = MessageFlags.None;
         public MessageFlags AllowedFlags { get; set; } = MessageFlags.All;
 

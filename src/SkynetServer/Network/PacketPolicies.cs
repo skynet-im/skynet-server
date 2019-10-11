@@ -5,7 +5,7 @@ using System.Text;
 namespace SkynetServer.Network
 {
     [Flags]
-    public enum PacketPolicy
+    public enum PacketPolicies
     {
         None = 0,
         Receive = 1,

@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SkynetServer.Configuration;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace SkynetServer.Shared.Tests
@@ -23,7 +24,7 @@ namespace SkynetServer.Shared.Tests
             Assert.IsNotNull(options.MailOptions);
             Assert.IsNotNull(options.ProtocolOptions);
             Assert.IsNotNull(options.ProtocolOptions.Platforms);
-            Assert.IsTrue(options.ProtocolOptions.Platforms.Count > 0);
+            Assert.IsTrue(options.ProtocolOptions.Platforms.Any());
             Assert.IsNotNull(options.VslOptions);
         }
     }

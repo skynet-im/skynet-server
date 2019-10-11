@@ -9,6 +9,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{AF56B7E7-849
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{B8633C65-A5ED-42CA-80C6-8C8DBECF0FA0}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		azure-pipelines.yml = azure-pipelines.yml
 		NuGet.config = NuGet.config
 		README.md = README.md

@@ -8,7 +8,7 @@ namespace SkynetServer.Network.Attributes
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
     internal sealed class MessageAttribute : PacketAttribute
     {
-        public MessageAttribute(byte packetId, PacketPolicy packetPolicy)
+        public MessageAttribute(byte packetId, PacketPolicies packetPolicy)
             : base(packetId, packetPolicy) { }
     }
 }

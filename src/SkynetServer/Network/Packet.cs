@@ -79,7 +79,7 @@ namespace SkynetServer.Network
         }
 
         public byte Id { get; set; }
-        public PacketPolicy Policy { get; set; }
+        public PacketPolicies Policy { get; set; }
 
         public abstract Packet Create();
         public abstract Task Handle(IPacketHandler handler);

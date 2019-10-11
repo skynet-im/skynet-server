@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x33, PacketPolicy.Send)]
+    [Packet(0x33, PacketPolicies.Send)]
     internal class P33DeviceListResponse : Packet
     {
         public List<SessionDetails> SessionDetails { get; set; } = new List<SessionDetails>();

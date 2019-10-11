@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x0F, PacketPolicy.Send)]
+    [Packet(0x0F, PacketPolicies.Send)]
     internal sealed class P0FSyncFinished : Packet
     {
         public override Packet Create() => new P0FSyncFinished().Init(this);

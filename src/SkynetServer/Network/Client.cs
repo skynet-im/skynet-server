@@ -66,13 +66,13 @@ namespace SkynetServer.Network
                 throw new ProtocolException($"Invalid packet ID {id}");
 
             Packet prototype = Packet.Packets[id];
-            if (prototype == null || !prototype.Policy.HasFlag(PacketPolicy.Receive))
+            if (prototype == null || !prototype.Policy.HasFlag(PacketPolicies.Receive))
                 throw new ProtocolException($"Cannot receive packet {id}");
 
-            if (Session == null && !prototype.Policy.HasFlag(PacketPolicy.Unauthenticated))
+            if (Session == null && !prototype.Policy.HasFlag(PacketPolicies.Unauthenticated))
                 throw new ProtocolException($"Unauthorized packet {id}");
 
-            if (Session != null && prototype.Policy.HasFlag(PacketPolicy.Unauthenticated))
+            if (Session != null && prototype.Policy.HasFlag(PacketPolicies.Unauthenticated))
                 throw new ProtocolException($"Authorized clients cannot send packet {id}");
 
             Packet instance = prototype.Create();

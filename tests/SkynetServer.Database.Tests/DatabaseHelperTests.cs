@@ -18,7 +18,8 @@ namespace SkynetServer.Shared.Tests
     public class DatabaseHelperTests
     {
         [AssemblyInitialize]
-        [SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Required to match test framework's expected signature")]
+        //[SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Required to match test framework's expected signature")]
+        [SuppressMessage("Usage", "CA1801:Review unused parameters", Justification = "Required to match test framework's expected signature")]
         public static void AssemblyInitialize(TestContext context)
         {
             var configuration = new ConfigurationBuilder()
@@ -36,7 +37,7 @@ namespace SkynetServer.Shared.Tests
         {
             await AsyncParallel.ForAsync(0, 500, async i =>
             {
-                (_, _, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", new byte[0]);
+                (_, _, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", Array.Empty<byte>());
                 Assert.IsTrue(success);
             });
         }
@@ -45,8 +46,8 @@ namespace SkynetServer.Shared.Tests
         public async Task TestAddExistingAccount()
         {
             const string address = "concurrency@unit.test";
-            await DatabaseHelper.AddAccount(address, new byte[0]);
-            (_, _, bool success) = await DatabaseHelper.AddAccount(address, new byte[0]);
+            await DatabaseHelper.AddAccount(address, Array.Empty<byte>());
+            (_, _, bool success) = await DatabaseHelper.AddAccount(address, Array.Empty<byte>());
             Assert.IsFalse(success);
         }
 
@@ -55,7 +56,7 @@ namespace SkynetServer.Shared.Tests
         {
             await AsyncParallel.ForAsync(0, 100, async i =>
             {
-                (var account, _, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", new byte[0]);
+                (var account, _, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", Array.Empty<byte>());
                 Assert.IsTrue(success);
 
                 await AsyncParallel.ForAsync(0, 10, j =>
@@ -85,7 +86,7 @@ namespace SkynetServer.Shared.Tests
         {
             await AsyncParallel.ForAsync(0, 50, async i =>
             {
-                (var account, _, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", new byte[0]);
+                (var account, _, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", Array.Empty<byte>());
                 Assert.IsTrue(success);
 
                 Channel channel = new Channel()
@@ -145,7 +146,7 @@ namespace SkynetServer.Shared.Tests
             using var random = RandomNumberGenerator.Create();
             byte[] value = new byte[10];
             random.GetBytes(value);
-            return Base32Encoding.Standard.GetString(value).ToLower();
+            return Base32Encoding.Standard.GetString(value).ToLowerInvariant();
         }
     }
 }

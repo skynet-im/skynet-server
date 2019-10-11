@@ -36,8 +36,12 @@ namespace SkynetServer.Services
             message.Subject = "Confirm your email address";
             BodyBuilder builder = new BodyBuilder
             {
-                TextBody = GetMailText().Replace("$ADDRESS", address).Replace("$TOKEN", token),
-                HtmlBody = GetMailHtml().Replace("$ADDRESS", address).Replace("$TOKEN", token)
+                TextBody = GetMailText()
+                    .Replace("$ADDRESS", address, StringComparison.Ordinal)
+                    .Replace("$TOKEN", token, StringComparison.Ordinal),
+                HtmlBody = GetMailHtml()
+                    .Replace("$ADDRESS", address, StringComparison.Ordinal)
+                    .Replace("$TOKEN", token, StringComparison.Ordinal)
             };
             message.Body = builder.ToMessageBody();
 
@@ -50,7 +54,7 @@ namespace SkynetServer.Services
 
         public string SimplifyAddress(string address)
         {
-            return address.Replace("@googlemail.com", "@gmail.com");
+            return address.Replace("@googlemail.com", "@gmail.com", StringComparison.Ordinal);
         }
 
         public bool IsValidEmail(string email)

@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x2F, PacketPolicy.Send)]
+    [Packet(0x2F, PacketPolicies.Send)]
     internal sealed class P2FCreateChannelResponse : Packet
     {
         public long TempChannelId { get; set; }

@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x32, PacketPolicy.Receive)]
+    [Packet(0x32, PacketPolicies.Receive)]
     internal class P32DeviceListRequest : Packet
     {
         public override Packet Create() => new P32DeviceListRequest().Init(this);

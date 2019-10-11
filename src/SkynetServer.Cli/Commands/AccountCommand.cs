@@ -12,7 +12,7 @@ namespace SkynetServer.Cli.Commands
     [Command("account")]
     [Subcommand(typeof(Create), typeof(Confirm), typeof(Resend))]
     [HelpOption]
-    internal class AccountCommand
+    public class AccountCommand
     {
         private int OnExecute(CommandLineApplication app)
         {
@@ -22,7 +22,7 @@ namespace SkynetServer.Cli.Commands
 
         [Command("create")]
         [HelpOption]
-        internal class Create
+        public class Create
         {
             [Argument(0)]
             public string AccountName { get; set; }
@@ -41,7 +41,7 @@ namespace SkynetServer.Cli.Commands
                 console.Out.WriteLine("WARNING: Argon2 hash is currently not supported!");
 
                 using DatabaseContext ctx = new DatabaseContext();
-                (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount(AccountName, new byte[0]);
+                (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount(AccountName, Array.Empty<byte>());
                 if (success)
                 {
                     console.Out.WriteLine($"Created account with ID {account.AccountId}");
@@ -64,7 +64,7 @@ namespace SkynetServer.Cli.Commands
 
         [Command("confirm")]
         [HelpOption]
-        internal class Confirm
+        public class Confirm
         {
             [Argument(0)]
             public string MailAddress { get; set; }
@@ -96,7 +96,7 @@ namespace SkynetServer.Cli.Commands
 
         [Command("resend")]
         [HelpOption]
-        internal class Resend
+        public class Resend
         {
             [Argument(0)]
             public string MailAddress { get; set; }

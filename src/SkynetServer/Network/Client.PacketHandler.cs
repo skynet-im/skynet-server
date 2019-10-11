@@ -312,7 +312,7 @@ namespace SkynetServer.Network
                 case ChannelType.ProfileData:
                     throw new NotImplementedException();
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new ArgumentOutOfRangeException($"{nameof(packet)}.{nameof(P0ACreateChannel.ChannelType)}");
             }
         }
 
@@ -384,7 +384,7 @@ namespace SkynetServer.Network
             if (packet.MessageFlags.HasFlag(MessageFlags.Unencrypted))
             {
                 if (!(Packet.Packets[packet.ContentPacketId] is P0BChannelMessage message)
-                    || !message.ContentPacketPolicy.HasFlag(PacketPolicy.Receive))
+                    || !message.ContentPacketPolicy.HasFlag(PacketPolicies.Receive))
                     throw new ProtocolException("Content packet is no receivable channel message");
 
                 P0BChannelMessage instance = message.Create(packet);
@@ -564,7 +564,7 @@ namespace SkynetServer.Network
             using DatabaseContext ctx = new DatabaseContext();
             var results = ctx.MailConfirmations
                 .Where(c => c.AccountId != Account.AccountId
-                    && c.MailAddress.Contains(packet.Query)
+                    && c.MailAddress.Contains(packet.Query, StringComparison.Ordinal)
                     && c.ConfirmationTime != default) // Exclude unconfirmed accounts
                 .Take(100); // Limit to 100 entries
             var response = Packet.New<P2ESearchAccountResponse>();

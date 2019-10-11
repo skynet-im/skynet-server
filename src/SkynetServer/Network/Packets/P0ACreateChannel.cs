@@ -8,7 +8,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x0A, PacketPolicy.Duplex)]
+    [Packet(0x0A, PacketPolicies.Duplex)]
     internal sealed class P0ACreateChannel : Packet
     {
         public long ChannelId { get; set; }

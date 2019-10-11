@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SkynetServer.Model
 {
-    public enum ChannelType : byte
+    public enum ChannelType
     {
         Loopback,
         AccountData,

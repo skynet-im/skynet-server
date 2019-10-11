@@ -43,7 +43,7 @@ namespace SkynetServer.Services
 
         public void OnChannelActionChanged(Client client, long channelId, ChannelAction action)
         {
-            if (client.Account == null) throw new ArgumentNullException(nameof(client.Account));
+            if (client.Account == null) throw new ArgumentNullException($"{nameof(client)}.{nameof(Client.Account)}");
 
             if (client.FocusedChannelId != channelId)
                 notifyChannel(client.FocusedChannelId, ChannelAction.None);
@@ -62,7 +62,7 @@ namespace SkynetServer.Services
                 var packet = Packet.New<P2CChannelAction>();
                 packet.ChannelId = _channelId;
                 packet.AccountId = client.Account.AccountId;
-                packet.Action = action;
+                packet.Action = _action;
                 await Task.WhenAll(clients
                     .Where(c => c.Account != null && members.Contains(c.Account.AccountId) && !ReferenceEquals(c, client))
                     .Select(c => c.SendPacket(packet)));
@@ -71,7 +71,7 @@ namespace SkynetServer.Services
 
         public void OnActiveChanged(Client client, bool active)
         {
-            if (client.Account == null) throw new ArgumentNullException(nameof(client.Account));
+            if (client.Account == null) throw new ArgumentNullException($"{nameof(client)}.{nameof(Client.Account)}");
 
             bool notify = !clients.Any(c => c.Account != null && c.Account.AccountId == client.Account.AccountId
                 && !ReferenceEquals(c, client) && c.Active);

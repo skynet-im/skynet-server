@@ -13,7 +13,7 @@ namespace SkynetServer.Cli.Commands
     [Command("database")]
     [Subcommand(typeof(Create), typeof(Delete), typeof(Benchmark))]
     [HelpOption]
-    internal class DatabaseCommand
+    public class DatabaseCommand
     {
         private int OnExecute(CommandLineApplication app)
         {
@@ -23,7 +23,7 @@ namespace SkynetServer.Cli.Commands
 
         [Command("create", Description = "Creates the database if it does not exist")]
         [HelpOption]
-        internal class Create
+        public class Create
         {
             [Option(Description = "Forces a recreation of the database")]
             public bool Force { get; set; }
@@ -42,7 +42,7 @@ namespace SkynetServer.Cli.Commands
 
         [Command("delete")]
         [HelpOption]
-        internal class Delete
+        public class Delete
         {
             private void OnExecute()
             {
@@ -56,7 +56,7 @@ namespace SkynetServer.Cli.Commands
 
         [Command("benchmark")]
         [HelpOption]
-        internal class Benchmark
+        public class Benchmark
         {
             [Option(CommandOptionType.SingleValue, Description = "Number of accounts to insert")]
             public int AccountCount { get; set; } = 50;
@@ -76,7 +76,7 @@ namespace SkynetServer.Cli.Commands
 
                     await AsyncParallel.ForAsync(0, AccountCount, i =>
                     {
-                        return DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", new byte[0]);
+                        return DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", Array.Empty<byte>());
                     });
 
                     stopwatch.Stop();
@@ -85,7 +85,7 @@ namespace SkynetServer.Cli.Commands
                 }
 
                 {
-                    (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", new byte[0]);
+                    (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", Array.Empty<byte>());
                     accountId = account.AccountId;
                     console.Out.WriteLine($"Created account {confirmation.MailAddress} with ID {accountId}");
                     console.Out.WriteLine($"Created mail confirmation for {confirmation.MailAddress} with token {confirmation.Token}");
@@ -111,12 +111,12 @@ namespace SkynetServer.Cli.Commands
                 }
             }
 
-            private string RandomAddress()
+            private static string RandomAddress()
             {
                 using var random = RandomNumberGenerator.Create();
                 byte[] value = new byte[10];
                 random.GetBytes(value);
-                return Base32Encoding.Standard.GetString(value).ToLower();
+                return Base32Encoding.Standard.GetString(value).ToLowerInvariant();
             }
         }
     }

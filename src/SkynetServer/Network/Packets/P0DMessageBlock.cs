@@ -7,7 +7,7 @@ using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x0D, PacketPolicy.Receive)]
+    [Packet(0x0D, PacketPolicies.Receive)]
     internal sealed class P0DMessageBlock : Packet
     {
         public List<byte[]> Messages { get; set; } = new List<byte[]>();
