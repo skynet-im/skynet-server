@@ -38,6 +38,9 @@ namespace SkynetServer.Sockets
             }
         }
 
+        public Memory<byte> GetRawBuffer() => buffer;
+        public Memory<byte> GetBuffer() => buffer.Slice(0, Position);
+
         private void EnsureSpace(int length)
         {
             if (Position + length > Capacity)
@@ -67,7 +70,7 @@ namespace SkynetServer.Sockets
         public bool ReadBoolean()
         {
             if (Position + sizeof(byte) > Capacity) throw new EndOfStreamException();
-            bool value = buffer.Span[Position] == 0;
+            bool value = buffer.Span[Position] != 0;
             position++;
             return value;
         }
@@ -169,7 +172,7 @@ namespace SkynetServer.Sockets
             if (array.Length > ushort.MaxValue) throw new ArgumentOutOfRangeException(nameof(array));
 
             Span<byte> buffer = stackalloc byte[sizeof(ushort) + array.Length];
-            Unsafe.WriteUnaligned(ref MemoryMarshal.GetReference(buffer), (ushort)buffer.Length);
+            Unsafe.WriteUnaligned(ref MemoryMarshal.GetReference(buffer), (ushort)array.Length);
             array.CopyTo(buffer.Slice(sizeof(ushort)));
             WriteRawByteArray(buffer);
         }
@@ -189,7 +192,7 @@ namespace SkynetServer.Sockets
             if (array.Length > int.MaxValue) throw new ArgumentOutOfRangeException(nameof(array));
 
             Span<byte> buffer = stackalloc byte[sizeof(int) + array.Length];
-            Unsafe.WriteUnaligned(ref MemoryMarshal.GetReference(buffer), buffer.Length);
+            Unsafe.WriteUnaligned(ref MemoryMarshal.GetReference(buffer), array.Length);
             array.CopyTo(buffer.Slice(sizeof(int)));
             WriteRawByteArray(buffer);
         }
