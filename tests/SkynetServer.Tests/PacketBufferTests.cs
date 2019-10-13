@@ -52,6 +52,27 @@ namespace SkynetServer.Tests
         }
 
         [TestMethod]
+        public void TestStructs()
+        {
+            DateTime date1 = default;
+            DateTime date2 = DateTime.Now;
+            Guid uuid1 = default;
+            Guid uuid2 = Guid.NewGuid();
+
+            var write = new PacketBuffer();
+            write.WriteDateTime(date1);
+            write.WriteDateTime(date2);
+            write.WriteUuid(uuid1);
+            write.WriteUuid(uuid2);
+
+            var read = new PacketBuffer(write.GetBuffer());
+            Assert.AreEqual(date1, read.ReadDateTime());
+            Assert.AreEqual(date2, read.ReadDateTime());
+            Assert.AreEqual(uuid1, read.ReadUuid());
+            Assert.AreEqual(uuid2, read.ReadUuid());
+        }
+
+        [TestMethod]
         public void TestArrays()
         {
             byte[] random1 = new byte[128];
