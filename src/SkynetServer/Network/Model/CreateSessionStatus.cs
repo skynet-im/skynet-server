@@ -4,11 +4,11 @@ using System.Text;
 
 namespace SkynetServer.Network.Model
 {
-    public enum MessageSendError
+    public enum CreateSessionStatus
     {
         Success,
-        FileNotFound,
-        AccessDenied,
-        ConcurrentChanges
+        InvalidCredentials,
+        InvalidFcmRegistrationToken,
+        UnconfirmedAccount
     }
 }

@@ -1,9 +1,9 @@
 ﻿using SkynetServer.Network.Attributes;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
@@ -20,9 +20,9 @@ namespace SkynetServer.Network.Packets
 
         public override void ReadPacket(PacketBuffer buffer)
         {
-            ProtocolVersion = buffer.ReadInt();
-            ApplicationIdentifier = buffer.ReadString();
-            VersionCode = buffer.ReadInt();
+            ProtocolVersion = buffer.ReadInt32();
+            ApplicationIdentifier = buffer.ReadShortString();
+            VersionCode = buffer.ReadInt32();
         }
 
         public override void WritePacket(PacketBuffer buffer)

@@ -4,11 +4,9 @@ using System.Text;
 
 namespace SkynetServer.Network.Model
 {
-    public enum CreateChannelError
+    public enum DeleteAccountStatus
     {
         Success,
-        AlreadyExists,
-        InvalidCounterpart,
-        Blocked
+        InvalidCredentials
     }
 }

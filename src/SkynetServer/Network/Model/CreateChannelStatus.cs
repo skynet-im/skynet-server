@@ -4,10 +4,11 @@ using System.Text;
 
 namespace SkynetServer.Network.Model
 {
-    public enum RestoreSessionError
+    public enum CreateChannelStatus
     {
         Success,
-        InvalidCredentials,
-        InvalidSession
+        AlreadyExists,
+        InvalidCounterpart,
+        Blocked
     }
 }

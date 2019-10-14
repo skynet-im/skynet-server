@@ -7,12 +7,12 @@ using SkynetServer.Model;
 using SkynetServer.Network;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Services
 {
@@ -89,16 +89,10 @@ namespace SkynetServer.Services
             });
         }
 
-        public async Task<Message> CreateMessage(P0BChannelMessage packet, Channel channel, long? senderId)
+        public async Task<Message> CreateMessage(ChannelMessage packet, Channel channel, long? senderId)
         {
             packet.ChannelId = channel.ChannelId;
             packet.MessageFlags |= MessageFlags.Unencrypted;
-            if (packet.ContentPacket == null)
-            {
-                using PacketBuffer buffer = PacketBuffer.CreateDynamic();
-                packet.WriteMessage(buffer);
-                packet.ContentPacket = buffer.ToArray();
-            }
 
             Message message = new Message()
             {
@@ -107,9 +101,9 @@ namespace SkynetServer.Services
                 // TODO: Implement skip count
                 MessageFlags = packet.MessageFlags,
                 // TODO: Implement FileId
-                ContentPacketId = packet.ContentPacketId,
-                ContentPacketVersion = packet.ContentPacketVersion,
-                ContentPacket = packet.ContentPacket
+                PacketId = packet.Id,
+                PacketVersion = packet.PacketVersion,
+                PacketContent = packet.PacketContent.IsEmpty ? null : packet.PacketContent.ToArray(),
             };
 
             message = await DatabaseHelper.AddMessage(message, packet.Dependencies.ToDatabase());

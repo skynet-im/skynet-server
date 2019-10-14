@@ -1,19 +1,19 @@
 ﻿using SkynetServer.Network.Attributes;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
     [Packet(0x08, PacketPolicies.Receive | PacketPolicies.Unauthenticated)]
     internal sealed class P08RestoreSession : Packet
     {
-        public long AccountId { get; set; }
-        public byte[] KeyHash { get; set; }
         public long SessionId { get; set; }
-        public List<(long ChannelId, long LastMessageId)> Channels { get; set; } = new List<(long ChannelId, long LastMessageId)>();
+        public byte[] SessionToken { get; set; }
+        public long LastMessageId { get; set; }
+        public List<long> Channels { get; set; } = new List<long>();
 
         public override Packet Create() => new P08RestoreSession().Init(this);
 
@@ -21,13 +21,12 @@ namespace SkynetServer.Network.Packets
 
         public override void ReadPacket(PacketBuffer buffer)
         {
-            AccountId = buffer.ReadLong();
-            KeyHash = buffer.ReadByteArray(32);
-            SessionId = buffer.ReadLong();
-            ushort length = buffer.ReadUShort();
+            SessionId = buffer.ReadInt64();
+            SessionToken = buffer.ReadRawByteArray(32).ToArray();
+            ushort length = buffer.ReadUInt16();
             for (int i = 0; i < length; i++)
             {
-                Channels.Add((buffer.ReadLong(), buffer.ReadLong()));
+                Channels.Add(buffer.ReadInt64());
             }
         }
 
@@ -38,7 +37,7 @@ namespace SkynetServer.Network.Packets
 
         public override string ToString()
         {
-            return $"{{{nameof(P08RestoreSession)}: AccountId={AccountId:x8} SessionId={SessionId.ToString("x8")}}}";
+            return $"{{{nameof(P08RestoreSession)}: SessionId={SessionId:x8} LastMessageId={LastMessageId.ToString("x8")}}}";
         }
     }
 }

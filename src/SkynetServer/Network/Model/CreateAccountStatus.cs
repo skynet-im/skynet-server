@@ -4,9 +4,11 @@ using System.Text;
 
 namespace SkynetServer.Network.Model
 {
-    public enum DeleteAccountError
+    public enum CreateAccountStatus
     {
         Success,
-        InvalidCredentials
+        MailResent,
+        AccountNameTaken,
+        InvalidAccountName
     }
 }

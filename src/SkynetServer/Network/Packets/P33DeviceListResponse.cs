@@ -1,10 +1,10 @@
 ﻿using SkynetServer.Network.Attributes;
 using SkynetServer.Network.Model;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
@@ -24,12 +24,12 @@ namespace SkynetServer.Network.Packets
 
         public override void WritePacket(PacketBuffer buffer)
         {
-            buffer.WriteUShort((ushort)SessionDetails.Count);
+            buffer.WriteUInt16((ushort)SessionDetails.Count);
             foreach (SessionDetails details in SessionDetails)
             {
-                buffer.WriteLong(details.SessionId);
-                buffer.WriteDate(details.LastConnected);
-                buffer.WriteInt(details.LastVersionCode);
+                buffer.WriteInt64(details.SessionId);
+                buffer.WriteDateTime(details.LastConnected);
+                buffer.WriteInt32(details.LastVersionCode);
             }
         }
     }

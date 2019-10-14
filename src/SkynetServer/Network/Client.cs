@@ -3,6 +3,7 @@ using SkynetServer.Configuration;
 using SkynetServer.Database.Entities;
 using SkynetServer.Network.Model;
 using SkynetServer.Services;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -27,9 +28,9 @@ namespace SkynetServer.Network
 
         public async Task<bool> SendPacket(Packet packet)
         {
-            using var buffer = PacketBuffer.CreateDynamic();
+            var buffer = new Sockets.PacketBuffer();
             packet.WritePacket(buffer);
-            bool success = await socket.SendPacketAsync(packet.Id, buffer.ToArray());
+            bool success = await socket.SendPacketAsync(packet.Id, buffer.GetBuffer().ToArray());
             if (success)
                 Console.WriteLine($"Successfully sent packet {packet}");
             else
@@ -77,10 +78,8 @@ namespace SkynetServer.Network
 
             Packet instance = prototype.Create();
 
-            using (var buffer = PacketBuffer.CreateStatic(content))
-            {
-                instance.ReadPacket(buffer);
-            }
+            var buffer = new Sockets.PacketBuffer(content);
+            instance.ReadPacket(buffer);
 
             Console.WriteLine($"Starting to handle packet {instance}");
 

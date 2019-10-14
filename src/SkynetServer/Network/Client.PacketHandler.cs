@@ -2,14 +2,15 @@
 using SkynetServer.Configuration;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
+using SkynetServer.Extensions;
 using SkynetServer.Model;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using VSL;
 using VSL.BinaryTools;
 
 namespace SkynetServer.Network
@@ -18,6 +19,77 @@ namespace SkynetServer.Network
     {
         private string applicationIdentifier;
         private int versionCode;
+
+        public async Task HandleMessage(ChannelMessage packet)
+        {
+            if (!packet.MessageFlags.AreValid(packet.RequiredFlags, packet.AllowedFlags))
+                throw new ProtocolException($"Invalid MessageFlags{packet.MessageFlags} for content packet ID {packet.Id}");
+
+            if (packet.MessageFlags.HasFlag(MessageFlags.Unencrypted)
+                && await packet.HandleMessage(this) != MessageSendStatus.Success)
+                    return; // Not all messages can be saved, some return MessageSendError other than Success
+            
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                Channel channel = await ctx.Channels.SingleOrDefaultAsync(c => c.ChannelId == packet.ChannelId);
+                if (channel == null)
+                    throw new ProtocolException("Attempted to send a message to a non existent channel");
+
+                switch (channel.ChannelType)
+                {
+                    case ChannelType.Loopback:
+                    case ChannelType.AccountData:
+                    case ChannelType.ProfileData:
+                        if (channel.OwnerId != Account.AccountId)
+                            throw new ProtocolException("Attempted to send a message to a foreign channel");
+                        break;
+                    case ChannelType.Direct:
+                        if (!await ctx.ChannelMembers.AnyAsync(m => m.ChannelId == packet.ChannelId && m.AccountId == Account.AccountId))
+                            throw new ProtocolException("Attempted to send a message to a foreign channel");
+                        break;
+                    case ChannelType.Group:
+                        throw new NotImplementedException();
+                    default:
+                        throw new ArgumentException($"Invalid value {channel.ChannelType} for enum {nameof(ChannelType)}");
+                }
+            }
+
+            Message entity = new Message
+            {
+                ChannelId = packet.ChannelId,
+                SenderId = Account.AccountId,
+                MessageFlags = packet.MessageFlags,
+                // TODO: Implement FileId
+                PacketId = packet.Id,
+                PacketVersion = packet.PacketVersion,
+                PacketContent = packet.PacketContent.IsEmpty ? null : packet.PacketContent.ToArray(),
+            };
+
+            entity = await DatabaseHelper.AddMessage(entity, packet.Dependencies.ToDatabase());
+
+            var response = Packet.New<P0CChannelMessageResponse>();
+            response.ChannelId = packet.ChannelId;
+            response.TempMessageId = packet.MessageId;
+            response.StatusCode = MessageSendStatus.Success;
+            response.MessageId = entity.MessageId;
+            // TODO: Implement skip count
+            response.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
+            await SendPacket(response);
+
+            using (DatabaseContext ctx = new DatabaseContext())
+            {
+                packet.SenderId = Account.AccountId;
+                packet.MessageId = entity.MessageId;
+                packet.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
+
+                if (packet.Id == 0x20)
+                    await delivery.SendPriorityMessage(entity, exclude: this, excludeFcm: Account);
+                else
+                    await delivery.SendMessage(entity, exclude: this);
+            }
+
+            await packet.PostHandling(this, entity);
+        }
 
         public Task Handle(P00ConnectionHandshake packet)
         {
@@ -46,13 +118,13 @@ namespace SkynetServer.Network
             using DatabaseContext ctx = new DatabaseContext();
             var response = Packet.New<P03CreateAccountResponse>();
             if (!mailing.IsValidEmail(packet.AccountName))
-                response.ErrorCode = CreateAccountError.InvalidAccountName;
+                response.StatusCode = CreateAccountStatus.InvalidAccountName;
             else
             {
                 packet.AccountName = mailing.SimplifyAddress(packet.AccountName);
                 (var newAccount, var confirmation, bool success) = await DatabaseHelper.AddAccount(packet.AccountName, packet.KeyHash);
                 if (!success)
-                    response.ErrorCode = CreateAccountError.AccountNameTaken;
+                    response.StatusCode = CreateAccountStatus.AccountNameTaken;
                 else
                 {
                     Task mail = mailing.SendMailAsync(confirmation.MailAddress, confirmation.Token);
@@ -86,7 +158,7 @@ namespace SkynetServer.Network
                     await delivery.CreateMessage(mailAddress, accountData, newAccount.AccountId);
 
                     await mail;
-                    response.ErrorCode = CreateAccountError.Success;
+                    response.StatusCode = CreateAccountStatus.Success;
                 }
             }
             await SendPacket(response);
@@ -106,9 +178,9 @@ namespace SkynetServer.Network
             var confirmation = await ctx.MailConfirmations.Include(c => c.Account)
                 .SingleOrDefaultAsync(c => c.MailAddress == packet.AccountName);
             if (confirmation == null)
-                response.ErrorCode = CreateSessionError.InvalidCredentials;
+                response.StatusCode = CreateSessionStatus.InvalidCredentials;
             else if (confirmation.ConfirmationTime == default)
-                response.ErrorCode = CreateSessionError.UnconfirmedAccount;
+                response.StatusCode = CreateSessionStatus.UnconfirmedAccount;
             else if (packet.KeyHash.SafeEquals(confirmation.Account.KeyHash))
             {
                 Session = await DatabaseHelper.AddSession(new Session
@@ -124,41 +196,33 @@ namespace SkynetServer.Network
 
                 response.AccountId = Account.AccountId;
                 response.SessionId = Session.SessionId;
-                response.ErrorCode = CreateSessionError.Success;
+                response.StatusCode = CreateSessionStatus.Success;
                 await SendPacket(response);
                 await SendMessages(new List<(long channelId, long messageId)>());
                 return;
             }
             else
-                response.ErrorCode = CreateSessionError.InvalidCredentials;
+                response.StatusCode = CreateSessionStatus.InvalidCredentials;
             await SendPacket(response);
         }
 
         public async Task Handle(P08RestoreSession packet)
         {
             using DatabaseContext ctx = new DatabaseContext();
-            var accountCandidate = ctx.Accounts.SingleOrDefault(acc => acc.AccountId == packet.AccountId);
+            Session = await ctx.Sessions.Include(s => s.Account).SingleOrDefaultAsync(s => s.SessionId == packet.SessionId);
             var response = Packet.New<P09RestoreSessionResponse>();
-            if (accountCandidate != null && packet.KeyHash.SafeEquals(accountCandidate.KeyHash))
+            if (Session != null && packet.SessionToken.SequenceEqual(Session.Account.KeyHash))
             {
-                Session = ctx.Sessions.SingleOrDefault(s =>
-                    s.AccountId == packet.AccountId && s.SessionId == packet.SessionId);
-
-                if (Session == null)
-                    response.ErrorCode = RestoreSessionError.InvalidSession;
-                else
-                {
-                    Session.LastConnected = DateTime.Now;
-                    await ctx.SaveChangesAsync();
-                    Account = accountCandidate;
-                    response.ErrorCode = RestoreSessionError.Success;
-                    await SendPacket(response);
-                    await SendMessages(packet.Channels);
-                    return;
-                }
+                Session.LastConnected = DateTime.Now;
+                await ctx.SaveChangesAsync();
+                Account = Session.Account;
+                response.StatusCode = RestoreSessionStatus.Success;
+                await SendPacket(response);
+                //await SendMessages(packet.Channels);
+                return;
             }
             else
-                response.ErrorCode = RestoreSessionError.InvalidCredentials;
+                response.StatusCode = RestoreSessionStatus.InvalidSession;
             await SendPacket(response);
         }
 
@@ -247,13 +311,13 @@ namespace SkynetServer.Network
                     var counterpart = await ctx.Accounts.SingleOrDefaultAsync(acc => acc.AccountId == packet.CounterpartId);
                     if (counterpart == null)
                     {
-                        response.ErrorCode = CreateChannelError.InvalidCounterpart;
+                        response.StatusCode = CreateChannelStatus.InvalidCounterpart;
                         await SendPacket(response);
                     }
                     else if (await ctx.BlockedAccounts.AnyAsync(b => b.OwnerId == packet.CounterpartId && b.AccountId == Account.AccountId)
                         || await ctx.BlockedAccounts.AnyAsync(b => b.OwnerId == Account.AccountId && b.AccountId == packet.CounterpartId))
                     {
-                        response.ErrorCode = CreateChannelError.Blocked;
+                        response.StatusCode = CreateChannelStatus.Blocked;
                         await SendPacket(response);
                     }
                     else if (await ctx.ChannelMembers.Where(m => m.AccountId == packet.CounterpartId)
@@ -263,7 +327,7 @@ namespace SkynetServer.Network
                             m => m.ChannelId, c => c.ChannelId, (m, c) => c)
                         .AnyAsync())
                     {
-                        response.ErrorCode = CreateChannelError.AlreadyExists;
+                        response.StatusCode = CreateChannelStatus.AlreadyExists;
                         await SendPacket(response);
                     }
                     else
@@ -295,7 +359,7 @@ namespace SkynetServer.Network
                         createBob.CounterpartId = Account.AccountId;
                         await delivery.SendPacket(createBob, packet.CounterpartId, null);
 
-                        response.ErrorCode = CreateChannelError.Success;
+                        response.StatusCode = CreateChannelStatus.Success;
                         response.ChannelId = channel.ChannelId;
                         await SendPacket(response);
 
@@ -373,130 +437,24 @@ namespace SkynetServer.Network
             await delivery.CreateMessage(update, channel, null);
         }
 
-        public async Task Handle(P0BChannelMessage packet)
-        {
-            if (packet.ContentPacketId < 0x13 || packet.ContentPacketId > 0x2A)
-                throw new ProtocolException("Invalid content packet ID");
-
-            if (!packet.MessageFlags.AreValid(packet.RequiredFlags, packet.AllowedFlags))
-                throw new ProtocolException($"Invalid MessageFlags{packet.MessageFlags} for content packet ID {packet.ContentPacketId}");
-
-            if (packet.MessageFlags.HasFlag(MessageFlags.Unencrypted))
-            {
-                if (!(Packet.Packets[packet.ContentPacketId] is P0BChannelMessage message)
-                    || !message.ContentPacketPolicy.HasFlag(PacketPolicies.Receive))
-                    throw new ProtocolException("Content packet is no receivable channel message");
-
-                P0BChannelMessage instance = message.Create(packet);
-
-                using (PacketBuffer buffer = PacketBuffer.CreateStatic(packet.ContentPacket))
-                    instance.ReadMessage(buffer);
-
-                if (await instance.HandleMessage(this) != MessageSendError.Success)
-                    return; // Not all messages can be saved, some return MessageSendError other than Success
-            }
-
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                Channel channel = await ctx.Channels.SingleOrDefaultAsync(c => c.ChannelId == packet.ChannelId);
-                if (channel == null)
-                    throw new ProtocolException("Attempted to send a message to a non existent channel");
-
-                switch (channel.ChannelType)
-                {
-                    case ChannelType.Loopback:
-                    case ChannelType.AccountData:
-                    case ChannelType.ProfileData:
-                        if (channel.OwnerId != Account.AccountId)
-                            throw new ProtocolException("Attempted to send a message to a foreign channel");
-                        break;
-                    case ChannelType.Direct:
-                        if (!await ctx.ChannelMembers.AnyAsync(m => m.ChannelId == packet.ChannelId && m.AccountId == Account.AccountId))
-                            throw new ProtocolException("Attempted to send a message to a foreign channel");
-                        break;
-                    case ChannelType.Group:
-                        throw new NotImplementedException();
-                    default:
-                        throw new ArgumentException($"Invalid value {channel.ChannelType} for enum {nameof(ChannelType)}");
-                }
-            }
-
-            Message entity = new Message
-            {
-                ChannelId = packet.ChannelId,
-                SenderId = Account.AccountId,
-                MessageFlags = packet.MessageFlags,
-                // TODO: Implement FileId
-                ContentPacketId = packet.ContentPacketId,
-                ContentPacketVersion = packet.ContentPacketVersion,
-                ContentPacket = packet.ContentPacket
-            };
-
-            entity = await DatabaseHelper.AddMessage(entity, packet.Dependencies.ToDatabase());
-
-            var response = Packet.New<P0CChannelMessageResponse>();
-            response.ChannelId = packet.ChannelId;
-            response.TempMessageId = packet.MessageId;
-            response.ErrorCode = MessageSendError.Success;
-            response.MessageId = entity.MessageId;
-            // TODO: Implement skip count
-            response.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
-            await SendPacket(response);
-
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                packet.SenderId = Account.AccountId;
-                packet.MessageId = entity.MessageId;
-                packet.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
-
-                if (packet.ContentPacketId == 0x20)
-                    await delivery.SendPriorityMessage(entity, exclude: this, excludeFcm: Account);
-                else
-                    await delivery.SendMessage(entity, exclude: this);
-            }
-
-            await packet.PostHandling(this, entity);
-        }
-
-        public Task Handle(P0DMessageBlock packet)
-        {
-            // TODO: Implement transaction system for password changes
-            throw new NotImplementedException();
-        }
-
         public Task Handle(P0ERequestMessages packet)
         {
             // TODO: Send messages using a similar pattern like SendMessages()
             throw new NotImplementedException();
         }
 
-        public Task Handle(P10RealTimeMessage packet)
+        public Task<MessageSendStatus> Handle(P13QueueMailAddressChange packet)
         {
             throw new NotImplementedException();
         }
 
-        public Task Handle(P11SubscribeChannel packet)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task Handle(P12UnsubscribeChannel packet)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<MessageSendError> Handle(P13QueueMailAddressChange packet)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<MessageSendError> Handle(P15PasswordUpdate packet)
+        public Task<MessageSendStatus> Handle(P15PasswordUpdate packet)
         {
             // TODO: Inject dependency from previous PasswordUpdate to latest LoopbackKeyNotify packet
             throw new NotImplementedException();
         }
 
-        public async Task<MessageSendError> Handle(P18PublicKeys packet)
+        public async Task<MessageSendStatus> Handle(P18PublicKeys packet)
         {
             if (packet.Dependencies.Count != 1)
                 throw new ProtocolException($"Packet {nameof(P18PublicKeys)} must reference the matching private keys.");
@@ -507,10 +465,10 @@ namespace SkynetServer.Network
 
             using (DatabaseContext ctx = new DatabaseContext())
             {
-                if (!await ctx.Messages.AnyAsync(m => m.ChannelId == dep.ChannelId && m.MessageId == dep.MessageId && m.ContentPacketId == 0x17))
+                if (!await ctx.Messages.AnyAsync(m => m.ChannelId == dep.ChannelId && m.MessageId == dep.MessageId && m.PacketId == 0x17))
                     throw new ProtocolException($"Could not find the referenced private keys for {nameof(P18PublicKeys)}.");
             }
-            return MessageSendError.Success;
+            return MessageSendStatus.Success;
         }
 
         public async Task PostHandling(P18PublicKeys packet, Message message) // Alice changes her keypair
@@ -536,13 +494,13 @@ namespace SkynetServer.Network
             }
         }
 
-        public Task<MessageSendError> Handle(P1EGroupChannelUpdate packet)
+        public Task<MessageSendStatus> Handle(P1EGroupChannelUpdate packet)
         {
             // TODO: Check for concurrency issues before insert
             throw new NotImplementedException();
         }
 
-        public Task<MessageSendError> Handle(P28BlockList packet)
+        public Task<MessageSendStatus> Handle(P28BlockList packet)
         {
             // TODO: What happens with existing channels?
             throw new NotImplementedException();
@@ -572,11 +530,6 @@ namespace SkynetServer.Network
                 response.Results.Add(new SearchResult(result.AccountId, result.MailAddress));
             // Forward public packets to fully implement the Skynet protocol v5
             return SendPacket(response);
-        }
-
-        public Task Handle(P30FileUpload packet)
-        {
-            throw new NotImplementedException();
         }
 
         public Task Handle(P32DeviceListRequest packet)

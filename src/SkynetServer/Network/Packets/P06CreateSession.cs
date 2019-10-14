@@ -1,9 +1,9 @@
 ﻿using SkynetServer.Network.Attributes;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
@@ -20,8 +20,8 @@ namespace SkynetServer.Network.Packets
 
         public override void ReadPacket(PacketBuffer buffer)
         {
-            AccountName = buffer.ReadString();
-            KeyHash = buffer.ReadByteArray(32);
+            AccountName = buffer.ReadShortString();
+            KeyHash = buffer.ReadRawByteArray(32).ToArray();
             FcmRegistrationToken = buffer.ReadString();
         }
 

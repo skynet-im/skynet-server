@@ -4,11 +4,9 @@ using System.Text;
 
 namespace SkynetServer.Network.Model
 {
-    public enum CreateSessionError
+    public enum RestoreSessionStatus
     {
         Success,
-        InvalidCredentials,
-        InvalidFcmRegistrationToken,
-        UnconfirmedAccount
+        InvalidSession
     }
 }

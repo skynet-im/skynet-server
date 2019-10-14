@@ -1,11 +1,11 @@
 ﻿using SkynetServer.Network.Attributes;
 using SkynetServer.Network.Packets;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network
 {
@@ -13,61 +13,46 @@ namespace SkynetServer.Network
     {
         static Packet()
         {
-            List<Packet> packets = new List<Packet>();
+            List<Packet> packets = new List<Packet>(capacity: byte.MaxValue);
             int max = 0;
 
             foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
             {
                 if (!type.IsSubclassOf(typeof(Packet))) continue;
+                if (type == typeof(Packet) || type == typeof(ChannelMessage)) continue;
 
-                object[] attributes = type.GetCustomAttributes(typeof(PacketAttribute), inherit: true);
-                if (attributes.Length == 1)
-                {
-                    PacketAttribute attribute = (PacketAttribute)attributes[0];
-                    Packet instance = (Packet)Activator.CreateInstance(type);
-                    instance.Id = attribute.PacketId;
-                    instance.Policy = attribute.PacketPolicy;
-                    packets.Add(instance);
-                    max = Math.Max(max, attribute.PacketId);
-                }
-                else if (attributes.Length == 2)
-                {
-                    MessageAttribute messageAttribute = (MessageAttribute)attributes[0];
-                    PacketAttribute packetAttribute = (PacketAttribute)attributes[1];
-                    P0BChannelMessage instance = (P0BChannelMessage)Activator.CreateInstance(type);
-                    instance.Id = packetAttribute.PacketId;
-                    instance.Policy = packetAttribute.PacketPolicy;
-                    instance.ContentPacketId = messageAttribute.PacketId;
-                    instance.ContentPacketPolicy = messageAttribute.PacketPolicy;
+                PacketAttribute attribute = type.GetCustomAttribute<PacketAttribute>();
+                Packet instance = (Packet)Activator.CreateInstance(type);
+                instance.Id = attribute.PacketId;
+                instance.Policy = attribute.PacketPolicy;
 
+                if (instance is ChannelMessage message)
+                {
                     object[] flags = type.GetCustomAttributes(typeof(MessageFlagsAttribute), inherit: true);
                     MessageFlagsAttribute messageFlags = (MessageFlagsAttribute)flags.FirstOrDefault(x => x.GetType() == typeof(MessageFlagsAttribute));
                     RequiredFlagsAttribute requiredFlags = (RequiredFlagsAttribute)flags.FirstOrDefault(x => x.GetType() == typeof(RequiredFlagsAttribute));
                     AllowedFlagsAttribute allowedFlags = (AllowedFlagsAttribute)flags.FirstOrDefault(x => x.GetType() == typeof(AllowedFlagsAttribute));
                     if (messageFlags != null)
                     {
-                        instance.RequiredFlags = messageFlags.Flags;
-                        instance.AllowedFlags = messageFlags.Flags;
+                        message.RequiredFlags = messageFlags.Flags;
+                        message.AllowedFlags = messageFlags.Flags;
                     }
                     else
                     {
-                        if (requiredFlags != null) instance.RequiredFlags = requiredFlags.Flags;
-                        if (allowedFlags != null) instance.AllowedFlags = allowedFlags.Flags;
+                        if (requiredFlags != null) message.RequiredFlags = requiredFlags.Flags;
+                        if (allowedFlags != null) message.AllowedFlags = allowedFlags.Flags;
                     }
-
-                    packets.Add(instance);
-                    max = Math.Max(max, messageAttribute.PacketId);
                 }
+
+                packets.Add(instance);
+                max = Math.Max(max, attribute.PacketId);
             }
 
             Packets = new Packet[max + 1];
 
             foreach (Packet packet in packets)
             {
-                int index = packet is P0BChannelMessage message && message.GetType() != typeof(P0BChannelMessage) ?
-                    message.ContentPacketId : packet.Id;
-
-                Packets[index] = packet;
+                Packets[packet.Id] = packet;
             }
         }
 

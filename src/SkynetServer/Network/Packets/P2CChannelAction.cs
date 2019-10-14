@@ -1,10 +1,10 @@
 ﻿using SkynetServer.Network.Attributes;
 using SkynetServer.Network.Model;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
@@ -26,8 +26,8 @@ namespace SkynetServer.Network.Packets
 
         public override void WritePacket(PacketBuffer buffer)
         {
-            buffer.WriteLong(ChannelId);
-            buffer.WriteLong(AccountId);
+            buffer.WriteInt64(ChannelId);
+            buffer.WriteInt64(AccountId);
             buffer.WriteByte((byte)Action);
         }
     }

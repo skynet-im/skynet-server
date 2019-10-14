@@ -4,10 +4,11 @@ using System.Text;
 
 namespace SkynetServer.Network.Model
 {
-    public enum CreateAccountError
+    public enum MessageSendStatus
     {
         Success,
-        AccountNameTaken,
-        InvalidAccountName
+        FileNotFound,
+        AccessDenied,
+        ConcurrentChanges
     }
 }

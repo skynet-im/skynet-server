@@ -1,10 +1,10 @@
 ﻿using SkynetServer.Network.Attributes;
 using SkynetServer.Network.Model;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
@@ -30,8 +30,8 @@ namespace SkynetServer.Network.Packets
 
             if (ConnectionState != ConnectionState.Valid)
             {
-                buffer.WriteInt(LatestVersionCode);
-                buffer.WriteString(LatestVersion);
+                buffer.WriteInt32(LatestVersionCode);
+                buffer.WriteShortString(LatestVersion);
             }
         }
     }

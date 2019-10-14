@@ -1,9 +1,9 @@
 ﻿using SkynetServer.Network.Attributes;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
@@ -18,7 +18,7 @@ namespace SkynetServer.Network.Packets
 
         public override void ReadPacket(PacketBuffer buffer)
         {
-            KeyHash = buffer.ReadByteArray(32);
+            KeyHash = buffer.ReadRawByteArray(32).ToArray();
         }
 
         public override void WritePacket(PacketBuffer buffer)
