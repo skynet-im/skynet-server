@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SkynetServer.Extensions;
 using SkynetServer.Sockets;
 using System;
 using System.IO;
@@ -19,6 +20,33 @@ namespace SkynetServer.Tests
             Assert.ThrowsException<EndOfStreamException>(() => buffer.ReadInt32());
             Assert.ThrowsException<EndOfStreamException>(() => buffer.ReadByteArray());
             Assert.ThrowsException<EndOfStreamException>(() => buffer.ReadRawByteArray(13));
+        }
+
+        [TestMethod]
+        public void TestReadonlyCheck()
+        {
+            byte[] bytes = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+            string text = "Hello World!";
+
+            var write = new PacketBuffer();
+            write.WriteUInt16(0x3f7a);
+            write.WriteDateTime(DateTime.Now);
+
+            var read = new PacketBuffer(write.GetBuffer());
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteBoolean(true));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteByte(0x7f));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteUInt16(0x900a));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteInt32(0x6502a14c));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteInt64(0x1a41a174a64c91aa));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteDateTime(default));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteUuid(default));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteRawByteArray(bytes));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteShortByteArray(bytes));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteByteArray(bytes));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteLongByteArray(bytes));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteShortString(text));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteString(text));
+            Assert.ThrowsException<InvalidOperationException>(() => read.WriteLongString(text));
         }
 
         [TestMethod]
@@ -73,6 +101,7 @@ namespace SkynetServer.Tests
         [TestMethod]
         public void TestArrays()
         {
+            byte[] empty = Array.Empty<byte>();
             byte[] random1 = new byte[128];
             byte[] random2 = new byte[3072];
             byte[] random3 = new byte[262144];
@@ -82,6 +111,7 @@ namespace SkynetServer.Tests
             gen.NextBytes(random3);
 
             var write = new PacketBuffer();
+            write.WriteRawByteArray(empty);
             write.WriteRawByteArray(random2);
             write.WriteShortByteArray(random1);
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => write.WriteShortByteArray(random2));
@@ -90,10 +120,11 @@ namespace SkynetServer.Tests
             write.WriteLongByteArray(random3);
 
             var read = new PacketBuffer(write.GetBuffer());
-            Assert.IsTrue(new Span<byte>(random2).SequenceEqual(read.ReadRawByteArray(random2.Length).Span));
-            Assert.IsTrue(new Span<byte>(random1).SequenceEqual(read.ReadShortByteArray().Span));
-            Assert.IsTrue(new Span<byte>(random2).SequenceEqual(read.ReadByteArray().Span));
-            Assert.IsTrue(new Span<byte>(random3).SequenceEqual(read.ReadLongByteArray().Span));
+            Assert.IsTrue(empty.SequenceEqual(read.ReadRawByteArray(0).Span));
+            Assert.IsTrue(random2.SequenceEqual(read.ReadRawByteArray(random2.Length).Span));
+            Assert.IsTrue(random1.SequenceEqual(read.ReadShortByteArray().Span));
+            Assert.IsTrue(random2.SequenceEqual(read.ReadByteArray().Span));
+            Assert.IsTrue(random3.SequenceEqual(read.ReadLongByteArray().Span));
         }
 
         [TestMethod]

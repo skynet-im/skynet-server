@@ -20,13 +20,25 @@ namespace SkynetServer.Sockets
 
         public PacketBuffer(int capacity)
         {
+            if (capacity < 0) throw new ArgumentOutOfRangeException(nameof(capacity));
+
             buffer = new byte[capacity];
+            CanWrite = true;
         }
 
+        public PacketBuffer(ReadOnlyMemory<byte> buffer)
+        {
+            this.buffer = MemoryMarshal.AsMemory(buffer);
+            CanWrite = false;
+        }
+        
         public PacketBuffer(Memory<byte> buffer)
         {
             this.buffer = buffer;
+            CanWrite = true;
         }
+
+        public bool CanWrite { get; }
 
         public int Capacity => buffer.Length;
 
@@ -41,10 +53,12 @@ namespace SkynetServer.Sockets
         }
 
         public Memory<byte> GetRawBuffer() => buffer;
-        public Memory<byte> GetBuffer() => buffer.Slice(0, Position);
+        public ReadOnlyMemory<byte> GetBuffer() => buffer.Slice(0, Position);
 
         private void EnsureSpace(int length)
         {
+            if (!CanWrite) throw new InvalidOperationException("Attempted to write on a readonly PacketBuffer");
+
             if (Position + length > Capacity)
             {
                 int newSize = Math.Max(buffer.Length * 2, Position + length);
@@ -242,10 +256,10 @@ namespace SkynetServer.Sockets
         {
             if (array.Length > byte.MaxValue) throw new ArgumentOutOfRangeException(nameof(array));
 
-            Span<byte> buffer = stackalloc byte[sizeof(byte) + array.Length];
-            buffer[0] = (byte)array.Length;
-            array.CopyTo(buffer.Slice(sizeof(byte)));
-            WriteRawByteArray(buffer);
+            EnsureSpace(sizeof(byte) + array.Length);
+            buffer.Span[Position] = (byte)array.Length;
+            array.CopyTo(buffer.Span.Slice(Position + sizeof(byte), array.Length));
+            position += sizeof(byte) + array.Length;
         }
 
         public ReadOnlyMemory<byte> ReadByteArray()
@@ -263,13 +277,13 @@ namespace SkynetServer.Sockets
         {
             if (array.Length > ushort.MaxValue) throw new ArgumentOutOfRangeException(nameof(array));
 
-            Span<byte> buffer = stackalloc byte[sizeof(ushort) + array.Length];
+            EnsureSpace(sizeof(ushort) + array.Length);
             ushort length = (ushort)array.Length;
             if (!BitConverter.IsLittleEndian)
                 length = BinaryPrimitives.ReverseEndianness(length);
-            Unsafe.WriteUnaligned(ref MemoryMarshal.GetReference(buffer), length);
-            array.CopyTo(buffer.Slice(sizeof(ushort)));
-            WriteRawByteArray(buffer);
+            Unsafe.WriteUnaligned(ref buffer.Span[Position], length);
+            array.CopyTo(buffer.Span.Slice(Position + sizeof(ushort), array.Length));
+            position += sizeof(ushort) + array.Length;
         }
 
         public ReadOnlyMemory<byte> ReadLongByteArray()
@@ -288,13 +302,13 @@ namespace SkynetServer.Sockets
         {
             if (array.Length > int.MaxValue) throw new ArgumentOutOfRangeException(nameof(array));
 
-            Span<byte> buffer = stackalloc byte[sizeof(int) + array.Length];
+            EnsureSpace(sizeof(int) + array.Length);
             int length = array.Length;
             if (!BitConverter.IsLittleEndian)
                 length = BinaryPrimitives.ReverseEndianness(length);
-            Unsafe.WriteUnaligned(ref MemoryMarshal.GetReference(buffer), length);
-            array.CopyTo(buffer.Slice(sizeof(int)));
-            WriteRawByteArray(buffer);
+            Unsafe.WriteUnaligned(ref buffer.Span[Position], length);
+            array.CopyTo(buffer.Span.Slice(Position + sizeof(int)));
+            position += sizeof(int) + array.Length;
         }
         #endregion
         #region strings
