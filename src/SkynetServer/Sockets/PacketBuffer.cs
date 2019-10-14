@@ -10,7 +10,8 @@ namespace SkynetServer.Sockets
     internal sealed class PacketBuffer
     {
         private const int DefaultCapacity = 65536;
-        private static readonly Encoding encoding = Encoding.UTF8;
+        private static readonly Encoding encoding = 
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
         private Memory<byte> buffer;
         private int position;
@@ -297,7 +298,45 @@ namespace SkynetServer.Sockets
         }
         #endregion
         #region strings
-        // TODO: Implement strings
+        public string ReadShortString()
+        {
+            ReadOnlySpan<byte> buffer = ReadShortByteArray().Span;
+            return encoding.GetString(buffer);
+        }
+        public void WriteShortString(ReadOnlySpan<char> text)
+        {
+            Span<byte> buffer = stackalloc byte[byte.MaxValue];
+            encoding.GetEncoder().Convert(text, buffer, true, out _, out int bytesUsed, out bool completed);
+            if (!completed) throw new ArgumentOutOfRangeException(nameof(text));
+            WriteShortByteArray(buffer.Slice(0, bytesUsed));
+        }
+
+        public string ReadString()
+        {
+            ReadOnlySpan<byte> buffer = ReadByteArray().Span;
+            return encoding.GetString(buffer);
+        }
+        public void WriteString(ReadOnlySpan<char> text)
+        {
+            Span<byte> buffer = stackalloc byte[ushort.MaxValue];
+            encoding.GetEncoder().Convert(text, buffer, true, out _, out int bytesUsed, out bool completed);
+            if (!completed) throw new ArgumentOutOfRangeException(nameof(text));
+            WriteByteArray(buffer.Slice(0, bytesUsed));
+        }
+
+        public string ReadLongString()
+        {
+            ReadOnlySpan<byte> buffer = ReadLongByteArray().Span;
+            return encoding.GetString(buffer);
+        }
+        public void WriteLongString(ReadOnlySpan<char> text)
+        {
+            int length = encoding.GetEncoder().GetByteCount(text, true);
+            if (length > int.MaxValue) throw new ArgumentOutOfRangeException(nameof(text));
+            Span<byte> buffer = length <= ushort.MaxValue ? stackalloc byte[length] : new byte[length];
+            encoding.GetEncoder().Convert(text, buffer, true, out _, out int bytesUsed, out bool completed);
+            WriteLongByteArray(buffer.Slice(0, bytesUsed));
+        }
         #endregion
     }
 }

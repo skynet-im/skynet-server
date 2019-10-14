@@ -1,9 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SkynetServer.Sockets;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 namespace SkynetServer.Tests
 {
@@ -84,6 +82,7 @@ namespace SkynetServer.Tests
             gen.NextBytes(random3);
 
             var write = new PacketBuffer();
+            write.WriteRawByteArray(random2);
             write.WriteShortByteArray(random1);
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => write.WriteShortByteArray(random2));
             write.WriteByteArray(random2);
@@ -91,9 +90,44 @@ namespace SkynetServer.Tests
             write.WriteLongByteArray(random3);
 
             var read = new PacketBuffer(write.GetBuffer());
+            Assert.IsTrue(new Span<byte>(random2).SequenceEqual(read.ReadRawByteArray(random2.Length).Span));
             Assert.IsTrue(new Span<byte>(random1).SequenceEqual(read.ReadShortByteArray().Span));
             Assert.IsTrue(new Span<byte>(random2).SequenceEqual(read.ReadByteArray().Span));
             Assert.IsTrue(new Span<byte>(random3).SequenceEqual(read.ReadLongByteArray().Span));
+        }
+
+        [TestMethod]
+        public void TestStrings()
+        {
+            string string1 = "This is a string 🥳";
+            string string2 = @"Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Dolor sed viverra ipsum nunc aliquet bibendum enim. In massa tempor nec feugiat.
+Nunc aliquet bibendum enim facilisis gravida. Nisl nunc mi ipsum faucibus vitae aliquet nec ullamcorper.
+Amet luctus venenatis lectus magna fringilla. Volutpat maecenas volutpat blandit aliquam etiam erat velit scelerisque in.
+Egestas egestas fringilla phasellus faucibus scelerisque eleifend. Sagittis orci a scelerisque purus semper eget duis.
+Nulla pharetra diam sit amet nisl suscipit. Sed adipiscing diam donec adipiscing tristique risus nec feugiat in.
+Fusce ut placerat orci nulla. Pharetra vel turpis nunc eget lorem dolor. Tristique senectus et netus et malesuada.
+
+Etiam tempor orci eu lobortis elementum nibh tellus molestie. Neque egestas congue quisque egestas.
+Egestas integer eget aliquet nibh praesent tristique.Vulputate mi sit amet mauris.Sodales neque sodales ut etiam sit.
+Dignissim suspendisse in est ante in. Volutpat commodo sed egestas egestas.Felis donec et odio pellentesque diam.
+Pharetra vel turpis nunc eget lorem dolor sed viverra.Porta nibh venenatis cras sed felis eget.
+Aliquam ultrices sagittis orci a. Dignissim diam quis enim lobortis. Aliquet porttitor lacus luctus accumsan.
+Dignissim convallis aenean et tortor at risus viverra adipiscing at.";
+            string string3 = new string('A', 262144);
+
+            var write = new PacketBuffer();
+            write.WriteShortString(string1);
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => write.WriteShortString(string2));
+            write.WriteString(string2);
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => write.WriteString(string3));
+            write.WriteLongString(string3);
+
+            var read = new PacketBuffer(write.GetBuffer());
+            Assert.AreEqual(string1, read.ReadShortString());
+            Assert.AreEqual(string2, read.ReadString());
+            Assert.AreEqual(string3, read.ReadLongString());
         }
     }
 }
