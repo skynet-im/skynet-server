@@ -6,10 +6,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace SkynetServer.Shared.Tests
+namespace SkynetServer.Tests
 {
     [TestClass]
-    public class InitializationTests
+    public class ConfigurationTests
     {
         [TestMethod]
         public void TestConfiguration()

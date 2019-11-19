@@ -12,7 +12,7 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Wiry.Base32;
 
-namespace SkynetServer.Shared.Tests
+namespace SkynetServer.Tests
 {
     [TestClass]
     public class DatabaseHelperTests
