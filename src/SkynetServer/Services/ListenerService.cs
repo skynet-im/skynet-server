@@ -3,59 +3,82 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using SkynetServer.Configuration;
 using SkynetServer.Network;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Services
 {
-    internal class ListenerService : IHostedService
+    internal class ListenerService : IHostedService, IDisposable
     {
-        private readonly IOptions<VslOptions> vslOptions;
+        private readonly IOptions<ListenerOptions> listenerOptions;
         private readonly IServiceProvider serviceProvider;
-        private readonly VSLListener listener;
+        private readonly CancellationTokenSource cts;
+        private readonly SslListener listener;
 
-        public ListenerService(IOptions<VslOptions> vslOptions, IServiceProvider serviceProvider)
+        public ListenerService(IOptions<ListenerOptions> listenerOptions, IServiceProvider serviceProvider)
         {
-            this.vslOptions = vslOptions;
+            this.listenerOptions = listenerOptions;
             this.serviceProvider = serviceProvider;
-            listener = CreateListener();
-            listener.CacheCapacity = 0;
+            cts = new CancellationTokenSource();
+            listener = new SslListener(listenerOptions.Value.TcpPort, listenerOptions.Value.CertificatePath);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
             listener.Start();
+            for (int i = 0; i < listenerOptions.Value.Parallelism; i++)
+            {
+                Loop();
+            }
             return Task.CompletedTask;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            listener.Stop();
+            cts.Cancel();
+            listener.Dispose();
             return Task.CompletedTask;
         }
 
-        private VSLListener CreateListener()
+        private async void Loop()
         {
-            VslOptions config = vslOptions.Value;
-            IPEndPoint[] endPoints = {
-                new IPEndPoint(IPAddress.Any, config.TcpPort),
-                new IPEndPoint(IPAddress.IPv6Any, config.TcpPort)
-            };
-
-            SocketSettings settings = new SocketSettings()
+            while (!cts.IsCancellationRequested)
             {
-                LatestProductVersion = config.LatestProductVersion,
-                OldestProductVersion = config.OldestProductVersion,
-                RsaXmlKey = config.RsaXmlKey,
-                CatchApplicationExceptions = !Debugger.IsAttached
-            };
-
-            return new VSLListener(endPoints, settings, () => ActivatorUtilities.CreateInstance<Client>(serviceProvider));
+                PacketStream stream = await listener.AcceptAsync().ConfigureAwait(false);
+                ActivatorUtilities.CreateInstance<Client>(serviceProvider);
+            }
         }
+
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    cts.Dispose();
+                    listener.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        // ~ListenerService()
+        // {
+        //   Dispose(false);
+        // }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            // GC.SuppressFinalize(this);
+        }
+        #endregion
     }
 }

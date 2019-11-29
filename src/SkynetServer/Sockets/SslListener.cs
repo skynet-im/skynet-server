@@ -13,26 +13,24 @@ namespace SkynetServer.Sockets
     internal sealed class SslListener : IDisposable
     {
         private readonly Socket listener;
+        private readonly IPEndPoint endPoint;
         private readonly X509Certificate certificate;
 
-        public SslListener(int port, X509Certificate certificate)
+        public SslListener(int port, string certificatePath)
         {
-            this.certificate = certificate ?? throw new ArgumentNullException(nameof(certificate));
+            certificate = new X509Certificate(certificatePath);
+            endPoint = new IPEndPoint(IPAddress.IPv6Any, port);
 
             listener = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp)
             {
                 DualMode = true
             };
+        }
 
-            try
-            {
-                listener.Bind(new IPEndPoint(IPAddress.IPv6Any, port));
-                listener.Listen(64);
-            }
-            catch (SocketException)
-            {
-                listener.Dispose();
-            }
+        public void Start()
+        {
+            listener.Bind(endPoint);
+            listener.Listen(64);
         }
 
         public async Task<PacketStream> AcceptAsync()
@@ -40,6 +38,7 @@ namespace SkynetServer.Sockets
             if (disposedValue) throw new ObjectDisposedException(nameof(SslListener));
 
             // TODO: Handle execeptions to prevent memory leaks
+            // TODO: This implementation is vulnerable to slowloris attacks an TLS handshake will take time to time out
             Socket client = await listener.AcceptAsync().ConfigureAwait(false);
             SslStream sslStream = new SslStream(new NetworkStream(client), leaveInnerStreamOpen: false);
             await sslStream.AuthenticateAsServerAsync(certificate, false, SslProtocols.Tls13, false).ConfigureAwait(false);
@@ -55,6 +54,7 @@ namespace SkynetServer.Sockets
             {
                 if (disposing)
                 {
+                    certificate.Dispose();
                     listener.Dispose();
                 }
 

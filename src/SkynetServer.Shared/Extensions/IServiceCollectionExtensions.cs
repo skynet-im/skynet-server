@@ -20,6 +20,9 @@ namespace SkynetServer.Extensions
             services.AddOptions<FcmOptions>()
                 .Bind(configuration.GetSection(nameof(FcmOptions)))
                 .ValidateDataAnnotations();
+            services.AddOptions<ListenerOptions>()
+                .Bind(configuration.GetSection(nameof(ListenerOptions)))
+                .ValidateDataAnnotations();
             services.AddOptions<MailOptions>()
                 .Bind(configuration.GetSection(nameof(MailOptions)))
                 .Validate(mailOptions =>
@@ -30,9 +33,6 @@ namespace SkynetServer.Extensions
                 }, "Validation of MailOptions failed");
             services.AddOptions<ProtocolOptions>()
                 .Bind(configuration.GetSection(nameof(ProtocolOptions)))
-                .ValidateDataAnnotations();
-            services.AddOptions<VslOptions>()
-                .Bind(configuration.GetSection(nameof(VslOptions)))
                 .ValidateDataAnnotations();
 
             // TODO: Load DatabaseContexts via Dependency Injection
