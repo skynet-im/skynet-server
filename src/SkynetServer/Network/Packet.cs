@@ -67,7 +67,7 @@ namespace SkynetServer.Network
         public PacketPolicies Policy { get; set; }
 
         public abstract Packet Create();
-        public abstract Task Handle(IPacketHandler handler);
+        public virtual Task Handle(IPacketHandler handler) => throw new NotImplementedException();
         public abstract void ReadPacket(PacketBuffer buffer);
         public abstract void WritePacket(PacketBuffer buffer);
 

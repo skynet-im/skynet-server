@@ -11,15 +11,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using VSL.BinaryTools;
 
 namespace SkynetServer.Network
 {
     internal partial class Client
     {
-        private string applicationIdentifier;
-        private int versionCode;
-
         public async Task HandleMessage(ChannelMessage packet)
         {
             if (!packet.MessageFlags.AreValid(packet.RequiredFlags, packet.AllowedFlags))
@@ -89,121 +85,6 @@ namespace SkynetServer.Network
             }
 
             await packet.PostHandling(this, entity);
-        }
-
-        public Task Handle(P00ConnectionHandshake packet)
-        {
-            ProtocolOptions config = protocolOptions.Value;
-            var response = Packet.New<P01ConnectionResponse>();
-            ProtocolOptions.Platform platform = config.Platforms.SingleOrDefault(p => p.Name == packet.ApplicationIdentifier);
-            if (platform == null)
-                throw new ProtocolException($"Unsupported client {packet.ApplicationIdentifier}");
-            response.LatestVersion = platform.VersionName;
-            response.LatestVersionCode = platform.VersionCode;
-            if (packet.ProtocolVersion != config.ProtocolVersion || packet.VersionCode < platform.ForceUpdateThreshold)
-                response.ConnectionState = ConnectionState.MustUpgrade;
-            else if (packet.VersionCode < platform.RecommendUpdateThreshold)
-                response.ConnectionState = ConnectionState.CanUpgrade;
-            else
-                response.ConnectionState = ConnectionState.Valid;
-
-            applicationIdentifier = packet.ApplicationIdentifier;
-            versionCode = packet.VersionCode;
-
-            return SendPacket(response);
-        }
-
-        public async Task Handle(P02CreateAccount packet)
-        {
-            using DatabaseContext ctx = new DatabaseContext();
-            var response = Packet.New<P03CreateAccountResponse>();
-            if (!mailing.IsValidEmail(packet.AccountName))
-                response.StatusCode = CreateAccountStatus.InvalidAccountName;
-            else
-            {
-                packet.AccountName = mailing.SimplifyAddress(packet.AccountName);
-                (var newAccount, var confirmation, bool success) = await DatabaseHelper.AddAccount(packet.AccountName, packet.KeyHash);
-                if (!success)
-                    response.StatusCode = CreateAccountStatus.AccountNameTaken;
-                else
-                {
-                    Task mail = mailing.SendMailAsync(confirmation.MailAddress, confirmation.Token);
-
-                    Channel loopback = await DatabaseHelper.AddChannel(new Channel
-                    {
-                        ChannelType = ChannelType.Loopback,
-                        OwnerId = newAccount.AccountId
-                    });
-                    Channel accountData = await DatabaseHelper.AddChannel(new Channel
-                    {
-                        ChannelType = ChannelType.AccountData,
-                        OwnerId = newAccount.AccountId
-                    });
-
-                    ctx.ChannelMembers.Add(new ChannelMember { ChannelId = loopback.ChannelId, AccountId = newAccount.AccountId });
-                    ctx.ChannelMembers.Add(new ChannelMember { ChannelId = accountData.ChannelId, AccountId = newAccount.AccountId });
-                    await ctx.SaveChangesAsync();
-
-                    // Send password update packet
-                    var passwordUpdate = Packet.New<P15PasswordUpdate>();
-                    passwordUpdate.KeyHash = packet.KeyHash;
-                    passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
-                    await delivery.CreateMessage(passwordUpdate, loopback, newAccount.AccountId);
-
-                    // Send email address
-                    var mailAddress = Packet.New<P14MailAddress>();
-                    mailAddress.MailAddress = await ctx.MailConfirmations.Where(c => c.AccountId == newAccount.AccountId)
-                        .Select(c => c.MailAddress).SingleAsync();
-                    mailAddress.MessageFlags = MessageFlags.Unencrypted;
-                    await delivery.CreateMessage(mailAddress, accountData, newAccount.AccountId);
-
-                    await mail;
-                    response.StatusCode = CreateAccountStatus.Success;
-                }
-            }
-            await SendPacket(response);
-        }
-
-        public Task Handle(P04DeleteAccount packet)
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task Handle(P06CreateSession packet)
-        {
-            using DatabaseContext ctx = new DatabaseContext();
-            packet.AccountName = mailing.SimplifyAddress(packet.AccountName);
-            var response = Packet.New<P07CreateSessionResponse>();
-
-            var confirmation = await ctx.MailConfirmations.Include(c => c.Account)
-                .SingleOrDefaultAsync(c => c.MailAddress == packet.AccountName);
-            if (confirmation == null)
-                response.StatusCode = CreateSessionStatus.InvalidCredentials;
-            else if (confirmation.ConfirmationTime == default)
-                response.StatusCode = CreateSessionStatus.UnconfirmedAccount;
-            else if (packet.KeyHash.SafeEquals(confirmation.Account.KeyHash))
-            {
-                Session = await DatabaseHelper.AddSession(new Session
-                {
-                    AccountId = confirmation.AccountId,
-                    ApplicationIdentifier = applicationIdentifier,
-                    LastConnected = DateTime.Now,
-                    LastVersionCode = versionCode,
-                    FcmToken = packet.FcmRegistrationToken
-                });
-
-                Account = confirmation.Account;
-
-                response.AccountId = Account.AccountId;
-                response.SessionId = Session.SessionId;
-                response.StatusCode = CreateSessionStatus.Success;
-                await SendPacket(response);
-                await SendMessages(new List<(long channelId, long messageId)>());
-                return;
-            }
-            else
-                response.StatusCode = CreateSessionStatus.InvalidCredentials;
-            await SendPacket(response);
         }
 
         public async Task Handle(P08RestoreSession packet)

@@ -11,6 +11,7 @@ namespace SkynetServer.Network
         Receive = 1,
         Send = 2,
         Duplex = Receive | Send,
-        Unauthenticated = 4
+        Unauthenticated = 4,
+        Uninitialized = 8
     }
 }

@@ -19,8 +19,6 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P07CreateSessionResponse().Init(this);
 
-        public override Task Handle(IPacketHandler handler) => throw new NotImplementedException();
-
         public override void ReadPacket(PacketBuffer buffer)
         {
             throw new NotImplementedException();

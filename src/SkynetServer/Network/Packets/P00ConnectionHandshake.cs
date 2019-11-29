@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x00, PacketPolicies.Receive | PacketPolicies.Unauthenticated)]
+    [Packet(0x00, PacketPolicies.Receive | PacketPolicies.Unauthenticated | PacketPolicies.Uninitialized)]
     internal sealed class P00ConnectionHandshake : Packet
     {
         public int ProtocolVersion { get; set; }
@@ -15,8 +15,6 @@ namespace SkynetServer.Network.Packets
         public int VersionCode { get; set; }
 
         public override Packet Create() => new P00ConnectionHandshake().Init(this);
-
-        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
 
         public override void ReadPacket(PacketBuffer buffer)
         {

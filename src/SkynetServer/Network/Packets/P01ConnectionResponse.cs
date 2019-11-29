@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x01, PacketPolicies.Send)]
+    [Packet(0x01, PacketPolicies.Send | PacketPolicies.Unauthenticated | PacketPolicies.Uninitialized)]
     internal sealed class P01ConnectionResponse : Packet
     {
         public ConnectionState ConnectionState { get; set; }
@@ -16,8 +16,6 @@ namespace SkynetServer.Network.Packets
         public string LatestVersion { get; set; }
 
         public override Packet Create() => new P01ConnectionResponse().Init(this);
-
-        public override Task Handle(IPacketHandler handler) => throw new NotImplementedException();
 
         public override void ReadPacket(PacketBuffer buffer)
         {

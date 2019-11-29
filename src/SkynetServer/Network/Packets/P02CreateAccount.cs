@@ -15,8 +15,6 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P02CreateAccount().Init(this);
 
-        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
-
         public override void ReadPacket(PacketBuffer buffer)
         {
             AccountName = buffer.ReadShortString();

@@ -7,17 +7,14 @@ using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network
 {
-    internal partial class Client : IVSLCallback, IPacketHandler
+    internal partial class Client : IPacketHandler
     {
         private readonly DeliveryService delivery;
         private readonly MailingService mailing;
         private readonly IOptions<ProtocolOptions> protocolOptions;
-
-        private VSLServer socket;
 
         public Client(DeliveryService delivery, MailingService mailing, IOptions<ProtocolOptions> protocolOptions)
         {
@@ -28,37 +25,36 @@ namespace SkynetServer.Network
 
         public async Task<bool> SendPacket(Packet packet)
         {
-            var buffer = new Sockets.PacketBuffer();
+            var buffer = new PacketBuffer();
             packet.WritePacket(buffer);
-            bool success = await socket.SendPacketAsync(packet.Id, buffer.GetBuffer().ToArray());
-            if (success)
-                Console.WriteLine($"Successfully sent packet {packet}");
-            else
-                Console.WriteLine($"Failed to send packet {packet}");
-            return success;
+            return true;
         }
 
-        public void CloseConnection(string message)
-        {
-            socket.CloseConnection(message);
-        }
-
+        public string ApplicationIdentifier { get; private set; }
+        public int VersionCode { get; private set; }
+        public long AccountId { get; private set; }
+        public long SessionId { get; private set; }
         public Account Account { get; private set; }
         public Session Session { get; private set; }
         public bool Active { get; set; }
         public long FocusedChannelId { get; set; }
         public ChannelAction ChannelAction { get; set; }
 
-        public void OnInstanceCreated(VSLSocket socket)
+        public void Initialize(string applicationIdentifier, int versionCode)
         {
-            this.socket = (VSLServer)socket;
-            delivery.Register(this);
+            ApplicationIdentifier = applicationIdentifier;
+            VersionCode = versionCode;
         }
 
-        public Task OnConnectionEstablished()
+        public void Authenticate(long accountId, long sessionId)
         {
-            Console.WriteLine($"Client connection established with version {socket.ConnectionVersionString}");
-            return Task.CompletedTask;
+            AccountId = accountId;
+            SessionId = sessionId;
+        }
+
+        public void OnInstanceCreated()
+        {
+            delivery.Register(this);
         }
 
         public async Task OnPacketReceived(byte id, byte[] content)
@@ -86,11 +82,10 @@ namespace SkynetServer.Network
             await instance.Handle(this);
         }
 
-        public void OnConnectionClosed(ConnectionCloseReason reason, string message, Exception exception)
+        public void OnConnectionClosed(string message, Exception exception)
         {
             delivery.Unregister(this);
             Console.WriteLine("Connection closed: {0} {1}", message, exception);
-            socket.Dispose();
         }
     }
 }

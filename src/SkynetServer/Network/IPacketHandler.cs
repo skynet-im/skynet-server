@@ -11,14 +11,6 @@ namespace SkynetServer.Network
     {
         Task HandleMessage(ChannelMessage packet);
 
-        Task Handle(P00ConnectionHandshake packet);
-        //Task Handle(P01ConnectionResponse packet);
-        Task Handle(P02CreateAccount packet);
-        //Task Handle(P03CreateAccountResponse packet);
-        Task Handle(P04DeleteAccount packet);
-        //Task Handle(P05DeleteAccountResponse packet);
-        Task Handle(P06CreateSession packet);
-        //Task Handle(P07CreateSessionResponse packet);
         Task Handle(P08RestoreSession packet);
         //Task Handle(P09RestoreSessionResponse packet);
         Task Handle(P0ACreateChannel packet);
