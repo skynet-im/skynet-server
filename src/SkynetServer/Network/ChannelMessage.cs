@@ -45,7 +45,7 @@ namespace SkynetServer.Network
             ushort length = buffer.ReadUInt16();
             for (int i = 0; i < length; i++)
             {
-                Dependencies.Add(new Dependency(buffer.ReadInt64(), buffer.ReadInt64(), buffer.ReadInt64()));
+                Dependencies.Add(new Dependency(buffer.ReadInt64(), buffer.ReadInt64()));
             }
         }
 
@@ -75,7 +75,6 @@ namespace SkynetServer.Network
             foreach (Dependency dependency in Dependencies)
             {
                 buffer.WriteInt64(dependency.AccountId);
-                buffer.WriteInt64(dependency.ChannelId);
                 buffer.WriteInt64(dependency.MessageId);
             }
         }

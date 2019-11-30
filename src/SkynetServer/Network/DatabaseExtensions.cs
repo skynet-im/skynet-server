@@ -20,9 +20,8 @@ namespace SkynetServer.Network
             {
                 result[i] = new MessageDependency
                 {
-                    ChannelId = dependencies[i].ChannelId,
-                    MessageId = dependencies[i].MessageId,
                     AccountId = dependencies[i].AccountId == 0 ? null : new long?(dependencies[i].AccountId)
+                    MessageId = dependencies[i].MessageId,
                 };
             }
             return new List<MessageDependency>(result);
@@ -42,7 +41,7 @@ namespace SkynetServer.Network
             packet.FileId = 0; // Files are not implemented yet
             packet.Dependencies.AddRange(message.Dependencies
                 .Where(d => d.AccountId == null || d.AccountId == accountId)
-                .Select(d => new Dependency(d.AccountId ?? 0, d.ChannelId, d.MessageId)));
+                .Select(d => new Dependency(d.AccountId ?? 0, d.MessageId)));
             packet.PacketContent = message.PacketContent;
             return packet;
         }

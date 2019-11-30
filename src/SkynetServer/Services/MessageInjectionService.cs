@@ -27,19 +27,19 @@ namespace SkynetServer.Services
         public async Task CreateDirectChannelUpdate(Channel channel, long aliceId, Message alicePublic, long bobId, Message bobPublic)
         {
             Message alicePrivate = await database.MessageDependencies
-                .Where(d => d.OwningChannelId == alicePublic.ChannelId && d.OwningMessageId == alicePublic.MessageId)
+                .Where(d => d.OwningMessageId == alicePublic.MessageId)
                 .Select(d => d.Message).SingleAsync().ConfigureAwait(false);
 
             Message bobPrivate = await database.MessageDependencies
-                .Where(d => d.OwningChannelId == bobPublic.ChannelId && d.OwningMessageId == bobPublic.MessageId)
+                .Where(d => d.OwningMessageId == bobPublic.MessageId)
                 .Select(d => d.Message).SingleAsync().ConfigureAwait(false);
 
             var update = Packet.New<P1BDirectChannelUpdate>();
             update.MessageFlags = MessageFlags.Unencrypted;
-            update.Dependencies.Add(new Dependency(aliceId, alicePrivate.ChannelId, alicePrivate.MessageId));
-            update.Dependencies.Add(new Dependency(aliceId, bobPublic.ChannelId, bobPublic.MessageId));
-            update.Dependencies.Add(new Dependency(bobId, bobPrivate.ChannelId, bobPrivate.MessageId));
-            update.Dependencies.Add(new Dependency(bobId, alicePublic.ChannelId, alicePublic.MessageId));
+            update.Dependencies.Add(new Dependency(aliceId, alicePrivate.MessageId));
+            update.Dependencies.Add(new Dependency(aliceId, bobPublic.MessageId));
+            update.Dependencies.Add(new Dependency(bobId, bobPrivate.MessageId));
+            update.Dependencies.Add(new Dependency(bobId, alicePublic.MessageId));
             await delivery.CreateMessage(update, channel, null).ConfigureAwait(false);
         }
     }

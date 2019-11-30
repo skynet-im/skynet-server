@@ -1,12 +1,11 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
+using Microsoft.Extensions.DependencyInjection;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Utilities;
 using System;
 using System.Diagnostics;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Wiry.Base32;
 
 namespace SkynetServer.Cli.Commands
 {
@@ -62,35 +61,44 @@ namespace SkynetServer.Cli.Commands
             [Option(CommandOptionType.SingleValue, Description = "Number of messages to insert")]
             public int MessageCount { get; set; } = 100;
 
-            private async Task OnExecute(IConsole console)
+            private async Task OnExecute(IConsole console, IServiceProvider provider)
             {
                 long accountId, channelId;
                 Stopwatch stopwatch = new Stopwatch();
+
+                using (IServiceScope scope = provider.CreateScope())
+                {
+                    DatabaseContext database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+                    (var account, var confirmation, bool success) = await database
+                        .AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
+                    accountId = account.AccountId;
+                    console.Out.WriteLine($"Created account {confirmation.MailAddress} with ID {accountId}");
+                    console.Out.WriteLine($"Created mail confirmation for {confirmation.MailAddress} with token {confirmation.Token}");
+                }
+
+                using (IServiceScope scope = provider.CreateScope())
+                {
+                    DatabaseContext database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+                    Channel channel = await database.AddChannel(new Channel() { OwnerId = accountId }).ConfigureAwait(false);
+                    channelId = channel.ChannelId;
+                    console.Out.WriteLine($"Created channel {channelId} with owner {accountId}");
+                }
 
                 if (AccountCount > 0)
                 {
                     console.Out.WriteLine($"Inserting {AccountCount} accounts...");
                     stopwatch.Start();
 
-                    await AsyncParallel.ForAsync(0, AccountCount, i =>
+                    await AsyncParallel.ForAsync(0, AccountCount, async i =>
                     {
-                        return DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", Array.Empty<byte>());
-                    });
+                        using IServiceScope scope = provider.CreateScope();
+                        DatabaseContext ctx = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+                        await ctx.AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
+                    }).ConfigureAwait(false);
 
                     stopwatch.Stop();
                     console.Out.WriteLine($"Finished saving {AccountCount} accounts after {stopwatch.ElapsedMilliseconds}ms");
                     stopwatch.Reset();
-                }
-
-                {
-                    (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount($"{RandomAddress()}@example.com", Array.Empty<byte>());
-                    accountId = account.AccountId;
-                    console.Out.WriteLine($"Created account {confirmation.MailAddress} with ID {accountId}");
-                    console.Out.WriteLine($"Created mail confirmation for {confirmation.MailAddress} with token {confirmation.Token}");
-                }
-                {
-                    channelId = (await DatabaseHelper.AddChannel(new Channel() { OwnerId = accountId })).ChannelId;
-                    console.Out.WriteLine($"Created channel {channelId} with owner {channelId}");
                 }
 
                 if (MessageCount > 0)
@@ -98,23 +106,19 @@ namespace SkynetServer.Cli.Commands
                     console.Out.WriteLine($"Inserting {MessageCount} messages to channel {channelId}...");
                     stopwatch.Start();
 
-                    await AsyncParallel.ForAsync(0, MessageCount, i =>
+                    await AsyncParallel.ForAsync(0, MessageCount, async i =>
                     {
-                        return DatabaseHelper.AddMessage(new Message() { ChannelId = channelId, SenderId = accountId });
-                    });
+                        using IServiceScope scope = provider.CreateScope();
+                        DatabaseContext database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+                        Message entity = new Message { ChannelId = channelId, SenderId = accountId };
+                        database.Messages.Add(entity);
+                        await database.SaveChangesAsync().ConfigureAwait(false);
+                    }).ConfigureAwait(false);
 
                     stopwatch.Stop();
                     console.Out.WriteLine($"Finished saving {MessageCount} messages after {stopwatch.ElapsedMilliseconds}ms");
                     stopwatch.Reset();
                 }
-            }
-
-            private static string RandomAddress()
-            {
-                using var random = RandomNumberGenerator.Create();
-                byte[] value = new byte[10];
-                random.GetBytes(value);
-                return Base32Encoding.Standard.GetString(value).ToLowerInvariant();
             }
         }
     }

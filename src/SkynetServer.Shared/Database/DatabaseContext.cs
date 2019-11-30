@@ -37,7 +37,6 @@ namespace SkynetServer.Database
             channel.HasKey(c => c.ChannelId);
             channel.Property(c => c.ChannelId).ValueGeneratedNever();
             channel.Property(c => c.ChannelType).HasConversion<byte>();
-            channel.Property(c => c.MessageIdCounter).IsConcurrencyToken();
             channel.Property(c => c.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             channel.HasOne(c => c.Owner).WithMany(a => a.OwnedChannels).HasForeignKey(c => c.OwnerId);
 
@@ -57,16 +56,16 @@ namespace SkynetServer.Database
             blockedConv.HasOne(b => b.Channel).WithMany(c => c.Blockers).HasForeignKey(b => b.ChannelId);
 
             var message = modelBuilder.Entity<Message>();
-            message.HasKey(m => new { m.ChannelId, m.MessageId });
+            message.HasKey(m => m.MessageId);
             message.HasOne(m => m.Channel).WithMany(c => c.Messages).HasForeignKey(m => m.ChannelId);
-            message.Property(m => m.MessageId).ValueGeneratedNever();
+            message.Property(m => m.MessageId).ValueGeneratedOnAdd();
             message.Property(m => m.DispatchTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             message.Property(m => m.MessageFlags).HasConversion<byte>();
 
             var messageDependency = modelBuilder.Entity<MessageDependency>();
             messageDependency.HasKey(d => d.AutoId);
-            messageDependency.HasOne(d => d.OwningMessage).WithMany(m => m.Dependencies).HasForeignKey(d => new { d.OwningChannelId, d.OwningMessageId });
-            messageDependency.HasOne(d => d.Message).WithMany(m => m.Dependants).HasForeignKey(d => new { d.ChannelId, d.MessageId });
+            messageDependency.HasOne(d => d.OwningMessage).WithMany(m => m.Dependencies).HasForeignKey(d => d.OwningMessageId);
+            messageDependency.HasOne(d => d.Message).WithMany(m => m.Dependants).HasForeignKey(d => d.MessageId);
             messageDependency.Property(d => d.AutoId).ValueGeneratedOnAdd();
 
             var mailConfirmation = modelBuilder.Entity<MailConfirmation>();

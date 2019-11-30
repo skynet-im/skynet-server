@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
 using SkynetServer.Network.Model;
@@ -54,9 +53,10 @@ namespace SkynetServer.Network
                 PacketId = packet.Id,
                 PacketVersion = packet.PacketVersion,
                 PacketContent = packet.PacketContent.IsEmpty ? null : packet.PacketContent.ToArray(),
+                Dependencies = packet.Dependencies.ToDatabase()
             };
-
-            entity = await DatabaseHelper.AddMessage(entity, packet.Dependencies.ToDatabase());
+            Database.Messages.Add(entity);
+            await Database.SaveChangesAsync().ConfigureAwait(false);
 
             var response = Packet.New<P0CChannelMessageResponse>();
             response.ChannelId = packet.ChannelId;
