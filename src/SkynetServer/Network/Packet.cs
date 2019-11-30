@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading.Tasks;
 
 namespace SkynetServer.Network
 {
@@ -67,7 +66,6 @@ namespace SkynetServer.Network
         public PacketPolicies Policy { get; set; }
 
         public abstract Packet Create();
-        public virtual Task Handle(IPacketHandler handler) => throw new NotImplementedException();
         public abstract void ReadPacket(PacketBuffer buffer);
         public abstract void WritePacket(PacketBuffer buffer);
 

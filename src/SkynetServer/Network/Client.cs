@@ -72,8 +72,6 @@ namespace SkynetServer.Network
             instance.ReadPacket(buffer);
 
             Console.WriteLine($"Starting to handle packet {instance}");
-
-            await instance.Handle(this);
         }
 
         public void OnConnectionClosed(string message, Exception exception)

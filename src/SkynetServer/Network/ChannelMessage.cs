@@ -27,7 +27,7 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new ChannelMessage().Init(this);
 
-        public sealed override Task Handle(IPacketHandler handler) => handler.HandleMessage(this);
+        public Task Handle(IPacketHandler handler) => handler.HandleMessage(this);
 
         public sealed override void ReadPacket(PacketBuffer buffer)
         {

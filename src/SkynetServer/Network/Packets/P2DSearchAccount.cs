@@ -14,8 +14,6 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P2DSearchAccount().Init(this);
 
-        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
-
         public override void ReadPacket(PacketBuffer buffer)
         {
             Query = buffer.ReadShortString();

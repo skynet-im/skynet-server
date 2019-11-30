@@ -26,11 +26,5 @@ namespace SkynetServer.Network
         Task<MessageSendStatus> Handle(P28BlockList packet);
         //Task<MessageSendError> Handle(P29DeviceList packet);
         //Task<MessageSendError> Handle(P2BOnlineState packet);
-
-        //Task Handle(P2CChannelAction packet);
-        Task Handle(P34SetClientState packet);
-
-        Task Handle(P2DSearchAccount packet);
-        //Task Handle(P2ESearchAccountResponse packet);
     }
 }

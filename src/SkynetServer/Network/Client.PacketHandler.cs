@@ -271,31 +271,5 @@ namespace SkynetServer.Network
             // TODO: What happens with existing channels?
             throw new NotImplementedException();
         }
-
-        public Task Handle(P34SetClientState packet)
-        {
-            if (FocusedChannelId != packet.ChannelId || ChannelAction != packet.Action)
-                delivery.OnChannelActionChanged(this, packet.ChannelId, packet.Action);
-
-            if (Active != (packet.OnlineState == OnlineState.Active))
-                delivery.OnActiveChanged(this, packet.OnlineState == OnlineState.Active);
-
-            return Task.CompletedTask;
-        }
-
-        public Task Handle(P2DSearchAccount packet)
-        {
-            using DatabaseContext ctx = new DatabaseContext();
-            var results = ctx.MailConfirmations
-                .Where(c => c.AccountId != Account.AccountId
-                    && c.MailAddress.Contains(packet.Query, StringComparison.Ordinal)
-                    && c.ConfirmationTime != default) // Exclude unconfirmed accounts
-                .Take(100); // Limit to 100 entries
-            var response = Packet.New<P2ESearchAccountResponse>();
-            foreach (var result in results)
-                response.Results.Add(new SearchResult(result.AccountId, result.MailAddress));
-            // Forward public packets to fully implement the Skynet protocol v5
-            return SendPacket(response);
-        }
     }
 }
