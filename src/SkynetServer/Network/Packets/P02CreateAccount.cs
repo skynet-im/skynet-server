@@ -3,7 +3,6 @@ using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Packets
 {
@@ -19,11 +18,6 @@ namespace SkynetServer.Network.Packets
         {
             AccountName = buffer.ReadShortString();
             KeyHash = buffer.ReadRawByteArray(32).ToArray();
-        }
-
-        public override void WritePacket(PacketBuffer buffer)
-        {
-            throw new NotImplementedException();
         }
 
         public override string ToString()

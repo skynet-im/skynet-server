@@ -13,6 +13,8 @@ namespace SkynetServer.Network.Packets
     {
         public ArchiveMode ArchiveMode { get; set; }
 
+        public override Packet Create() => new P19ArchiveChannel().Init(this);
+
         protected override void ReadMessage(PacketBuffer buffer)
         {
             ArchiveMode = (ArchiveMode)buffer.ReadByte();

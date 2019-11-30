@@ -5,7 +5,6 @@ using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Packets
 {
@@ -19,10 +18,6 @@ namespace SkynetServer.Network.Packets
         public byte[] DerivationKey { get; set; }
 
         public override Packet Create() => new P18PublicKeys().Init(this);
-
-        public override Task<MessageSendStatus> HandleMessage(IPacketHandler handler) => handler.Handle(this);
-
-        public override Task PostHandling(IPacketHandler handler, Database.Entities.Message message) => handler.PostHandling(this, message);
 
         protected override void ReadMessage(PacketBuffer buffer)
         {

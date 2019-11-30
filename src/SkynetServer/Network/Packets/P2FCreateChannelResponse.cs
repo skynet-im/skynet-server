@@ -4,7 +4,6 @@ using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Packets
 {
@@ -17,10 +16,6 @@ namespace SkynetServer.Network.Packets
         public DateTime CreationTime { get; set; }
 
         public override Packet Create() => new P2FCreateChannelResponse().Init(this);
-
-        public override Task Handle(IPacketHandler handler) => throw new NotImplementedException();
-
-        public override void ReadPacket(PacketBuffer buffer) => throw new NotImplementedException();
 
         public override void WritePacket(PacketBuffer buffer)
         {

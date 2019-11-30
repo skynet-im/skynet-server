@@ -4,7 +4,6 @@ using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Packets
 {
@@ -14,11 +13,6 @@ namespace SkynetServer.Network.Packets
         public CreateAccountStatus StatusCode { get; set; }
 
         public override Packet Create() => new P03CreateAccountResponse().Init(this);
-
-        public override void ReadPacket(PacketBuffer buffer)
-        {
-            throw new NotImplementedException();
-        }
 
         public override void WritePacket(PacketBuffer buffer)
         {

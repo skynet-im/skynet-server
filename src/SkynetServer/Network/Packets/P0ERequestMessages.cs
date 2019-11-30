@@ -3,7 +3,6 @@ using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Packets
 {
@@ -23,11 +22,6 @@ namespace SkynetServer.Network.Packets
             After = buffer.ReadInt64();
             Before = buffer.ReadInt64();
             MaxCount = buffer.ReadUInt16();
-        }
-
-        public override void WritePacket(PacketBuffer buffer)
-        {
-            throw new NotImplementedException();
         }
     }
 }

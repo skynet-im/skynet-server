@@ -4,7 +4,6 @@ using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Packets
 {
@@ -15,8 +14,6 @@ namespace SkynetServer.Network.Packets
         public string PersonalMessage { get; set; }
 
         public override Packet Create() => new P26Bio().Init(this);
-
-        //public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
 
         protected override void ReadMessage(PacketBuffer buffer)
         {

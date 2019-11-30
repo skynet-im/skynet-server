@@ -4,7 +4,6 @@ using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Packets
 {
@@ -14,13 +13,6 @@ namespace SkynetServer.Network.Packets
         List<SessionInformation> Sessions { get; set; } = new List<SessionInformation>();
 
         public override Packet Create() => new P29DeviceList().Init(this);
-
-        public override Task<MessageSendStatus> HandleMessage(IPacketHandler handler) => throw new NotImplementedException();
-
-        protected override void ReadMessage(PacketBuffer buffer)
-        {
-            throw new NotImplementedException();
-        }
 
         protected override void WriteMessage(PacketBuffer buffer)
         {

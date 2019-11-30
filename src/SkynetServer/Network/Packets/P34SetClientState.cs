@@ -4,7 +4,6 @@ using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Packets
 {
@@ -23,11 +22,6 @@ namespace SkynetServer.Network.Packets
             Action = (ChannelAction)buffer.ReadByte();
             if (Action != ChannelAction.None)
                 ChannelId = buffer.ReadInt64();
-        }
-
-        public override void WritePacket(PacketBuffer buffer)
-        {
-            throw new NotImplementedException();
         }
     }
 }
