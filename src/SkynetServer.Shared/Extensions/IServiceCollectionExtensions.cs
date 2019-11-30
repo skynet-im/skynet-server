@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SkynetServer.Configuration;
 using SkynetServer.Database;
@@ -35,8 +36,15 @@ namespace SkynetServer.Extensions
                 .Bind(configuration.GetSection(nameof(ProtocolOptions)))
                 .ValidateDataAnnotations();
 
-            // TODO: Load DatabaseContexts via Dependency Injection
-            DatabaseContext.ConnectionString = configuration.GetSection("DatabaseOptions").GetValue<string>("ConnectionString");
+            return services;
+        }
+
+        public static IServiceCollection AddDatabaseContext(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddDbContextPool<DatabaseContext>(options =>
+            {
+                options.UseMySql(configuration.GetValue<string>("DatabaseOptions:ConnectionString"));
+            });
 
             return services;
         }

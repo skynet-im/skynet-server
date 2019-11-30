@@ -1,6 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
 using SkynetServer.Database.Entities;
 using System;
 using System.Collections.Generic;
@@ -9,8 +7,6 @@ namespace SkynetServer.Database
 {
     public class DatabaseContext : DbContext
     {
-        public static string ConnectionString { get; set; }
-
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Session> Sessions { get; set; }
         public DbSet<Channel> Channels { get; set; }
@@ -76,13 +72,6 @@ namespace SkynetServer.Database
             mailConfirmation.HasAlternateKey(c => c.Token);
             mailConfirmation.Property(c => c.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             mailConfirmation.HasOne(c => c.Account).WithMany(a => a.MailConfirmations).HasForeignKey(c => c.AccountId);
-        }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            //optionsBuilder.UseLoggerFactory(new LoggerFactory(new[] { new ConsoleLoggerProvider((category, level) => level >= LogLevel.Information, false) }));
-            optionsBuilder.EnableSensitiveDataLogging();
-            optionsBuilder.UseMySql(ConnectionString);
         }
     }
 }

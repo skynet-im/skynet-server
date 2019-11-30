@@ -17,12 +17,10 @@ namespace SkynetServer.Network.Handlers
     internal class P02CreateAccountHandler : PacketHandler<P02CreateAccount>
     {
         private readonly MailingService mailing;
-        private readonly DeliveryService delivery;
 
-        public P02CreateAccountHandler(MailingService mailing, DeliveryService delivery)
+        public P02CreateAccountHandler(MailingService mailing)
         {
             this.mailing = mailing;
-            this.delivery = delivery;
         }
 
         public override async ValueTask Handle(P02CreateAccount packet)
@@ -59,14 +57,14 @@ namespace SkynetServer.Network.Handlers
                     var passwordUpdate = Packet.New<P15PasswordUpdate>();
                     passwordUpdate.KeyHash = packet.KeyHash;
                     passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
-                    await delivery.CreateMessage(passwordUpdate, loopback, newAccount.AccountId);
+                    await Delivery.CreateMessage(passwordUpdate, loopback, newAccount.AccountId);
 
                     // Send email address
                     var mailAddress = Packet.New<P14MailAddress>();
                     mailAddress.MailAddress = await Database.MailConfirmations.Where(c => c.AccountId == newAccount.AccountId)
                         .Select(c => c.MailAddress).SingleAsync();
                     mailAddress.MessageFlags = MessageFlags.Unencrypted;
-                    await delivery.CreateMessage(mailAddress, accountData, newAccount.AccountId);
+                    await Delivery.CreateMessage(mailAddress, accountData, newAccount.AccountId);
 
                     await mail;
                     response.StatusCode = CreateAccountStatus.Success;

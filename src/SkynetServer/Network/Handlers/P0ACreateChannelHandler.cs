@@ -15,11 +15,11 @@ namespace SkynetServer.Network.Handlers
 {
     internal class P0ACreateChannelHandler : PacketHandler<P0ACreateChannel>
     {
-        private readonly DeliveryService delivery;
+        private readonly MessageInjectionService injector;
 
-        public P0ACreateChannelHandler(DeliveryService delivery)
+        public P0ACreateChannelHandler(MessageInjectionService injector)
         {
-            this.delivery = delivery;
+            this.injector = injector;
         }
 
         public override async ValueTask Handle(P0ACreateChannel packet)
@@ -77,14 +77,14 @@ namespace SkynetServer.Network.Handlers
                         createAlice.ChannelType = ChannelType.Direct;
                         createAlice.OwnerId = Client.AccountId;
                         createAlice.CounterpartId = packet.CounterpartId;
-                        await delivery.SendPacket(createAlice, Client.AccountId, Client);
+                        await Delivery.SendPacket(createAlice, Client.AccountId, Client);
 
                         var createBob = Packet.New<P0ACreateChannel>();
                         createBob.ChannelId = channel.ChannelId;
                         createBob.ChannelType = ChannelType.Direct;
                         createBob.OwnerId = Client.AccountId;
                         createBob.CounterpartId = Client.AccountId;
-                        await delivery.SendPacket(createBob, packet.CounterpartId, null);
+                        await Delivery.SendPacket(createBob, packet.CounterpartId, null);
 
                         response.StatusCode = CreateChannelStatus.Success;
                         response.ChannelId = channel.ChannelId;
@@ -96,7 +96,7 @@ namespace SkynetServer.Network.Handlers
                         Message bobPublic = await counterpart.GetLatestPublicKey(Database);
 
                         if (alicePublic != null && bobPublic != null)
-                            await CreateDirectChannelUpdate(Database, channel, Client.AccountId, alicePublic, counterpart.AccountId, bobPublic);
+                            await injector.CreateDirectChannelUpdate(channel, Client.AccountId, alicePublic, counterpart.AccountId, bobPublic);
                     }
                     break;
                 case ChannelType.Group:

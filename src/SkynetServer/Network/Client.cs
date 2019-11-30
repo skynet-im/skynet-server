@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Network
 {
-    internal partial class Client : IPacketHandler
+    internal partial class Client
     {
         private readonly DeliveryService delivery;
 

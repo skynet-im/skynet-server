@@ -2,7 +2,6 @@
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
-using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using System;
 using System.Collections.Generic;
@@ -117,88 +116,6 @@ namespace SkynetServer.Network
             {
                 await delivery.SendPacket(message.ToPacket(account.AccountId), account.AccountId, null);
             }
-        }
-
-        private async Task CreateDirectChannelUpdate(DatabaseContext ctx, Channel channel, long aliceId, Message alicePublic, long bobId, Message bobPublic)
-        {
-            Message alicePrivate = await ctx.MessageDependencies
-                .Where(d => d.OwningChannelId == alicePublic.ChannelId && d.OwningMessageId == alicePublic.MessageId)
-                .Select(d => d.Message).SingleAsync();
-
-            Message bobPrivate = await ctx.MessageDependencies
-                .Where(d => d.OwningChannelId == bobPublic.ChannelId && d.OwningMessageId == bobPublic.MessageId)
-                .Select(d => d.Message).SingleAsync();
-
-            var update = Packet.New<P1BDirectChannelUpdate>();
-            update.MessageFlags = MessageFlags.Unencrypted;
-            update.Dependencies.Add(new Dependency(aliceId, alicePrivate.ChannelId, alicePrivate.MessageId));
-            update.Dependencies.Add(new Dependency(aliceId, bobPublic.ChannelId, bobPublic.MessageId));
-            update.Dependencies.Add(new Dependency(bobId, bobPrivate.ChannelId, bobPrivate.MessageId));
-            update.Dependencies.Add(new Dependency(bobId, alicePublic.ChannelId, alicePublic.MessageId));
-            await delivery.CreateMessage(update, channel, null);
-        }
-
-        public Task<MessageSendStatus> Handle(P13QueueMailAddressChange packet)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<MessageSendStatus> Handle(P15PasswordUpdate packet)
-        {
-            // TODO: Inject dependency from previous PasswordUpdate to latest LoopbackKeyNotify packet
-            throw new NotImplementedException();
-        }
-
-        public async Task<MessageSendStatus> Handle(P18PublicKeys packet)
-        {
-            if (packet.Dependencies.Count != 1)
-                throw new ProtocolException($"Packet {nameof(P18PublicKeys)} must reference the matching private keys.");
-
-            Dependency dep = packet.Dependencies[0];
-            if (dep.AccountId != Account.AccountId)
-                throw new ProtocolException($"The dependency of {nameof(P18PublicKeys)} to private keys must be specific for the sending account.");
-
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                if (!await ctx.Messages.AnyAsync(m => m.ChannelId == dep.ChannelId && m.MessageId == dep.MessageId && m.PacketId == 0x17))
-                    throw new ProtocolException($"Could not find the referenced private keys for {nameof(P18PublicKeys)}.");
-            }
-            return MessageSendStatus.Success;
-        }
-
-        public async Task PostHandling(P18PublicKeys packet, Message message) // Alice changes her keypair
-        {
-            using DatabaseContext ctx = new DatabaseContext();
-            // Get all direct channels of Alice
-            foreach (Channel channel in ctx.ChannelMembers
-                .Where(m => m.AccountId == Account.AccountId)
-                .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                .Where(c => c.ChannelType == ChannelType.Direct))
-            {
-                Account bob = await ctx.ChannelMembers
-                    .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != Account.AccountId)
-                    .Select(m => m.Account).SingleAsync();
-
-                // Get Bob's latest public key packet in this channel and take Alice's new public key
-
-                Message bobPublic = await bob.GetLatestPublicKey(ctx);
-
-                if (bobPublic == null) continue; // The server will create the DirectChannelUpdate when Bob sends his public key
-
-                await CreateDirectChannelUpdate(ctx, channel, Account.AccountId, message, bob.AccountId, bobPublic);
-            }
-        }
-
-        public Task<MessageSendStatus> Handle(P1EGroupChannelUpdate packet)
-        {
-            // TODO: Check for concurrency issues before insert
-            throw new NotImplementedException();
-        }
-
-        public Task<MessageSendStatus> Handle(P28BlockList packet)
-        {
-            // TODO: What happens with existing channels?
-            throw new NotImplementedException();
         }
     }
 }

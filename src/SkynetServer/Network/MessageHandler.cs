@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Network
 {
-    internal class MessageHandler<T> : PacketHandler<T> where T : ChannelMessage
+    internal abstract class MessageHandler<T> : PacketHandler<T> where T : ChannelMessage
     {
-        public override async ValueTask Handle(T packet)
+        public sealed override async ValueTask Handle(T packet)
         {
             if (!packet.MessageFlags.AreValid(packet.RequiredFlags, packet.AllowedFlags))
                 throw new ProtocolException($"Invalid MessageFlags{packet.MessageFlags} for content packet ID {packet.Id}");
@@ -76,7 +76,7 @@ namespace SkynetServer.Network
             else
                 await Delivery.SendMessage(entity, exclude: Client);
 
-            await PostHandling(packet).ConfigureAwait(false);
+            await PostHandling(packet, entity).ConfigureAwait(false);
         }
 
         protected virtual ValueTask<MessageSendStatus> Validate(T packet)
@@ -84,7 +84,7 @@ namespace SkynetServer.Network
             return new ValueTask<MessageSendStatus>(MessageSendStatus.Success);
         }
 
-        protected virtual ValueTask PostHandling(T packet)
+        protected virtual ValueTask PostHandling(T packet, Message message)
         {
             return default;
         }
