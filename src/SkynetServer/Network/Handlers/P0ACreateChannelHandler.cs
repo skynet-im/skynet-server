@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
 using SkynetServer.Network.Model;
@@ -35,14 +34,18 @@ namespace SkynetServer.Network.Handlers
                 case ChannelType.AccountData:
                     throw new ProtocolException("Account data channels cannot be created manually");
                 case ChannelType.Direct:
-                    var counterpart = await Database.Accounts.SingleOrDefaultAsync(acc => acc.AccountId == packet.CounterpartId);
+                    var counterpart = await Database.Accounts
+                        .SingleOrDefaultAsync(acc => acc.AccountId == packet.CounterpartId)
+                        .ConfigureAwait(false);
                     if (counterpart == null)
                     {
                         response.StatusCode = CreateChannelStatus.InvalidCounterpart;
                         await Client.SendPacket(response);
                     }
-                    else if (await Database.BlockedAccounts.AnyAsync(b => b.OwnerId == packet.CounterpartId && b.AccountId == Client.AccountId)
-                        || await Database.BlockedAccounts.AnyAsync(b => b.OwnerId == Client.AccountId && b.AccountId == packet.CounterpartId))
+                    else if (await Database.BlockedAccounts.AnyAsync(
+                        b => b.OwnerId == packet.CounterpartId && b.AccountId == Client.AccountId 
+                        || b.OwnerId == Client.AccountId && b.AccountId == packet.CounterpartId)
+                        .ConfigureAwait(false))
                     {
                         response.StatusCode = CreateChannelStatus.Blocked;
                         await Client.SendPacket(response);
@@ -52,7 +55,7 @@ namespace SkynetServer.Network.Handlers
                             .Join(Database.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
                             .Where(c => c.ChannelType == ChannelType.Direct),
                             m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                        .AnyAsync())
+                        .AnyAsync().ConfigureAwait(false))
                     {
                         response.StatusCode = CreateChannelStatus.AlreadyExists;
                         await Client.SendPacket(response);
@@ -60,15 +63,15 @@ namespace SkynetServer.Network.Handlers
                     else
                     {
                         // Create a new direct channel
-                        channel = await DatabaseHelper.AddChannel(new Channel
-                        {
-                            OwnerId = Client.AccountId,
-                            ChannelType = ChannelType.Direct
-                        });
-
-                        Database.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = Client.AccountId });
-                        Database.ChannelMembers.Add(new ChannelMember { ChannelId = channel.ChannelId, AccountId = packet.CounterpartId });
-                        await Database.SaveChangesAsync();
+                        channel = await Database.AddChannel(
+                            new Channel
+                            {
+                                OwnerId = Client.AccountId,
+                                ChannelType = ChannelType.Direct
+                            },
+                            new ChannelMember { AccountId = Client.AccountId },
+                            new ChannelMember { AccountId = packet.CounterpartId })
+                            .ConfigureAwait(false);
 
                         // TODO: Check for existing direct channels and delete if another channel was created in the meantime
 

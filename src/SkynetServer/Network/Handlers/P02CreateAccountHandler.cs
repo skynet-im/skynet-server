@@ -31,42 +31,45 @@ namespace SkynetServer.Network.Handlers
             else
             {
                 packet.AccountName = MailUtilities.SimplifyAddress(packet.AccountName);
-                (var newAccount, var confirmation, bool success) = await DatabaseHelper.AddAccount(packet.AccountName, packet.KeyHash);
+                (var newAccount, var confirmation, bool success) = await Database.AddAccount(packet.AccountName, packet.KeyHash).ConfigureAwait(false);
                 if (!success)
                     response.StatusCode = CreateAccountStatus.AccountNameTaken;
                 else
                 {
                     Task mail = mailing.SendMailAsync(confirmation.MailAddress, confirmation.Token);
 
-                    Channel loopback = await DatabaseHelper.AddChannel(new Channel
-                    {
-                        ChannelType = ChannelType.Loopback,
-                        OwnerId = newAccount.AccountId
-                    });
-                    Channel accountData = await DatabaseHelper.AddChannel(new Channel
-                    {
-                        ChannelType = ChannelType.AccountData,
-                        OwnerId = newAccount.AccountId
-                    });
+                    Channel loopback = await Database.AddChannel(
+                        new Channel
+                        {
+                            ChannelType = ChannelType.Loopback,
+                            OwnerId = newAccount.AccountId
+                        }, 
+                        new ChannelMember { AccountId = newAccount.AccountId })
+                        .ConfigureAwait(false);
 
-                    Database.ChannelMembers.Add(new ChannelMember { ChannelId = loopback.ChannelId, AccountId = newAccount.AccountId });
-                    Database.ChannelMembers.Add(new ChannelMember { ChannelId = accountData.ChannelId, AccountId = newAccount.AccountId });
-                    await Database.SaveChangesAsync();
+                    Channel accountData = await Database.AddChannel(
+                        new Channel
+                        {
+                            ChannelType = ChannelType.AccountData,
+                            OwnerId = newAccount.AccountId
+                        },
+                        new ChannelMember { AccountId = newAccount.AccountId })
+                        .ConfigureAwait(false);
 
                     // Send password update packet
                     var passwordUpdate = Packet.New<P15PasswordUpdate>();
                     passwordUpdate.KeyHash = packet.KeyHash;
                     passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
-                    await Delivery.CreateMessage(passwordUpdate, loopback, newAccount.AccountId);
+                    await Delivery.CreateMessage(passwordUpdate, loopback, newAccount.AccountId).ConfigureAwait(false);
 
                     // Send email address
                     var mailAddress = Packet.New<P14MailAddress>();
                     mailAddress.MailAddress = await Database.MailConfirmations.Where(c => c.AccountId == newAccount.AccountId)
-                        .Select(c => c.MailAddress).SingleAsync();
+                        .Select(c => c.MailAddress).SingleAsync().ConfigureAwait(false);
                     mailAddress.MessageFlags = MessageFlags.Unencrypted;
-                    await Delivery.CreateMessage(mailAddress, accountData, newAccount.AccountId);
+                    await Delivery.CreateMessage(mailAddress, accountData, newAccount.AccountId).ConfigureAwait(false);
 
-                    await mail;
+                    await mail.ConfigureAwait(false);
                     response.StatusCode = CreateAccountStatus.Success;
                 }
             }

@@ -28,15 +28,14 @@ namespace SkynetServer.Cli.Commands
             [Option(Description = "Forces a recreation of the database")]
             public bool Force { get; set; }
 
-            private void OnExecute()
+            private void OnExecute(DatabaseContext database)
             {
-                using DatabaseContext ctx = new DatabaseContext();
                 if (Force && Prompt.GetYesNo("Do you really want to delete the Skynet database?", false))
                 {
-                    ctx.Database.EnsureDeleted();
+                    database.Database.EnsureDeleted();
                 }
 
-                ctx.Database.EnsureCreated();
+                database.Database.EnsureCreated();
             }
         }
 
@@ -44,12 +43,11 @@ namespace SkynetServer.Cli.Commands
         [HelpOption]
         public class Delete
         {
-            private void OnExecute()
+            private void OnExecute(DatabaseContext database)
             {
                 if (Prompt.GetYesNo("Do you really want to delete the Skynet database?", false))
                 {
-                    using DatabaseContext ctx = new DatabaseContext();
-                    ctx.Database.EnsureDeleted();
+                    database.Database.EnsureDeleted();
                 }
             }
         }

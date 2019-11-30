@@ -5,8 +5,10 @@ using System.Collections.Generic;
 
 namespace SkynetServer.Database
 {
-    public class DatabaseContext : DbContext
+    public partial class DatabaseContext : DbContext
     {
+        public DatabaseContext(DbContextOptions<DatabaseContext> options) : base(options) { }
+
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Session> Sessions { get; set; }
         public DbSet<Channel> Channels { get; set; }

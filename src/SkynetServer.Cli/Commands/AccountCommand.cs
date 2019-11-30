@@ -5,7 +5,6 @@ using SkynetServer.Database.Entities;
 using SkynetServer.Services;
 using SkynetServer.Utilities;
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace SkynetServer.Cli.Commands
@@ -31,7 +30,7 @@ namespace SkynetServer.Cli.Commands
             [Option("-m|--send-mail", "Send a confirmation mail", CommandOptionType.NoValue)]
             public bool SendMail { get; set; }
 
-            private async Task<int> OnExecute(IConsole console, MailingService mailingService)
+            private async Task<int> OnExecute(IConsole console, DatabaseContext database, MailingService mailingService)
             {
                 if (!MailUtilities.IsValidAddress(AccountName))
                 {
@@ -41,8 +40,7 @@ namespace SkynetServer.Cli.Commands
 
                 console.Out.WriteLine("WARNING: Argon2 hash is currently not supported!");
 
-                using DatabaseContext ctx = new DatabaseContext();
-                (var account, var confirmation, bool success) = await DatabaseHelper.AddAccount(AccountName, Array.Empty<byte>());
+                (var account, var confirmation, bool success) = await database.AddAccount(AccountName, Array.Empty<byte>()).ConfigureAwait(false);
                 if (success)
                 {
                     console.Out.WriteLine($"Created account with ID {account.AccountId}");
@@ -51,7 +49,7 @@ namespace SkynetServer.Cli.Commands
                     if (SendMail)
                     {
                         console.Out.WriteLine("Sending confirmation mail...");
-                        await mailingService.SendMailAsync(AccountName, confirmation.Token);
+                        await mailingService.SendMailAsync(AccountName, confirmation.Token).ConfigureAwait(false);
                     }
                     return 0;
                 }
@@ -70,16 +68,15 @@ namespace SkynetServer.Cli.Commands
             [Argument(0)]
             public string MailAddress { get; set; }
 
-            private async Task<int> OnExecute(IConsole console)
+            private async Task<int> OnExecute(IConsole console, DatabaseContext database)
             {
-                using DatabaseContext ctx = new DatabaseContext();
-                MailConfirmation confirmation = await ctx.MailConfirmations.SingleOrDefaultAsync(c => c.MailAddress == MailAddress);
+                MailConfirmation confirmation = await database.MailConfirmations.SingleOrDefaultAsync(c => c.MailAddress == MailAddress).ConfigureAwait(false);
                 if (confirmation != null)
                 {
                     if (confirmation.ConfirmationTime == default)
                     {
                         confirmation.ConfirmationTime = DateTime.Now;
-                        await ctx.SaveChangesAsync();
+                        await database.SaveChangesAsync().ConfigureAwait(false);
                     }
                     else
                     {
@@ -102,14 +99,13 @@ namespace SkynetServer.Cli.Commands
             [Argument(0)]
             public string MailAddress { get; set; }
 
-            private async Task<int> OnExecute(IConsole console, MailingService mailingService)
+            private async Task<int> OnExecute(IConsole console, DatabaseContext database, MailingService mailingService)
             {
-                using DatabaseContext ctx = new DatabaseContext();
-                MailConfirmation confirmation = await ctx.MailConfirmations.SingleOrDefaultAsync(c => c.MailAddress == MailAddress);
+                MailConfirmation confirmation = await database.MailConfirmations.SingleOrDefaultAsync(c => c.MailAddress == MailAddress).ConfigureAwait(false);
                 if (confirmation != null)
                 {
                     console.Out.WriteLine("Sending confirmation mail...");
-                    await mailingService.SendMailAsync(MailAddress, confirmation.Token);
+                    await mailingService.SendMailAsync(MailAddress, confirmation.Token).ConfigureAwait(false);
                     return 0;
                 }
                 else

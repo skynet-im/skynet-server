@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
@@ -19,21 +18,21 @@ namespace SkynetServer.Network.Handlers
             var response = Packet.New<P07CreateSessionResponse>();
 
             var confirmation = await Database.MailConfirmations.Include(c => c.Account)
-                .SingleOrDefaultAsync(c => c.MailAddress == packet.AccountName);
+                .SingleOrDefaultAsync(c => c.MailAddress == packet.AccountName).ConfigureAwait(false);
             if (confirmation == null)
                 response.StatusCode = CreateSessionStatus.InvalidCredentials;
             else if (confirmation.ConfirmationTime == default)
                 response.StatusCode = CreateSessionStatus.UnconfirmedAccount;
             else if (new Span<byte>(packet.KeyHash).SequenceEqual(confirmation.Account.KeyHash))
             {
-                Session session = await DatabaseHelper.AddSession(new Session
+                Session session = await Database.AddSession(new Session
                 {
                     AccountId = confirmation.AccountId,
                     ApplicationIdentifier = Client.ApplicationIdentifier,
                     LastConnected = DateTime.Now,
                     LastVersionCode = Client.VersionCode,
                     FcmToken = packet.FcmRegistrationToken
-                });
+                }).ConfigureAwait(false);
 
                 Client.Authenticate(confirmation.Account.AccountId, session.SessionId);
 

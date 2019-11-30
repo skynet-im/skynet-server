@@ -34,6 +34,7 @@ namespace SkynetServer.Cli
                 .AddSingleton(PhysicalConsole.Singleton)
                 .ConfigureSkynet(configuration)
                 .AddSingleton<MailingService>()
+                .AddDatabaseContext(configuration)
                 .BuildServiceProvider();
 
             var application = new CommandLineApplication<SkynetCommand>();

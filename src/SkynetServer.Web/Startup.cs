@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using SkynetServer.Database;
 using SkynetServer.Extensions;
 
 namespace SkynetServer.Web
@@ -34,7 +33,7 @@ namespace SkynetServer.Web
                 .AddViewLocalization()
                 .SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
 
-            services.AddDbContext<DatabaseContext>();
+            services.AddDatabaseContext(Configuration);
 
             services.Configure<RequestLocalizationOptions>(options =>
             {
