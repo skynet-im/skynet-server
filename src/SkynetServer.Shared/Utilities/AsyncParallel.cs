@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SkynetServer.Threading
+namespace SkynetServer.Utilities
 {
     public static class AsyncParallel
     {

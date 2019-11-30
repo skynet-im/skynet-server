@@ -11,14 +11,6 @@ namespace SkynetServer.Network
     {
         Task HandleMessage(ChannelMessage packet);
 
-        Task Handle(P08RestoreSession packet);
-        //Task Handle(P09RestoreSessionResponse packet);
-        Task Handle(P0ACreateChannel packet);
-        //Task Handle(P0DDeleteChannel packet);
-        //Task Handle(P0CChannelMessageResponse packet);
-        Task Handle(P0ERequestMessages packet);
-        //Task Handle(P0FSyncFinished packet);
-
         Task<MessageSendStatus> Handle(P13QueueMailAddressChange packet);
         //Task<MessageSendError> Handle(P14MailAddress packet);
         Task<MessageSendStatus> Handle(P15PasswordUpdate packet);
@@ -40,7 +32,5 @@ namespace SkynetServer.Network
 
         Task Handle(P2DSearchAccount packet);
         //Task Handle(P2ESearchAccountResponse packet);
-        Task Handle(P32DeviceListRequest packet);
-        // Task Handle(P33DeviceListResponse packet);
     }
 }

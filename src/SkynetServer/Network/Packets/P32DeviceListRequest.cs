@@ -12,8 +12,6 @@ namespace SkynetServer.Network.Packets
     {
         public override Packet Create() => new P32DeviceListRequest().Init(this);
 
-        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
-
         public override void ReadPacket(PacketBuffer buffer)
         {
         }

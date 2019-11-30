@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Services;
+using SkynetServer.Utilities;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -32,7 +33,7 @@ namespace SkynetServer.Cli.Commands
 
             private async Task<int> OnExecute(IConsole console, MailingService mailingService)
             {
-                if (!mailingService.IsValidEmail(AccountName))
+                if (!MailUtilities.IsValidAddress(AccountName))
                 {
                     console.Error.WriteLine("Please use a valid email address!");
                     return 1;

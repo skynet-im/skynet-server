@@ -3,6 +3,7 @@ using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
+using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -12,14 +13,12 @@ namespace SkynetServer.Network.Handlers
 {
     internal class P06CreateSessionHandler : PacketHandler<P06CreateSession>
     {
-        private readonly DatabaseContext database;
-
         public override async ValueTask Handle(P06CreateSession packet)
         {
-            packet.AccountName = mailing.SimplifyAddress(packet.AccountName);
+            packet.AccountName = MailUtilities.SimplifyAddress(packet.AccountName);
             var response = Packet.New<P07CreateSessionResponse>();
 
-            var confirmation = await database.MailConfirmations.Include(c => c.Account)
+            var confirmation = await Database.MailConfirmations.Include(c => c.Account)
                 .SingleOrDefaultAsync(c => c.MailAddress == packet.AccountName);
             if (confirmation == null)
                 response.StatusCode = CreateSessionStatus.InvalidCredentials;

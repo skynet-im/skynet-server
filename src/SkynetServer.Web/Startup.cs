@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -46,7 +47,9 @@ namespace SkynetServer.Web
             });
         }
 
+
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Called by the runtime.")]
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())

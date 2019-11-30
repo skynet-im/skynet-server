@@ -18,9 +18,6 @@ dotnet_diagnostic.CA1308.severity = none
 # CA1819: Properties should not return arrays
 dotnet_diagnostic.CA1819.severity = none
 
-# CA1822: Mark members as static
-dotnet_diagnostic.CA1822.severity = none
-
 # CA2007:Consider calling ConfigureAwait on the awaited task
 dotnet_diagnostic.CA2007.severity = suggestion
 

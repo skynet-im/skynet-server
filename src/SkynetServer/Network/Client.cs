@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Options;
-using SkynetServer.Configuration;
-using SkynetServer.Database.Entities;
+﻿using SkynetServer.Database.Entities;
 using SkynetServer.Network.Model;
 using SkynetServer.Services;
 using SkynetServer.Sockets;
@@ -13,14 +11,10 @@ namespace SkynetServer.Network
     internal partial class Client : IPacketHandler
     {
         private readonly DeliveryService delivery;
-        private readonly MailingService mailing;
-        private readonly IOptions<ProtocolOptions> protocolOptions;
 
-        public Client(DeliveryService delivery, MailingService mailing, IOptions<ProtocolOptions> protocolOptions)
+        public Client(DeliveryService delivery)
         {
             this.delivery = delivery;
-            this.mailing = mailing;
-            this.protocolOptions = protocolOptions;
         }
 
         public async Task<bool> SendPacket(Packet packet)

@@ -55,29 +55,15 @@ namespace SkynetServer.Services
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 
-        protected virtual void Dispose(bool disposing)
+        public void Dispose()
         {
             if (!disposedValue)
             {
-                if (disposing)
-                {
-                    cts.Dispose();
-                    listener.Dispose();
-                }
+                cts.Dispose();
+                listener.Dispose();
 
                 disposedValue = true;
             }
-        }
-
-        // ~ListenerService()
-        // {
-        //   Dispose(false);
-        // }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            // GC.SuppressFinalize(this);
         }
         #endregion
     }

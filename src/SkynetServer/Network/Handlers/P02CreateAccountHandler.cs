@@ -5,6 +5,7 @@ using SkynetServer.Model;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using SkynetServer.Services;
+using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,17 +16,23 @@ namespace SkynetServer.Network.Handlers
 {
     internal class P02CreateAccountHandler : PacketHandler<P02CreateAccount>
     {
-        private readonly DatabaseContext database;
         private readonly MailingService mailing;
+        private readonly DeliveryService delivery;
+
+        public P02CreateAccountHandler(MailingService mailing, DeliveryService delivery)
+        {
+            this.mailing = mailing;
+            this.delivery = delivery;
+        }
 
         public override async ValueTask Handle(P02CreateAccount packet)
         {
             var response = Packet.New<P03CreateAccountResponse>();
-            if (!mailing.IsValidEmail(packet.AccountName))
+            if (!MailUtilities.IsValidAddress(packet.AccountName))
                 response.StatusCode = CreateAccountStatus.InvalidAccountName;
             else
             {
-                packet.AccountName = mailing.SimplifyAddress(packet.AccountName);
+                packet.AccountName = MailUtilities.SimplifyAddress(packet.AccountName);
                 (var newAccount, var confirmation, bool success) = await DatabaseHelper.AddAccount(packet.AccountName, packet.KeyHash);
                 if (!success)
                     response.StatusCode = CreateAccountStatus.AccountNameTaken;
@@ -44,9 +51,9 @@ namespace SkynetServer.Network.Handlers
                         OwnerId = newAccount.AccountId
                     });
 
-                    database.ChannelMembers.Add(new ChannelMember { ChannelId = loopback.ChannelId, AccountId = newAccount.AccountId });
-                    database.ChannelMembers.Add(new ChannelMember { ChannelId = accountData.ChannelId, AccountId = newAccount.AccountId });
-                    await database.SaveChangesAsync();
+                    Database.ChannelMembers.Add(new ChannelMember { ChannelId = loopback.ChannelId, AccountId = newAccount.AccountId });
+                    Database.ChannelMembers.Add(new ChannelMember { ChannelId = accountData.ChannelId, AccountId = newAccount.AccountId });
+                    await Database.SaveChangesAsync();
 
                     // Send password update packet
                     var passwordUpdate = Packet.New<P15PasswordUpdate>();
@@ -56,7 +63,7 @@ namespace SkynetServer.Network.Handlers
 
                     // Send email address
                     var mailAddress = Packet.New<P14MailAddress>();
-                    mailAddress.MailAddress = await database.MailConfirmations.Where(c => c.AccountId == newAccount.AccountId)
+                    mailAddress.MailAddress = await Database.MailConfirmations.Where(c => c.AccountId == newAccount.AccountId)
                         .Select(c => c.MailAddress).SingleAsync();
                     mailAddress.MessageFlags = MessageFlags.Unencrypted;
                     await delivery.CreateMessage(mailAddress, accountData, newAccount.AccountId);

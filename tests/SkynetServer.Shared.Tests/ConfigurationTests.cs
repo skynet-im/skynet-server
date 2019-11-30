@@ -21,11 +21,11 @@ namespace SkynetServer.Tests
             var options = configuration.Get<SkynetOptions>();
             Assert.IsNotNull(options);
             Assert.IsNotNull(options.DatabaseOptions);
+            Assert.IsNotNull(options.ListenerOptions);
             Assert.IsNotNull(options.MailOptions);
             Assert.IsNotNull(options.ProtocolOptions);
             Assert.IsNotNull(options.ProtocolOptions.Platforms);
             Assert.IsTrue(options.ProtocolOptions.Platforms.Any());
-            Assert.IsNotNull(options.VslOptions);
         }
     }
 }
