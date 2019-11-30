@@ -3,9 +3,8 @@ using SkynetServer.Network.Model;
 using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
-namespace SkynetServer.Network.Packets
+namespace SkynetServer.Network
 {
     internal class ChannelMessage : Packet
     {
@@ -26,8 +25,6 @@ namespace SkynetServer.Network.Packets
         public MessageFlags AllowedFlags { get; set; } = MessageFlags.All;
 
         public override Packet Create() => new ChannelMessage().Init(this);
-
-        public Task Handle(IPacketHandler handler) => handler.HandleMessage(this);
 
         public sealed override void ReadPacket(PacketBuffer buffer)
         {
@@ -86,30 +83,22 @@ namespace SkynetServer.Network.Packets
         protected ChannelMessage Init(ChannelMessage source)
         {
             Id = source.Id;
-            Policy = source.Policy;
+            Policies = source.Policies;
             RequiredFlags = source.RequiredFlags;
             AllowedFlags = source.AllowedFlags;
             return this;
         }
 
-        public virtual Task<MessageSendStatus> HandleMessage(IPacketHandler handler)
-        {
-            return Task.FromResult(MessageSendStatus.Success);
-        }
-
-        public virtual Task PostHandling(IPacketHandler handler, Database.Entities.Message message)
-        {
-            return Task.CompletedTask;
-        }
-
         protected virtual void ReadMessage(PacketBuffer buffer)
         {
-
+            if (!Policies.HasFlag(PacketPolicies.Receive))
+                throw new InvalidOperationException();
         }
 
         protected virtual void WriteMessage(PacketBuffer buffer)
         {
-
+            if (!Policies.HasFlag(PacketPolicies.Send))
+                throw new InvalidOperationException();
         }
 
         public override string ToString()

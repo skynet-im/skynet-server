@@ -9,8 +9,6 @@ namespace SkynetServer.Network
 {
     internal interface IPacketHandler
     {
-        Task HandleMessage(ChannelMessage packet);
-
         Task<MessageSendStatus> Handle(P13QueueMailAddressChange packet);
         //Task<MessageSendError> Handle(P14MailAddress packet);
         Task<MessageSendStatus> Handle(P15PasswordUpdate packet);

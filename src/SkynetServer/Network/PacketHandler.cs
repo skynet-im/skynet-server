@@ -1,4 +1,5 @@
 ﻿using SkynetServer.Database;
+using SkynetServer.Services;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -10,11 +11,13 @@ namespace SkynetServer.Network
     {
         protected Client Client { get; private set; }
         protected DatabaseContext Database { get; private set; }
+        protected DeliveryService Delivery { get; private set; }
 
-        public void Init(Client client, DatabaseContext database)
+        public void Init(Client client, DatabaseContext database, DeliveryService delivery)
         {
             Client = client;
             Database = database;
+            Delivery = delivery;
         }
 
         public ValueTask Handle(Packet packet)

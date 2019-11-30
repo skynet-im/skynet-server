@@ -1,5 +1,4 @@
 ﻿using SkynetServer.Network.Attributes;
-using SkynetServer.Network.Packets;
 using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
@@ -23,7 +22,7 @@ namespace SkynetServer.Network
                 PacketAttribute attribute = type.GetCustomAttribute<PacketAttribute>();
                 Packet instance = (Packet)Activator.CreateInstance(type);
                 instance.Id = attribute.PacketId;
-                instance.Policy = attribute.PacketPolicy;
+                instance.Policies = attribute.PacketPoliies;
 
                 if (instance is ChannelMessage message)
                 {
@@ -59,20 +58,39 @@ namespace SkynetServer.Network
 
         public static T New<T>() where T : Packet
         {
-            return Packets.Where(p => p is T).Select(packet => (T)packet.Create()).FirstOrDefault();
+            foreach (Packet packet in Packets)
+            {
+                if (packet is T prototype)
+                {
+                    T instance = (T)prototype.Create();
+                    return instance;
+                }
+            }
+
+            throw new ArgumentException($"Unknown packet type {typeof(T).Name}");
         }
 
         public byte Id { get; set; }
-        public PacketPolicies Policy { get; set; }
+        public PacketPolicies Policies { get; set; }
 
         public abstract Packet Create();
-        public abstract void ReadPacket(PacketBuffer buffer);
-        public abstract void WritePacket(PacketBuffer buffer);
+
+        public virtual void ReadPacket(PacketBuffer buffer)
+        {
+            if (!Policies.HasFlag(PacketPolicies.Receive))
+                throw new InvalidOperationException();
+        }
+
+        public virtual void WritePacket(PacketBuffer buffer)
+        {
+            if (!Policies.HasFlag(PacketPolicies.Send))
+                throw new InvalidOperationException();
+        }
 
         protected Packet Init(Packet source)
         {
             Id = source.Id;
-            Policy = source.Policy;
+            Policies = source.Policies;
             return this;
         }
 

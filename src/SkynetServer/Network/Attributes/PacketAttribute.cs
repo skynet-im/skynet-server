@@ -10,10 +10,10 @@ namespace SkynetServer.Network.Attributes
         public PacketAttribute(byte packedId, PacketPolicies packetPolicies)
         {
             PacketId = packedId;
-            PacketPolicy = packetPolicies;
+            PacketPoliies = packetPolicies;
         }
 
         public byte PacketId { get; }
-        public PacketPolicies PacketPolicy { get; }
+        public PacketPolicies PacketPoliies { get; }
     }
 }
