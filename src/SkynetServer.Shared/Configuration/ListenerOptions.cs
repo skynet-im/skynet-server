@@ -7,8 +7,8 @@ namespace SkynetServer.Configuration
 {
     public class ListenerOptions
     {
-        [Range(0, 65535)] public int TcpPort { get; set; }
-        [Range(1, 16)] public int Parallelism { get; set; }
+        [Range(0, int.MaxValue)] public int Backlog { get; set; }
+        [Range(0, 65535)] public int Port { get; set; }
         [Required] public string CertificatePath { get; set; }
     }
 }

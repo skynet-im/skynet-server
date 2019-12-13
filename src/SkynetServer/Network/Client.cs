@@ -3,18 +3,22 @@ using SkynetServer.Network.Model;
 using SkynetServer.Services;
 using SkynetServer.Sockets;
 using System;
-using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SkynetServer.Network
 {
     internal partial class Client
     {
+        private readonly PacketStream stream;
         private readonly DeliveryService delivery;
+        private readonly CancellationToken ct;
 
-        public Client(DeliveryService delivery)
+        public Client(DeliveryService delivery, PacketStream stream, CancellationToken ct)
         {
             this.delivery = delivery;
+            this.stream = stream;
+            this.ct = ct;
         }
 
         public async Task<bool> SendPacket(Packet packet)
@@ -46,32 +50,32 @@ namespace SkynetServer.Network
             SessionId = sessionId;
         }
 
-        public void OnInstanceCreated()
+        public async void Listen()
         {
-            delivery.Register(this);
-        }
+            while (true)
+            {
+                (byte id, ReadOnlyMemory<byte> content) = await stream.ReadAsync(ct);
 
-        public async Task OnPacketReceived(byte id, byte[] content)
-        {
-            if (id >= Packet.Packets.Length)
-                throw new ProtocolException($"Invalid packet ID {id}");
+                if (id >= Packet.Packets.Length)
+                    throw new ProtocolException($"Invalid packet ID {id}");
 
-            Packet prototype = Packet.Packets[id];
-            if (prototype == null || !prototype.Policies.HasFlag(PacketPolicies.Receive))
-                throw new ProtocolException($"Cannot receive packet {id}");
+                Packet prototype = Packet.Packets[id];
+                if (prototype == null || !prototype.Policies.HasFlag(PacketPolicies.Receive))
+                    throw new ProtocolException($"Cannot receive packet {id}");
 
-            if (Session == null && !prototype.Policies.HasFlag(PacketPolicies.Unauthenticated))
-                throw new ProtocolException($"Unauthorized packet {id}");
+                if (Session == null && !prototype.Policies.HasFlag(PacketPolicies.Unauthenticated))
+                    throw new ProtocolException($"Unauthorized packet {id}");
 
-            if (Session != null && prototype.Policies.HasFlag(PacketPolicies.Unauthenticated))
-                throw new ProtocolException($"Authorized clients cannot send packet {id}");
+                if (Session != null && prototype.Policies.HasFlag(PacketPolicies.Unauthenticated))
+                    throw new ProtocolException($"Authorized clients cannot send packet {id}");
 
-            Packet instance = prototype.Create();
+                Packet instance = prototype.Create();
 
-            var buffer = new Sockets.PacketBuffer(content);
-            instance.ReadPacket(buffer);
+                var buffer = new PacketBuffer(content);
+                instance.ReadPacket(buffer);
 
-            Console.WriteLine($"Starting to handle packet {instance}");
+                Console.WriteLine($"Starting to handle packet {instance}");
+            }
         }
 
         public void OnConnectionClosed(string message, Exception exception)

@@ -5,7 +5,11 @@ using SkynetServer.Configuration;
 using SkynetServer.Network;
 using SkynetServer.Sockets;
 using System;
-using System.Collections.Generic;
+using System.Net;
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,23 +20,33 @@ namespace SkynetServer.Services
         private readonly IOptions<ListenerOptions> listenerOptions;
         private readonly IServiceProvider serviceProvider;
         private readonly CancellationTokenSource cts;
-        private readonly SslListener listener;
+
+        private readonly Socket listener;
+        private readonly IPEndPoint endPoint;
+        private readonly X509Certificate certificate;
 
         public ListenerService(IOptions<ListenerOptions> listenerOptions, IServiceProvider serviceProvider)
         {
             this.listenerOptions = listenerOptions;
             this.serviceProvider = serviceProvider;
+
+            certificate = new X509Certificate(listenerOptions.Value.CertificatePath);
+            endPoint = new IPEndPoint(IPAddress.IPv6Any, listenerOptions.Value.Port);
+
+            listener = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp)
+            {
+                DualMode = true
+            };
+
             cts = new CancellationTokenSource();
-            listener = new SslListener(listenerOptions.Value.TcpPort, listenerOptions.Value.CertificatePath);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            listener.Start();
-            for (int i = 0; i < listenerOptions.Value.Parallelism; i++)
-            {
-                Loop();
-            }
+            listener.Bind(endPoint);
+            listener.Listen(listenerOptions.Value.Backlog);
+            Loop();
+
             return Task.CompletedTask;
         }
 
@@ -45,10 +59,45 @@ namespace SkynetServer.Services
 
         private async void Loop()
         {
-            while (!cts.IsCancellationRequested)
+            while (true)
             {
-                PacketStream stream = await listener.AcceptAsync().ConfigureAwait(false);
-                ActivatorUtilities.CreateInstance<Client>(serviceProvider);
+                Socket client = await listener.AcceptAsync().ConfigureAwait(false);
+                if (cts.IsCancellationRequested)
+                {
+                    client.Dispose();
+                    break;
+                }
+                else
+                {
+                    Authenticate(client);
+                }
+            }
+        }
+
+        private async void Authenticate(Socket socket)
+        {
+            NetworkStream networkStream = new NetworkStream(socket);
+            SslStream sslStream = new SslStream(networkStream, leaveInnerStreamOpen: false);
+            try
+            {
+                await sslStream.AuthenticateAsServerAsync(certificate, false, SslProtocols.Tls13, false).ConfigureAwait(false);
+            }
+            catch (AuthenticationException)
+            {
+                // TODO: Write failed authentication to logs
+                await sslStream.DisposeAsync().ConfigureAwait(false);
+                return;
+            }
+
+            if (cts.IsCancellationRequested)
+            {
+                await sslStream.DisposeAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                PacketStream stream = new PacketStream(sslStream, false);
+                Client client = ActivatorUtilities.CreateInstance<Client>(serviceProvider, stream, cts.Token);
+                client.Listen();
             }
         }
 
@@ -61,6 +110,7 @@ namespace SkynetServer.Services
             {
                 cts.Dispose();
                 listener.Dispose();
+                certificate.Dispose();
 
                 disposedValue = true;
             }

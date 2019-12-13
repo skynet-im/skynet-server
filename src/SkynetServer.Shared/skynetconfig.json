@@ -8,8 +8,8 @@
     "DeleteSessionOnError": false
   },
   "ListenerOptions": {
-    "TcpPort": 32761,
-    "Parallelism": 16,
+    "Backlog": 64,
+    "Port": 32761,
     "CertificatePath": "skynet.pfx"
   },
   "MailOptions": {
