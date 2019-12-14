@@ -76,7 +76,7 @@ namespace SkynetServer.Services
 
         private async void Authenticate(Socket socket)
         {
-            NetworkStream networkStream = new NetworkStream(socket);
+            NetworkStream networkStream = new NetworkStream(socket, ownsSocket: true);
             SslStream sslStream = new SslStream(networkStream, leaveInnerStreamOpen: false);
             try
             {
@@ -95,7 +95,7 @@ namespace SkynetServer.Services
             }
             else
             {
-                PacketStream stream = new PacketStream(sslStream, false);
+                PacketStream stream = new PacketStream(sslStream, leaveInnerStreamOpen: false);
                 Client client = ActivatorUtilities.CreateInstance<Client>(serviceProvider, stream, cts.Token);
                 client.Listen();
             }

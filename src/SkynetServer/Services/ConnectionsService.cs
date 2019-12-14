@@ -32,5 +32,10 @@ namespace SkynetServer.Services
 
             return old;
         }
+
+        public bool TryRemove(long sessionId, out Client client)
+        {
+            return connections.TryRemove(sessionId, out client);
+        }
     }
 }
