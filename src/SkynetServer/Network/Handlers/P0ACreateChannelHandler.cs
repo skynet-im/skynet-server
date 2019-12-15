@@ -7,7 +7,6 @@ using SkynetServer.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Handlers
@@ -24,7 +23,7 @@ namespace SkynetServer.Network.Handlers
         public override async ValueTask Handle(P0ACreateChannel packet)
         {
             Channel channel = null;
-            var response = Packet.New<P2FCreateChannelResponse>();
+            var response = Packets.New<P2FCreateChannelResponse>();
             response.TempChannelId = packet.ChannelId;
 
             switch (packet.ChannelType)
@@ -75,14 +74,14 @@ namespace SkynetServer.Network.Handlers
 
                         // TODO: Check for existing direct channels and delete if another channel was created in the meantime
 
-                        var createAlice = Packet.New<P0ACreateChannel>();
+                        var createAlice = Packets.New<P0ACreateChannel>();
                         createAlice.ChannelId = channel.ChannelId;
                         createAlice.ChannelType = ChannelType.Direct;
                         createAlice.OwnerId = Client.AccountId;
                         createAlice.CounterpartId = packet.CounterpartId;
                         await Delivery.SendPacket(createAlice, Client.AccountId, Client);
 
-                        var createBob = Packet.New<P0ACreateChannel>();
+                        var createBob = Packets.New<P0ACreateChannel>();
                         createBob.ChannelId = channel.ChannelId;
                         createBob.ChannelType = ChannelType.Direct;
                         createBob.OwnerId = Client.AccountId;

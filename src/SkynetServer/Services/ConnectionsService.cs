@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Text;
 
 namespace SkynetServer.Services
 {
@@ -22,6 +21,8 @@ namespace SkynetServer.Services
 
         public Client Add(Client client)
         {
+            if (client.SessionId == default) throw new InvalidOperationException();
+
             Client old = null;
 
             connections.AddOrUpdate(client.SessionId, client, (sessionId, oldClient) =>

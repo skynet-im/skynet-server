@@ -5,7 +5,6 @@ using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SkynetServer.Network
@@ -58,7 +57,7 @@ namespace SkynetServer.Network
             Database.Messages.Add(entity);
             await Database.SaveChangesAsync().ConfigureAwait(false);
 
-            var response = Packet.New<P0CChannelMessageResponse>();
+            var response = Packets.New<P0CChannelMessageResponse>();
             response.ChannelId = packet.ChannelId;
             response.TempMessageId = packet.MessageId;
             response.StatusCode = MessageSendStatus.Success;

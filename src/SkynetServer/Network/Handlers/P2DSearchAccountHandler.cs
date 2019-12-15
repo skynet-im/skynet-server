@@ -4,7 +4,6 @@ using SkynetServer.Network.Packets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Handlers
@@ -18,7 +17,7 @@ namespace SkynetServer.Network.Handlers
                     && c.MailAddress.Contains(packet.Query, StringComparison.Ordinal)
                     && c.ConfirmationTime != default) // Exclude unconfirmed accounts
                 .Take(100).ToListAsync().ConfigureAwait(false); // Limit to 100 entries
-            var response = Packet.New<P2ESearchAccountResponse>();
+            var response = Packets.New<P2ESearchAccountResponse>();
             foreach (var result in results)
                 response.Results.Add(new SearchResult(result.AccountId, result.MailAddress));
             // Forward public packets to fully implement the Skynet protocol v5

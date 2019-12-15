@@ -2,28 +2,19 @@
 using SkynetServer.Database.Entities;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
-using SkynetServer.Services;
 using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Handlers
 {
     internal class P06CreateSessionHandler : PacketHandler<P06CreateSession>
     {
-        private PacketService packets;
-
-        public P06CreateSessionHandler(PacketService packets)
-        {
-            this.packets = packets;
-        }
-
         public override async ValueTask Handle(P06CreateSession packet)
         {
             packet.AccountName = MailUtilities.SimplifyAddress(packet.AccountName);
-            var response = packets.New<P07CreateSessionResponse>();
+            var response = Packets.New<P07CreateSessionResponse>();
 
             var confirmation = await Database.MailConfirmations.Include(c => c.Account)
                 .SingleOrDefaultAsync(c => c.MailAddress == packet.AccountName).ConfigureAwait(false);

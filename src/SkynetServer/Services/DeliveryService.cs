@@ -7,7 +7,6 @@ using SkynetServer.Model;
 using SkynetServer.Network;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
-using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -18,25 +17,24 @@ namespace SkynetServer.Services
 {
     internal class DeliveryService
     {
+        private readonly PacketService packets;
+        private readonly ConnectionsService connections;
         private readonly FirebaseService firebase;
         private readonly IOptions<FcmOptions> fcmOptions;
-        private ImmutableList<Client> clients;
+        private readonly DatabaseContext database;
 
-        public DeliveryService(FirebaseService firebase, IOptions<FcmOptions> fcmOptions)
+        public DeliveryService(PacketService packets, ConnectionsService connections, 
+            FirebaseService firebase, IOptions<FcmOptions> fcmOptions, DatabaseContext database)
         {
+            this.packets = packets;
+            this.connections = connections;
             this.firebase = firebase;
             this.fcmOptions = fcmOptions;
-            clients = ImmutableList.Create<Client>();
-        }
-
-        public void Register(Client client)
-        {
-            ImmutableInterlocked.Update(ref clients, list => list.Add(client));
+            this.database = database;
         }
 
         public void Unregister(Client client)
         {
-            ImmutableInterlocked.Update(ref clients, list => list.Remove(client));
             if (client.ChannelAction != ChannelAction.None) OnChannelActionChanged(client, 0, ChannelAction.None);
             if (client.Active) OnActiveChanged(client, active: false);
         }
@@ -59,7 +57,7 @@ namespace SkynetServer.Services
                 long[] members = await ctx.ChannelMembers.Where(m => m.ChannelId == _channelId).Select(m => m.AccountId).ToArrayAsync();
                 if (!members.Contains(client.Account.AccountId))
                     return; // This is a protocol violation but throwing an exception would be useless in an async context.
-                var packet = Packet.New<P2CChannelAction>();
+                var packet = packets.New<P2CChannelAction>();
                 packet.ChannelId = _channelId;
                 packet.AccountId = client.Account.AccountId;
                 packet.Action = _action;
@@ -81,7 +79,7 @@ namespace SkynetServer.Services
             {
                 using DatabaseContext ctx = new DatabaseContext();
                 Channel channel = await ctx.Channels.SingleAsync(c => c.OwnerId == client.Account.AccountId && c.ChannelType == ChannelType.AccountData);
-                var packet = Packet.New<P2BOnlineState>();
+                var packet = packets.New<P2BOnlineState>();
                 packet.OnlineState = active ? OnlineState.Active : OnlineState.Inactive;
                 packet.LastActive = DateTime.Now;
                 packet.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;

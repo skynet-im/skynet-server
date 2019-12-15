@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
 using SkynetServer.Network.Model;
@@ -9,7 +8,6 @@ using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Handlers
@@ -25,7 +23,7 @@ namespace SkynetServer.Network.Handlers
 
         public override async ValueTask Handle(P02CreateAccount packet)
         {
-            var response = Packet.New<P03CreateAccountResponse>();
+            var response = Packets.New<P03CreateAccountResponse>();
             if (!MailUtilities.IsValidAddress(packet.AccountName))
                 response.StatusCode = CreateAccountStatus.InvalidAccountName;
             else
@@ -57,13 +55,13 @@ namespace SkynetServer.Network.Handlers
                         .ConfigureAwait(false);
 
                     // Send password update packet
-                    var passwordUpdate = Packet.New<P15PasswordUpdate>();
+                    var passwordUpdate = Packets.New<P15PasswordUpdate>();
                     passwordUpdate.KeyHash = packet.KeyHash;
                     passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
                     await Delivery.CreateMessage(passwordUpdate, loopback, newAccount.AccountId).ConfigureAwait(false);
 
                     // Send email address
-                    var mailAddress = Packet.New<P14MailAddress>();
+                    var mailAddress = Packets.New<P14MailAddress>();
                     mailAddress.MailAddress = await Database.MailConfirmations.Where(c => c.AccountId == newAccount.AccountId)
                         .Select(c => c.MailAddress).SingleAsync().ConfigureAwait(false);
                     mailAddress.MessageFlags = MessageFlags.Unencrypted;

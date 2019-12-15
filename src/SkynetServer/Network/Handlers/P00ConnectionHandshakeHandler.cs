@@ -5,7 +5,6 @@ using SkynetServer.Network.Packets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Handlers
@@ -22,7 +21,7 @@ namespace SkynetServer.Network.Handlers
         public override async ValueTask Handle(P00ConnectionHandshake packet)
         {
             ProtocolOptions config = options.Value;
-            var response = Packet.New<P01ConnectionResponse>();
+            var response = Packets.New<P01ConnectionResponse>();
             ProtocolOptions.Platform platform = config.Platforms.SingleOrDefault(p => p.Name == packet.ApplicationIdentifier);
             if (platform == null)
                 throw new ProtocolException($"Unsupported client {packet.ApplicationIdentifier}");

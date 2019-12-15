@@ -19,8 +19,15 @@ namespace SkynetServer.Sockets
             this.leaveInnerStreamOpen = leaveInnerStreamOpen;
         }
 
+        /// <summary>
+        /// Reads an entire packet from the underlying stream.
+        /// </summary>
+        /// <exception cref="IOException">Failed to read from the underlying stream.</exception>
+        /// <exception cref="ObjectDisposedException">The <see cref="PacketStream"/> has been disposed.</exception>
         public async ValueTask<(byte id, ReadOnlyMemory<byte> buffer)> ReadAsync(CancellationToken ct = default)
         {
+            if (disposedValue) throw new ObjectDisposedException(nameof(PacketStream));
+
             byte[] buffer = new byte[4];
             await ReadInternal(buffer, ct);
             int packetMeta = BitConverter.ToInt32(buffer);
@@ -36,8 +43,16 @@ namespace SkynetServer.Sockets
             return (id, buffer);
         }
 
+        /// <summary>
+        /// Writes a packet to the underlying stream
+        /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">The <paramref name="buffer"/> is larger than 0x00ffffff bytes.</exception>
+        /// <exception cref="IOException">Failed to write on the underlying stream.</exception>
+        /// <exception cref="ObjectDisposedException">The <see cref="PacketStream"/> has been disposed.</exception>
         public async ValueTask WriteAsync(byte id, ReadOnlyMemory<byte> buffer, CancellationToken ct = default)
         {
+            if (disposedValue) throw new ObjectDisposedException(nameof(PacketStream));
+
             if (buffer.Length > 0x00ffffff) throw new ArgumentOutOfRangeException(nameof(buffer));
 
             int packetMeta = buffer.Length << 8 | id;

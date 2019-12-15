@@ -1,7 +1,10 @@
-﻿using SkynetServer.Network.Model;
+﻿using Microsoft.Extensions.DependencyInjection;
+using SkynetServer.Database;
+using SkynetServer.Network.Model;
 using SkynetServer.Services;
 using SkynetServer.Sockets;
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,16 +12,15 @@ namespace SkynetServer.Network
 {
     internal partial class Client : IAsyncDisposable
     {
+        private readonly IServiceProvider serviceProvider;
         private readonly PacketService packets;
-        private readonly DeliveryService delivery;
-
         private readonly PacketStream stream;
         private readonly CancellationToken ct;
 
-        public Client(PacketService packets, DeliveryService delivery, PacketStream stream, CancellationToken ct)
+        public Client(IServiceProvider serviceProvider, PacketService packets, PacketStream stream, CancellationToken ct)
         {
+            this.serviceProvider = serviceProvider;
             this.packets = packets;
-            this.delivery = delivery;
             this.stream = stream;
             this.ct = ct;
         }
@@ -39,38 +41,63 @@ namespace SkynetServer.Network
 
         public void Authenticate(long accountId, long sessionId)
         {
+            if (accountId == default) throw new ArgumentOutOfRangeException(nameof(accountId));
+            if (sessionId == default) throw new ArgumentOutOfRangeException(nameof(sessionId));
+
+            // Prevent accidential reauthentication of an authenticated client
+            if (AccountId != default || SessionId != default) throw new InvalidOperationException();
+
             AccountId = accountId;
             SessionId = sessionId;
         }
 
         public async void Listen()
         {
-            while (true)
+            try
             {
-                (byte id, ReadOnlyMemory<byte> content) = await stream.ReadAsync(ct).ConfigureAwait(false);
-
-                if (id >= packets.Packets.Length)
-                    throw new ProtocolException($"Invalid packet ID {id}");
-
-                Packet prototype = packets.Packets[id];
-                if (prototype == null || !prototype.Policies.HasFlag(PacketPolicies.Receive))
-                    throw new ProtocolException($"Cannot receive packet {id}");
-
-                if (SessionId == default && !prototype.Policies.HasFlag(PacketPolicies.Unauthenticated))
-                    throw new ProtocolException($"Unauthorized packet {id}");
-
-                if (SessionId != default && prototype.Policies.HasFlag(PacketPolicies.Unauthenticated))
-                    throw new ProtocolException($"Authorized clients cannot send packet {id}");
-
-                Packet instance = prototype.Create();
-
-                var buffer = new PacketBuffer(content);
-                instance.ReadPacket(buffer);
-
-                Console.WriteLine($"Starting to handle packet {instance}");
-
-                // TODO: Create scope and handler
+                while (true)
+                {
+                    (byte id, ReadOnlyMemory<byte> content) = await stream.ReadAsync(ct).ConfigureAwait(false);
+                    await HandlePacket(id, content).ConfigureAwait(false);
+                }
             }
+            catch (IOException)
+            {
+                // TODO: Handle disconnect
+            }
+        }
+
+        private async ValueTask HandlePacket(byte id, ReadOnlyMemory<byte> content)
+        {
+            if (id >= this.packets.Packets.Length)
+                throw new ProtocolException($"Invalid packet ID {id}");
+
+            Packet prototype = this.packets.Packets[id];
+            if (prototype == null || !prototype.Policies.HasFlag(PacketPolicies.Receive))
+                throw new ProtocolException($"Cannot receive packet {id}");
+
+            if (SessionId == default && !prototype.Policies.HasFlag(PacketPolicies.Unauthenticated))
+                throw new ProtocolException($"Unauthorized packet {id}");
+
+            if (SessionId != default && prototype.Policies.HasFlag(PacketPolicies.Unauthenticated))
+                throw new ProtocolException($"Authorized clients cannot send packet {id}");
+
+            Packet instance = prototype.Create();
+
+            var buffer = new PacketBuffer(content);
+            instance.ReadPacket(buffer);
+
+            Console.WriteLine($"Starting to handle packet {instance}");
+
+            using IServiceScope scope = serviceProvider.CreateScope();
+
+            var handler = (IPacketHandler)ActivatorUtilities.CreateInstance(serviceProvider, this.packets.Handlers[id]);
+            DatabaseContext database = scope.ServiceProvider.GetService<DatabaseContext>();
+            PacketService packets = scope.ServiceProvider.GetService<PacketService>();
+            DeliveryService delivery = scope.ServiceProvider.GetService<DeliveryService>();
+            handler.Init(this, database, packets, delivery);
+
+            await handler.Handle(instance).ConfigureAwait(false);
         }
 
         #region IAsyncDisposable Support
@@ -80,6 +107,7 @@ namespace SkynetServer.Network
         {
             if (!disposedValue)
             {
+                // TODO: Finish all pending handling operations
                 await stream.DisposeAsync().ConfigureAwait(false);
 
                 disposedValue = true;
