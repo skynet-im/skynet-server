@@ -62,7 +62,8 @@ namespace SkynetServer.Network.Handlers
 
                     // Send email address
                     var mailAddress = Packets.New<P14MailAddress>();
-                    mailAddress.MailAddress = await Database.MailConfirmations.Where(c => c.AccountId == newAccount.AccountId)
+                    mailAddress.MailAddress = await Database.MailConfirmations.AsQueryable()
+                        .Where(c => c.AccountId == newAccount.AccountId)
                         .Select(c => c.MailAddress).SingleAsync().ConfigureAwait(false);
                     mailAddress.MessageFlags = MessageFlags.Unencrypted;
                     await Delivery.CreateMessage(mailAddress, accountData, newAccount.AccountId).ConfigureAwait(false);

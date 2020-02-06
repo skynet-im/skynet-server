@@ -12,7 +12,7 @@ namespace SkynetServer.Network.Handlers
     {
         public override async ValueTask Handle(P2DSearchAccount packet)
         {
-            var results = await Database.MailConfirmations
+            var results = await Database.MailConfirmations.AsQueryable()
                 .Where(c => c.AccountId != Client.AccountId
                     && c.MailAddress.Contains(packet.Query, StringComparison.Ordinal)
                     && c.ConfirmationTime != default) // Exclude unconfirmed accounts

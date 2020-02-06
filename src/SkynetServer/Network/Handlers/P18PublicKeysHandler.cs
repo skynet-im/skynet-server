@@ -30,7 +30,8 @@ namespace SkynetServer.Network.Handlers
             if (dep.AccountId != Client.AccountId)
                 throw new ProtocolException($"The dependency of {nameof(P18PublicKeys)} to private keys must be specific for the sending account.");
 
-            if (!await Database.Messages.AnyAsync(m => m.ChannelId == dep.ChannelId && m.MessageId == dep.MessageId && m.PacketId == 0x17))
+            if (!await Database.Messages.AsQueryable()
+                .AnyAsync(m => m.MessageId == dep.MessageId && m.PacketId == 0x17))
                 throw new ProtocolException($"Could not find the referenced private keys for {nameof(P18PublicKeys)}.");
 
             return MessageSendStatus.Success;
@@ -39,7 +40,7 @@ namespace SkynetServer.Network.Handlers
         protected override async ValueTask PostHandling(P18PublicKeys packet, Message message)
         {
             // Get all direct channels of Alice
-            var channels = await Database.ChannelMembers
+            var channels = await Database.ChannelMembers.AsQueryable()
                 .Where(m => m.AccountId == Client.AccountId)
                 .Join(Database.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
                 .Where(c => c.ChannelType == ChannelType.Direct)
@@ -47,7 +48,7 @@ namespace SkynetServer.Network.Handlers
 
             foreach (Channel channel in channels)
             {
-                Account bob = await Database.ChannelMembers
+                Account bob = await Database.ChannelMembers.AsQueryable()
                     .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != Client.AccountId)
                     .Select(m => m.Account).SingleAsync().ConfigureAwait(false);
 

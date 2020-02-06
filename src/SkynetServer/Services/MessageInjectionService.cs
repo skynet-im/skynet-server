@@ -26,11 +26,11 @@ namespace SkynetServer.Services
 
         public async Task CreateDirectChannelUpdate(Channel channel, long aliceId, Message alicePublic, long bobId, Message bobPublic)
         {
-            Message alicePrivate = await database.MessageDependencies
+            Message alicePrivate = await database.MessageDependencies.AsQueryable()
                 .Where(d => d.OwningMessageId == alicePublic.MessageId)
                 .Select(d => d.Message).SingleAsync().ConfigureAwait(false);
 
-            Message bobPrivate = await database.MessageDependencies
+            Message bobPrivate = await database.MessageDependencies.AsQueryable()
                 .Where(d => d.OwningMessageId == bobPublic.MessageId)
                 .Select(d => d.Message).SingleAsync().ConfigureAwait(false);
 

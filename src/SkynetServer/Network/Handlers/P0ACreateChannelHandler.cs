@@ -33,7 +33,7 @@ namespace SkynetServer.Network.Handlers
                 case ChannelType.AccountData:
                     throw new ProtocolException("Account data channels cannot be created manually");
                 case ChannelType.Direct:
-                    var counterpart = await Database.Accounts
+                    var counterpart = await Database.Accounts.AsQueryable()
                         .SingleOrDefaultAsync(acc => acc.AccountId == packet.CounterpartId)
                         .ConfigureAwait(false);
                     if (counterpart == null)
@@ -41,16 +41,18 @@ namespace SkynetServer.Network.Handlers
                         response.StatusCode = CreateChannelStatus.InvalidCounterpart;
                         await Client.SendPacket(response);
                     }
-                    else if (await Database.BlockedAccounts.AnyAsync(
-                        b => b.OwnerId == packet.CounterpartId && b.AccountId == Client.AccountId 
-                        || b.OwnerId == Client.AccountId && b.AccountId == packet.CounterpartId)
+                    else if (await Database.BlockedAccounts.AsQueryable()
+                        .AnyAsync(b => b.OwnerId == packet.CounterpartId && b.AccountId == Client.AccountId 
+                            || b.OwnerId == Client.AccountId && b.AccountId == packet.CounterpartId)
                         .ConfigureAwait(false))
                     {
                         response.StatusCode = CreateChannelStatus.Blocked;
                         await Client.SendPacket(response);
                     }
-                    else if (await Database.ChannelMembers.Where(m => m.AccountId == packet.CounterpartId)
-                        .Join(Database.ChannelMembers.Where(m => m.AccountId == Client.AccountId)
+                    else if (await Database.ChannelMembers.AsQueryable()
+                        .Where(m => m.AccountId == packet.CounterpartId)
+                        .Join(Database.ChannelMembers.AsQueryable()
+                            .Where(m => m.AccountId == Client.AccountId)
                             .Join(Database.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
                             .Where(c => c.ChannelType == ChannelType.Direct),
                             m => m.ChannelId, c => c.ChannelId, (m, c) => c)
