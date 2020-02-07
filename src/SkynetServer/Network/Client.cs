@@ -4,6 +4,7 @@ using SkynetServer.Network.Model;
 using SkynetServer.Services;
 using SkynetServer.Sockets;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,6 +68,21 @@ namespace SkynetServer.Network
             }
         }
 
+        public Task Send(Packet packet)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Send(ChannelMessage message)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Send(IAsyncEnumerable<ChannelMessage> messages)
+        {
+            throw new NotImplementedException();
+        }
+
         private async ValueTask HandlePacket(byte id, ReadOnlyMemory<byte> content)
         {
             if (id >= this.packets.Packets.Length)
@@ -75,6 +91,9 @@ namespace SkynetServer.Network
             Packet prototype = this.packets.Packets[id];
             if (prototype == null || !prototype.Policies.HasFlag(PacketPolicies.Receive))
                 throw new ProtocolException($"Cannot receive packet {id}");
+
+            if (VersionCode == default && !prototype.Policies.HasFlag(PacketPolicies.Uninitialized))
+                throw new ProtocolException($"Uninitialized client sent packet {id}");
 
             if (SessionId == default && !prototype.Policies.HasFlag(PacketPolicies.Unauthenticated))
                 throw new ProtocolException($"Unauthorized packet {id}");

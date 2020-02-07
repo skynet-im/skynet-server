@@ -39,7 +39,7 @@ namespace SkynetServer.Network.Handlers
                     if (counterpart == null)
                     {
                         response.StatusCode = CreateChannelStatus.InvalidCounterpart;
-                        await Client.SendPacket(response);
+                        await Client.Send(response);
                     }
                     else if (await Database.BlockedAccounts.AsQueryable()
                         .AnyAsync(b => b.OwnerId == packet.CounterpartId && b.AccountId == Client.AccountId 
@@ -47,7 +47,7 @@ namespace SkynetServer.Network.Handlers
                         .ConfigureAwait(false))
                     {
                         response.StatusCode = CreateChannelStatus.Blocked;
-                        await Client.SendPacket(response);
+                        await Client.Send(response);
                     }
                     else if (await Database.ChannelMembers.AsQueryable()
                         .Where(m => m.AccountId == packet.CounterpartId)
@@ -59,7 +59,7 @@ namespace SkynetServer.Network.Handlers
                         .AnyAsync().ConfigureAwait(false))
                     {
                         response.StatusCode = CreateChannelStatus.AlreadyExists;
-                        await Client.SendPacket(response);
+                        await Client.Send(response);
                     }
                     else
                     {
@@ -92,7 +92,7 @@ namespace SkynetServer.Network.Handlers
 
                         response.StatusCode = CreateChannelStatus.Success;
                         response.ChannelId = channel.ChannelId;
-                        await Client.SendPacket(response);
+                        await Client.Send(response);
 
                         await ForwardAccountChannels(Database, Client.Account, counterpart);
 

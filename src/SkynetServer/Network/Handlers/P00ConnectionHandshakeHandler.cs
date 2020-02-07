@@ -36,7 +36,7 @@ namespace SkynetServer.Network.Handlers
 
             Client.Initialize(packet.ApplicationIdentifier, packet.VersionCode);
 
-            await Client.SendPacket(response);
+            await Client.Send(response);
         }
     }
 }

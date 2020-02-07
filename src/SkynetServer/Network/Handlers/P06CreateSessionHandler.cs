@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SkynetServer.Database.Entities;
+using SkynetServer.Extensions;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using SkynetServer.Utilities;
@@ -21,19 +22,19 @@ namespace SkynetServer.Network.Handlers
             if (confirmation == null)
             {
                 response.StatusCode = CreateSessionStatus.InvalidCredentials;
-                await Client.SendPacket(response).ConfigureAwait(false);
+                await Client.Send(response).ConfigureAwait(false);
                 return;
             }
             if (confirmation.ConfirmationTime == default)
             {
                 response.StatusCode = CreateSessionStatus.UnconfirmedAccount;
-                await Client.SendPacket(response).ConfigureAwait(false);
+                await Client.Send(response).ConfigureAwait(false);
                 return;
             }
-            if (!new Span<byte>(packet.KeyHash).SequenceEqual(confirmation.Account.KeyHash))
+            if (!packet.KeyHash.SequenceEqual(confirmation.Account.KeyHash))
             {
                 response.StatusCode = CreateSessionStatus.InvalidCredentials;
-                await Client.SendPacket(response).ConfigureAwait(false);
+                await Client.Send(response).ConfigureAwait(false);
                 return;
             }
 
@@ -49,7 +50,7 @@ namespace SkynetServer.Network.Handlers
             Client.Authenticate(confirmation.Account.AccountId, session.SessionId);
 
             response.StatusCode = CreateSessionStatus.Success;
-            await Client.SendPacket(response).ConfigureAwait(false);
+            await Client.Send(response).ConfigureAwait(false);
 
             await SendMessages(new List<(long channelId, long messageId)>());
         }

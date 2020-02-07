@@ -21,7 +21,7 @@ namespace SkynetServer.Network.Handlers
             foreach (var result in results)
                 response.Results.Add(new SearchResult(result.AccountId, result.MailAddress));
             // Forward public packets to fully implement the Skynet protocol v5
-            await Client.SendPacket(response).ConfigureAwait(false);
+            await Client.Send(response).ConfigureAwait(false);
         }
     }
 }

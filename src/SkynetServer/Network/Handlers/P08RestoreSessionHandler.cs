@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SkynetServer.Database.Entities;
+using SkynetServer.Extensions;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using SkynetServer.Services;
@@ -23,10 +24,10 @@ namespace SkynetServer.Network.Handlers
             Session session = await Database.Sessions.Include(s => s.Account)
                 .SingleOrDefaultAsync(s => s.SessionId == packet.SessionId).ConfigureAwait(false);
             var response = Packets.New<P09RestoreSessionResponse>();
-            if (session == null || !new Span<byte>(packet.SessionToken).SequenceEqual(session.Account.KeyHash))
+            if (session == null || !packet.SessionToken.SequenceEqual(session.Account.KeyHash))
             {
                 response.StatusCode = RestoreSessionStatus.InvalidSession;
-                await Client.SendPacket(response).ConfigureAwait(false);
+                await Client.Send(response).ConfigureAwait(false);
                 return;
             }
 
@@ -36,7 +37,7 @@ namespace SkynetServer.Network.Handlers
             Client.Authenticate(session.Account.AccountId, session.SessionId);
 
             response.StatusCode = RestoreSessionStatus.Success;
-            await Client.SendPacket(response).ConfigureAwait(false);
+            await Client.Send(response).ConfigureAwait(false);
 
             await SendMessages(packet.Channels);
         }

@@ -43,7 +43,7 @@ namespace SkynetServer.Network
                 .Where(m => m.ChannelId == loopback.ChannelId && m.MessageId > lastLoopbackMessage)
                 .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
             {
-                await SendPacket(message.ToPacket(Account.AccountId));
+                await Send(message.ToPacket(Account.AccountId));
             }
 
             // Send messages from account data channels
@@ -76,7 +76,7 @@ namespace SkynetServer.Network
                 .Where(m => !m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != Account.AccountId)
                 .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
             {
-                await SendPacket(message.ToPacket(Account.AccountId));
+                await Send(message.ToPacket(Account.AccountId));
             }
         }
 

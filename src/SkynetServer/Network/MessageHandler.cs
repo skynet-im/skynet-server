@@ -64,7 +64,7 @@ namespace SkynetServer.Network
             response.MessageId = entity.MessageId;
             // TODO: Implement skip count
             response.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
-            await Client.SendPacket(response);
+            await Client.Send(response);
 
             packet.SenderId = Client.AccountId;
             packet.MessageId = entity.MessageId;
