@@ -67,7 +67,7 @@ namespace SkynetServer.Network
             await SendPacket(Packet.New<P0FSyncFinished>());
         }
 
-        private async Task SendMessages(long channelId, long lastMessage)
+        public async Task SendMessages(long channelId, long lastMessage)
         {
             using DatabaseContext ctx = new DatabaseContext();
             foreach (Message message in ctx.Messages
@@ -80,7 +80,7 @@ namespace SkynetServer.Network
             }
         }
 
-        private async Task ForwardAccountChannels(DatabaseContext ctx, Account alice, Account bob)
+        public async Task ForwardAccountChannels(DatabaseContext ctx, Account alice, Account bob)
         {
             Channel aliceChannel = await ctx.Channels.SingleAsync(c => c.ChannelType == ChannelType.AccountData && c.OwnerId == alice.AccountId);
             Channel bobChannel = await ctx.Channels.SingleAsync(c => c.ChannelType == ChannelType.AccountData && c.OwnerId == bob.AccountId);
@@ -104,7 +104,7 @@ namespace SkynetServer.Network
             await Task.WhenAll(SendAllMessages(bobChannel, alice), SendAllMessages(aliceChannel, bob));
         }
 
-        private async Task SendAllMessages(Channel channel, Account account)
+        public async Task SendAllMessages(Channel channel, Account account)
         {
             using DatabaseContext ctx = new DatabaseContext();
             // TODO: Skip accounts with no connected user

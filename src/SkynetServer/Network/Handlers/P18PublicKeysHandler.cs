@@ -47,18 +47,18 @@ namespace SkynetServer.Network.Handlers
 
             foreach (Channel channel in channels)
             {
-                Account bob = await Database.ChannelMembers.AsQueryable()
+                long bobId = await Database.ChannelMembers.AsQueryable()
                     .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != Client.AccountId)
-                    .Select(m => m.Account).SingleAsync().ConfigureAwait(false);
+                    .Select(m => m.AccountId).SingleAsync().ConfigureAwait(false);
 
                 // Get Bob's latest public key packet in this channel and take Alice's new public key
 
-                Message bobPublic = await bob.GetLatestPublicKey(Database);
+                Message bobPublic = await Database.GetLatestPublicKey(bobId).ConfigureAwait(false);
 
                 if (bobPublic == null) continue; // The server will create the DirectChannelUpdate when Bob sends his public key
 
                 var directChannelUpdate = await injector
-                    .CreateDirectChannelUpdate(channel, Client.AccountId, message, bob.AccountId, bobPublic).ConfigureAwait(false);
+                    .CreateDirectChannelUpdate(channel, Client.AccountId, message, bobId, bobPublic).ConfigureAwait(false);
                 _ = Delivery.SendMessage(directChannelUpdate, null);
             }
         }

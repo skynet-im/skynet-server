@@ -39,7 +39,7 @@ namespace SkynetServer.Network.Handlers
                     if (counterpart == null)
                     {
                         response.StatusCode = CreateChannelStatus.InvalidCounterpart;
-                        await Client.Send(response);
+                        await Client.Send(response).ConfigureAwait(false);
                     }
                     else if (await Database.BlockedAccounts.AsQueryable()
                         .AnyAsync(b => b.OwnerId == packet.CounterpartId && b.AccountId == Client.AccountId 
@@ -47,7 +47,7 @@ namespace SkynetServer.Network.Handlers
                         .ConfigureAwait(false))
                     {
                         response.StatusCode = CreateChannelStatus.Blocked;
-                        await Client.Send(response);
+                        await Client.Send(response).ConfigureAwait(false);
                     }
                     else if (await Database.ChannelMembers.AsQueryable()
                         .Where(m => m.AccountId == packet.CounterpartId)
@@ -59,7 +59,7 @@ namespace SkynetServer.Network.Handlers
                         .AnyAsync().ConfigureAwait(false))
                     {
                         response.StatusCode = CreateChannelStatus.AlreadyExists;
-                        await Client.Send(response);
+                        await Client.Send(response).ConfigureAwait(false);
                     }
                     else
                     {
@@ -81,23 +81,23 @@ namespace SkynetServer.Network.Handlers
                         createAlice.ChannelType = ChannelType.Direct;
                         createAlice.OwnerId = Client.AccountId;
                         createAlice.CounterpartId = packet.CounterpartId;
-                        await Delivery.SendPacket(createAlice, Client.AccountId, Client);
+                        await Delivery.SendPacket(createAlice, Client.AccountId, Client).ConfigureAwait(false);
 
                         var createBob = Packets.New<P0ACreateChannel>();
                         createBob.ChannelId = channel.ChannelId;
                         createBob.ChannelType = ChannelType.Direct;
                         createBob.OwnerId = Client.AccountId;
                         createBob.CounterpartId = Client.AccountId;
-                        await Delivery.SendPacket(createBob, packet.CounterpartId, null);
+                        await Delivery.SendPacket(createBob, packet.CounterpartId, null).ConfigureAwait(false);
 
                         response.StatusCode = CreateChannelStatus.Success;
                         response.ChannelId = channel.ChannelId;
-                        await Client.Send(response);
+                        await Client.Send(response).ConfigureAwait(false);
 
-                        await ForwardAccountChannels(Database, Client.Account, counterpart);
+                        await Client.ForwardAccountChannels(Database, Client.Account, counterpart);
 
-                        Message alicePublic = await Client.Account.GetLatestPublicKey(Database);
-                        Message bobPublic = await counterpart.GetLatestPublicKey(Database);
+                        Message alicePublic = await Database.GetLatestPublicKey(Client.AccountId).ConfigureAwait(false);
+                        Message bobPublic = await Database.GetLatestPublicKey(counterpart.AccountId).ConfigureAwait(false);
 
                         if (alicePublic != null && bobPublic != null)
                         {

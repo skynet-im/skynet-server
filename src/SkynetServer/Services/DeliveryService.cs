@@ -87,6 +87,28 @@ namespace SkynetServer.Services
             });
         }
 
+        #region packet and message broadcast
+        public async Task SendPacket(Packet packet, long accountId, Client exclude)
+        {
+            long[] sessions = await database.Sessions.AsQueryable()
+                .Where(s => s.AccountId == accountId)
+                .Select(s => s.SessionId)
+                .ToArrayAsync().ConfigureAwait(false);
+
+            IEnumerable<Task> send()
+            {
+                foreach (long sessionId in sessions)
+                {
+                    if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
+                    {
+                        yield return client.Send(packet);
+                    }
+                }
+            }
+
+            await Task.WhenAll(send()).ConfigureAwait(false);
+        }
+
         public async Task SendMessage(Message message, Client exclude)
         {
             bool isLoopback = message.MessageFlags.HasFlag(MessageFlags.Loopback);
@@ -171,12 +193,6 @@ namespace SkynetServer.Services
                 }
             })));
         }
-
-        public Task SendPacket(Packet packet, long accountId, Client exclude)
-        {
-            return Task.WhenAll(clients
-                .Where(c => c.Account != null && c.Account.AccountId == accountId && !ReferenceEquals(c, exclude))
-                .Select(c => c.SendPacket(packet)));
-        }
+        #endregion
     }
 }

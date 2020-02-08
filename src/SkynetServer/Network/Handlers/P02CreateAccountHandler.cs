@@ -76,7 +76,7 @@ namespace SkynetServer.Network.Handlers
                     response.StatusCode = CreateAccountStatus.Success;
                 }
             }
-            await Client.Send(response);
+            await Client.Send(response).ConfigureAwait(false);
         }
     }
 }

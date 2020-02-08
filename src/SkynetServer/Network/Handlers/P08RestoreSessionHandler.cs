@@ -39,7 +39,7 @@ namespace SkynetServer.Network.Handlers
             response.StatusCode = RestoreSessionStatus.Success;
             await Client.Send(response).ConfigureAwait(false);
 
-            await SendMessages(packet.Channels);
+            await Client.SendMessages(packet.Channels);
         }
     }
 }
