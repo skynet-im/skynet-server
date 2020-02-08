@@ -12,61 +12,6 @@ namespace SkynetServer.Network
 {
     internal partial class Client
     {
-        public async Task SendMessages(List<(long channelId, long messageId)> currentState)
-        {
-            using DatabaseContext ctx = new DatabaseContext();
-            Channel[] channels = ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
-                .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c).ToArray();
-
-            foreach (Channel channel in channels)
-            {
-                if (!currentState.Any(s => s.channelId == channel.ChannelId))
-                {
-                    // Notify client about new channels
-                    var packet = Packet.New<P0ACreateChannel>();
-                    packet.ChannelId = channel.ChannelId;
-                    packet.ChannelType = channel.ChannelType;
-                    packet.OwnerId = channel.OwnerId ?? 0;
-                    if (packet.ChannelType == ChannelType.Direct)
-                        packet.CounterpartId = await ctx.ChannelMembers
-                            .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != Account.AccountId)
-                            .Select(m => m.AccountId).SingleAsync();
-                    await SendPacket(packet);
-                    currentState.Add((channel.ChannelId, 0));
-                }
-            }
-
-            // Send messages from loopback channel
-            Channel loopback = channels.Single(c => c.ChannelType == ChannelType.Loopback);
-            long lastLoopbackMessage = currentState.Single(s => s.channelId == loopback.ChannelId).messageId;
-            foreach (Message message in ctx.Messages
-                .Where(m => m.ChannelId == loopback.ChannelId && m.MessageId > lastLoopbackMessage)
-                .Include(m => m.Dependencies).OrderBy(m => m.MessageId))
-            {
-                await Send(message.ToPacket(Account.AccountId));
-            }
-
-            // Send messages from account data channels
-            foreach (long channelId in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
-                .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                .Where(c => c.ChannelType == ChannelType.AccountData).Select(c => c.ChannelId))
-            {
-                long lastMessage = currentState.Single(s => s.channelId == channelId).messageId;
-                await SendMessages(channelId, lastMessage);
-            }
-
-            // Send messages from direct channels
-            foreach (long channelId in ctx.ChannelMembers.Where(m => m.AccountId == Account.AccountId)
-                .Join(ctx.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                .Where(c => c.ChannelType == ChannelType.Direct).Select(c => c.ChannelId))
-            {
-                long lastMessage = currentState.Single(s => s.channelId == channelId).messageId;
-                await SendMessages(channelId, lastMessage);
-            }
-
-            await SendPacket(Packet.New<P0FSyncFinished>());
-        }
-
         public async Task SendMessages(long channelId, long lastMessage)
         {
             using DatabaseContext ctx = new DatabaseContext();

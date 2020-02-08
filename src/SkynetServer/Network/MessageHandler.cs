@@ -64,7 +64,7 @@ namespace SkynetServer.Network
             response.MessageId = entity.MessageId;
             // TODO: Implement skip count
             response.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
-            await Client.Send(response);
+            await Client.Send(response).ConfigureAwait(false);
 
             packet.SenderId = Client.AccountId;
             packet.MessageId = entity.MessageId;
@@ -73,7 +73,7 @@ namespace SkynetServer.Network
             if (packet.Id == 0x20)
                 await Delivery.SendPriorityMessage(entity, exclude: Client, excludeFcm: Client.Account);
             else
-                await Delivery.SendMessage(entity, exclude: Client);
+                await Delivery.SendMessage(entity, exclude: Client).ConfigureAwait(false);
 
             await PostHandling(packet, entity).ConfigureAwait(false);
         }

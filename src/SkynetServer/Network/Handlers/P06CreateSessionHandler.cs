@@ -52,7 +52,9 @@ namespace SkynetServer.Network.Handlers
             response.StatusCode = CreateSessionStatus.Success;
             await Client.Send(response).ConfigureAwait(false);
 
-            await Client.SendMessages(new List<(long channelId, long messageId)>());
+            await Delivery.SyncChannels(Client, new List<long>()).ConfigureAwait(false);
+            // TODO: Send messages
+            await Client.Send(Packets.New<P0FSyncFinished>()).ConfigureAwait(false);
         }
     }
 }

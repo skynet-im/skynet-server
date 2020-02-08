@@ -38,8 +38,10 @@ namespace SkynetServer.Network.Handlers
 
             response.StatusCode = RestoreSessionStatus.Success;
             await Client.Send(response).ConfigureAwait(false);
-
-            await Client.SendMessages(packet.Channels);
+            
+            await Delivery.SyncChannels(Client, packet.Channels).ConfigureAwait(false);
+            // TODO: Send messages
+            await Client.Send(Packets.New<P0FSyncFinished>()).ConfigureAwait(false);
         }
     }
 }

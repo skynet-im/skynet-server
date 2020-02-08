@@ -30,7 +30,7 @@ namespace SkynetServer.Network.Handlers
                 throw new ProtocolException($"The dependency of {nameof(P18PublicKeys)} to private keys must be specific for the sending account.");
 
             if (!await Database.Messages.AsQueryable()
-                .AnyAsync(m => m.MessageId == dep.MessageId && m.PacketId == 0x17))
+                .AnyAsync(m => m.MessageId == dep.MessageId && m.PacketId == 0x17).ConfigureAwait(false))
                 throw new ProtocolException($"Could not find the referenced private keys for {nameof(P18PublicKeys)}.");
 
             return MessageSendStatus.Success;

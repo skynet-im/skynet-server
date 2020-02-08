@@ -194,5 +194,33 @@ namespace SkynetServer.Services
             })));
         }
         #endregion
+
+        #region channel and message restore
+        public async Task SyncChannels(Client client, List<long> currentState)
+        {
+            Channel[] channels = await database.ChannelMembers.AsQueryable()
+                .Where(m => m.AccountId == client.AccountId)
+                .Join(database.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                .ToArrayAsync().ConfigureAwait(false);
+
+            foreach (Channel channel in channels)
+            {
+                if (!currentState.Contains(channel.ChannelId))
+                {
+                    // Notify client about new channels
+                    var packet = packets.New<P0ACreateChannel>();
+                    packet.ChannelId = channel.ChannelId;
+                    packet.ChannelType = channel.ChannelType;
+                    packet.OwnerId = channel.OwnerId ?? 0;
+                    if (packet.ChannelType == ChannelType.Direct)
+                        packet.CounterpartId = await database.ChannelMembers.AsQueryable()
+                            .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != client.AccountId)
+                            .Select(m => m.AccountId).SingleAsync();
+                    await client.Send(packet).ConfigureAwait(false);
+                    currentState.Add(channel.ChannelId);
+                }
+            }
+        }
+        #endregion
     }
 }
