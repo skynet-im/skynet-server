@@ -17,7 +17,7 @@ namespace SkynetServer.Tests
     {
         private IServiceProvider serviceProvider;
 
-        [ClassInitialize]
+        [TestInitialize]
         public void Initialize()
         {
             var configuration = new ConfigurationBuilder()
@@ -26,7 +26,7 @@ namespace SkynetServer.Tests
 
             var services = new ServiceCollection();
             services.ConfigureSkynet(configuration);
-            services.AddDbContext<DatabaseContext>();
+            services.AddDatabaseContext(configuration);
             serviceProvider = services.BuildServiceProvider();
         }
 
@@ -37,20 +37,30 @@ namespace SkynetServer.Tests
             {
                 using IServiceScope scope = serviceProvider.CreateScope();
                 var database = scope.ServiceProvider.GetService<DatabaseContext>();
-                (_, _, bool success) = await database.AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>());
+                (_, _, bool success) = await database.AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
                 Assert.IsTrue(success);
-            });
+            }).ConfigureAwait(false);
         }
 
         [TestMethod]
         public async Task TestAddExistingAccount()
         {
             const string address = "concurrency@unit.test";
-            using IServiceScope scope = serviceProvider.CreateScope();
-            var database = scope.ServiceProvider.GetService<DatabaseContext>();
-            await database.AddAccount(address, Array.Empty<byte>());
-            (_, _, bool success) = await database.AddAccount(address, Array.Empty<byte>());
-            Assert.IsFalse(success);
+
+            using (IServiceScope scope = serviceProvider.CreateScope())
+            {
+                var database = scope.ServiceProvider.GetService<DatabaseContext>();
+                await database.AddAccount(address, Array.Empty<byte>()).ConfigureAwait(false);
+            }
+
+            // If we add conflicting accounts in the same scope, EF Core is throwing an exception.
+
+            using (IServiceScope scope = serviceProvider.CreateScope())
+            {
+                var database = scope.ServiceProvider.GetService<DatabaseContext>();
+                (_, _, bool success) = await database.AddAccount(address, Array.Empty<byte>()).ConfigureAwait(false);
+                Assert.IsFalse(success);
+            }
         }
 
         [TestMethod]
@@ -61,10 +71,11 @@ namespace SkynetServer.Tests
                 using IServiceScope scope = serviceProvider.CreateScope();
                 var database = scope.ServiceProvider.GetService<DatabaseContext>();
 
-                (var account, _, bool success) = await database.AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>());
+                (var account, _, bool success) = await database
+                    .AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
                 Assert.IsTrue(success);
 
-                await AsyncParallel.ForAsync(0, 10, j =>
+                await AsyncParallel.ForAsync(0, 10, async j =>
                 {
                     using IServiceScope scope = serviceProvider.CreateScope();
                     var database = scope.ServiceProvider.GetService<DatabaseContext>();
@@ -74,22 +85,22 @@ namespace SkynetServer.Tests
                         AccountId = account.AccountId,
                         ApplicationIdentifier = "windows/SkynetServer.Database.Tests"
                     };
-                    return database.AddSession(session);
-                });
-            });
+                    await database.AddSession(session).ConfigureAwait(false);
+                }).ConfigureAwait(false);
+            }).ConfigureAwait(false);
         }
 
         [TestMethod]
         public async Task TestAddChannel()
         {
-            await AsyncParallel.ForAsync(0, 500, i =>
+            await AsyncParallel.ForAsync(0, 500, async i =>
             {
                 using IServiceScope scope = serviceProvider.CreateScope();
                 var database = scope.ServiceProvider.GetService<DatabaseContext>();
 
                 Channel channel = new Channel() { ChannelType = ChannelType.Loopback };
-                return database.AddChannel(channel);
-            });
+                await database.AddChannel(channel).ConfigureAwait(false);
+            }).ConfigureAwait(false);
         }
 
         [TestMethod]
@@ -100,7 +111,8 @@ namespace SkynetServer.Tests
                 using IServiceScope scope = serviceProvider.CreateScope();
                 var database = scope.ServiceProvider.GetService<DatabaseContext>();
 
-                (var account, _, bool success) = await database.AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>());
+                (var account, _, bool success) = await database
+                    .AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
                 Assert.IsTrue(success);
 
                 Channel channel = new Channel()
@@ -108,8 +120,8 @@ namespace SkynetServer.Tests
                     OwnerId = account.AccountId,
                     ChannelType = ChannelType.Loopback
                 };
-                await database.AddChannel(channel);
-            });
+                await database.AddChannel(channel).ConfigureAwait(false);
+            }).ConfigureAwait(false);
         }
 
         [TestMethod]
@@ -121,17 +133,22 @@ namespace SkynetServer.Tests
                 var database = scope.ServiceProvider.GetService<DatabaseContext>();
 
                 Channel channel = new Channel() { ChannelType = ChannelType.Loopback };
-                await database.AddChannel(channel);
+                await database.AddChannel(channel).ConfigureAwait(false);
 
-                await AsyncParallel.ForAsync(0, 100, j =>
+                await AsyncParallel.ForAsync(0, 100, async j =>
                 {
                     using IServiceScope scope = serviceProvider.CreateScope();
                     var database = scope.ServiceProvider.GetService<DatabaseContext>();
 
-                    Message message = new Message() { ChannelId = channel.ChannelId };
-                    return database.AddMessage(message);
-                });
-            });
+                    Message message = new Message()
+                    {
+                        ChannelId = channel.ChannelId,
+                        MessageFlags = MessageFlags.Unencrypted
+                    };
+                    database.Messages.Add(message);
+                    await database.SaveChangesAsync().ConfigureAwait(false);
+                }).ConfigureAwait(false);
+            }).ConfigureAwait(false);
         }
 
         [TestMethod]
@@ -141,7 +158,7 @@ namespace SkynetServer.Tests
             var database = scope.ServiceProvider.GetService<DatabaseContext>();
 
             Channel channel = new Channel() { ChannelType = ChannelType.Loopback };
-            await database.AddChannel(channel);
+            await database.AddChannel(channel).ConfigureAwait(false);
             Message previous = null;
 
             await AsyncParallel.ForAsync(0, 100, async i =>
@@ -149,19 +166,20 @@ namespace SkynetServer.Tests
                 using IServiceScope scope = serviceProvider.CreateScope();
                 var database = scope.ServiceProvider.GetService<DatabaseContext>();
 
-                Message message = new Message() { ChannelId = channel.ChannelId };
-                message = await database.AddMessage(message);
+                var dependencies = new List<MessageDependency>();
                 if (previous != null)
+                    dependencies.Add(new MessageDependency { MessageId = previous.MessageId });
+
+                Message message = new Message()
                 {
-                    database.MessageDependencies.Add(new MessageDependency
-                    {
-                        OwningMessageId = message.MessageId,
-                        MessageId = previous.MessageId,
-                    });
-                    await database.SaveChangesAsync();
-                }
+                    ChannelId = channel.ChannelId,
+                    MessageFlags = MessageFlags.Unencrypted,
+                    Dependencies = dependencies
+                };
+              
+                await database.SaveChangesAsync().ConfigureAwait(false);
                 previous = message;
-            });
+            }).ConfigureAwait(false);
         }
     }
 }
