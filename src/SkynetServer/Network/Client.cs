@@ -3,6 +3,7 @@ using SkynetServer.Database;
 using SkynetServer.Network.Model;
 using SkynetServer.Services;
 using SkynetServer.Sockets;
+using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,6 +18,7 @@ namespace SkynetServer.Network
         private readonly PacketService packets;
         private readonly PacketStream stream;
         private readonly CancellationToken ct;
+        private readonly JobQueue<Packet> sendQueue;
 
         public Client(IServiceProvider serviceProvider, PacketService packets, PacketStream stream, CancellationToken ct)
         {
@@ -24,6 +26,12 @@ namespace SkynetServer.Network
             this.packets = packets;
             this.stream = stream;
             this.ct = ct;
+            sendQueue = new JobQueue<Packet>(packet =>
+            {
+                PacketBuffer buffer = new PacketBuffer();
+                packet.WritePacket(buffer);
+                return stream.WriteAsync(packet.Id, buffer.GetBuffer());
+            });
         }
 
         public string ApplicationIdentifier { get; private set; }
@@ -68,20 +76,9 @@ namespace SkynetServer.Network
             }
         }
 
-        public Task Send(Packet packet)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task Send(ChannelMessage message)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task Send(IAsyncEnumerable<ChannelMessage> messages)
-        {
-            throw new NotImplementedException();
-        }
+        public Task Send(Packet packet) => sendQueue.Insert(packet);
+        public Task Send(ChannelMessage message) => sendQueue.Enqueue(message);
+        public Task Send(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages);
 
         private async ValueTask HandlePacket(byte id, ReadOnlyMemory<byte> content)
         {
