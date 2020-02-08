@@ -100,7 +100,11 @@ namespace SkynetServer.Network.Handlers
                         Message bobPublic = await counterpart.GetLatestPublicKey(Database);
 
                         if (alicePublic != null && bobPublic != null)
-                            await injector.CreateDirectChannelUpdate(channel, Client.AccountId, alicePublic, counterpart.AccountId, bobPublic);
+                        {
+                            var message = await injector
+                                .CreateDirectChannelUpdate(channel, Client.AccountId, alicePublic, counterpart.AccountId, bobPublic).ConfigureAwait(false);
+                            _ = Delivery.SendMessage(message, null);
+                        }
                     }
                     break;
                 case ChannelType.Group:

@@ -14,10 +14,12 @@ namespace SkynetServer.Network.Handlers
 {
     internal class P02CreateAccountHandler : PacketHandler<P02CreateAccount>
     {
+        private readonly MessageInjectionService injector;
         private readonly MailingService mailing;
 
-        public P02CreateAccountHandler(MailingService mailing)
+        public P02CreateAccountHandler(MessageInjectionService injector, MailingService mailing)
         {
+            this.injector = injector;
             this.mailing = mailing;
         }
 
@@ -58,7 +60,8 @@ namespace SkynetServer.Network.Handlers
                     var passwordUpdate = Packets.New<P15PasswordUpdate>();
                     passwordUpdate.KeyHash = packet.KeyHash;
                     passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
-                    await Delivery.CreateMessage(passwordUpdate, loopback, newAccount.AccountId).ConfigureAwait(false);
+                    var passwordUpdateEntity = await injector.CreateMessage(passwordUpdate, loopback, newAccount.AccountId).ConfigureAwait(false);
+                    _ = Delivery.SendMessage(passwordUpdateEntity, null);
 
                     // Send email address
                     var mailAddress = Packets.New<P14MailAddress>();
@@ -66,7 +69,8 @@ namespace SkynetServer.Network.Handlers
                         .Where(c => c.AccountId == newAccount.AccountId)
                         .Select(c => c.MailAddress).SingleAsync().ConfigureAwait(false);
                     mailAddress.MessageFlags = MessageFlags.Unencrypted;
-                    await Delivery.CreateMessage(mailAddress, accountData, newAccount.AccountId).ConfigureAwait(false);
+                    var mailAddressEntity = await injector.CreateMessage(mailAddress, accountData, newAccount.AccountId).ConfigureAwait(false);
+                    _ = Delivery.SendMessage(mailAddressEntity, null);
 
                     await mail.ConfigureAwait(false);
                     response.StatusCode = CreateAccountStatus.Success;

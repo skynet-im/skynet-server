@@ -14,16 +14,16 @@ namespace SkynetServer.Network
     {
         public static List<MessageDependency> ToDatabase(this List<Dependency> dependencies)
         {
-            MessageDependency[] result = new MessageDependency[dependencies.Count];
+            var result = new List<MessageDependency>(dependencies.Count);
             for (int i = 0; i < dependencies.Count; i++)
             {
-                result[i] = new MessageDependency
+                result.Add(new MessageDependency
                 {
                     AccountId = dependencies[i].AccountId == 0 ? null : new long?(dependencies[i].AccountId),
                     MessageId = dependencies[i].MessageId,
-                };
+                });
             }
-            return new List<MessageDependency>(result);
+            return result;
         }
 
         public static ChannelMessage ToPacket(this Message message, long accountId)

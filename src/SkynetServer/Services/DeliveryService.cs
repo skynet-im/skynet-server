@@ -23,7 +23,7 @@ namespace SkynetServer.Services
         private readonly IOptions<FcmOptions> fcmOptions;
         private readonly DatabaseContext database;
 
-        public DeliveryService(PacketService packets, ConnectionsService connections, 
+        public DeliveryService(PacketService packets, ConnectionsService connections,
             FirebaseService firebase, IOptions<FcmOptions> fcmOptions, DatabaseContext database)
         {
             this.packets = packets;
@@ -87,51 +87,30 @@ namespace SkynetServer.Services
             });
         }
 
-        public async Task<Message> CreateMessage(ChannelMessage packet, Channel channel, long? senderId)
-        {
-            packet.ChannelId = channel.ChannelId;
-            packet.MessageFlags |= MessageFlags.Unencrypted;
-
-            Message message = new Message()
-            {
-                ChannelId = channel.ChannelId,
-                SenderId = senderId,
-                // TODO: Implement skip count
-                MessageFlags = packet.MessageFlags,
-                // TODO: Implement FileId
-                PacketId = packet.Id,
-                PacketVersion = packet.PacketVersion,
-                PacketContent = packet.PacketContent.IsEmpty ? null : packet.PacketContent.ToArray(),
-            };
-
-            message = await DatabaseHelper.AddMessage(message, packet.Dependencies.ToDatabase());
-
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                long[] members = await ctx.ChannelMembers.Where(m => m.ChannelId == channel.ChannelId).Select(m => m.AccountId).ToArrayAsync();
-                bool isLoopback = packet.MessageFlags.HasFlag(MessageFlags.Loopback);
-                bool isNoSenderSync = packet.MessageFlags.HasFlag(MessageFlags.NoSenderSync);
-                await Task.WhenAll(clients
-                    .Where(c => c.Account != null && members.Contains(c.Account.AccountId))
-                    .Where(c => !isLoopback || c.Account.AccountId == senderId)
-                    .Where(c => !isNoSenderSync || c.Account.AccountId != senderId)
-                    .Select(c => c.SendPacket(message.ToPacket(c.Account.AccountId))));
-            }
-
-            return message;
-        }
-
         public async Task SendMessage(Message message, Client exclude)
         {
-            long[] accounts;
+            bool isLoopback = message.MessageFlags.HasFlag(MessageFlags.Loopback);
+            bool isNoSenderSync = message.MessageFlags.HasFlag(MessageFlags.NoSenderSync);
 
-            using (DatabaseContext ctx = new DatabaseContext())
-                accounts = await ctx.ChannelMembers.Where(m => m.ChannelId == message.ChannelId)
-                    .Select(m => m.AccountId).ToArrayAsync();
+            long[] sessions = await database.ChannelMembers.AsQueryable()
+                .Where(m => m.ChannelId == message.ChannelId
+                    && !isLoopback || m.AccountId == message.SenderId
+                    && !isNoSenderSync || m.AccountId != message.SenderId)
+                .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s.SessionId)
+                .ToArrayAsync().ConfigureAwait(false);
 
-            await Task.WhenAll(clients
-                .Where(c => c.Account != null && accounts.Contains(c.Account.AccountId) && !ReferenceEquals(c, exclude))
-                .Select(c => c.SendPacket(message.ToPacket(c.Account.AccountId))));
+            IEnumerable<Task> send()
+            {
+                foreach (long sessionId in sessions)
+                {
+                    if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
+                    {
+                        yield return client.Send(message.ToPacket(client.AccountId));
+                    }
+                }
+            }
+
+            await Task.WhenAll(send()).ConfigureAwait(false);
         }
 
         public async Task SendPriorityMessage(Message message, Client exclude, Account excludeFcm)

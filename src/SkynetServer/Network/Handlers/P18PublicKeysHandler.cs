@@ -7,7 +7,6 @@ using SkynetServer.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Handlers
@@ -58,7 +57,9 @@ namespace SkynetServer.Network.Handlers
 
                 if (bobPublic == null) continue; // The server will create the DirectChannelUpdate when Bob sends his public key
 
-                await injector.CreateDirectChannelUpdate(channel, Client.AccountId, message, bob.AccountId, bobPublic);
+                var directChannelUpdate = await injector
+                    .CreateDirectChannelUpdate(channel, Client.AccountId, message, bob.AccountId, bobPublic).ConfigureAwait(false);
+                _ = Delivery.SendMessage(directChannelUpdate, null);
             }
         }
     }
