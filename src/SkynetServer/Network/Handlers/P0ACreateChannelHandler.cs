@@ -20,9 +20,8 @@ namespace SkynetServer.Network.Handlers
             this.injector = injector;
         }
 
-        public override async ValueTask Handle(P0ACreateChannel packet)
+        public override ValueTask Handle(P0ACreateChannel packet)
         {
-            Channel channel = null;
             var response = Packets.New<P2FCreateChannelResponse>();
             response.TempChannelId = packet.ChannelId;
 
@@ -33,86 +32,129 @@ namespace SkynetServer.Network.Handlers
                 case ChannelType.AccountData:
                     throw new ProtocolException("Account data channels cannot be created manually");
                 case ChannelType.Direct:
-                    var counterpart = await Database.Accounts.AsQueryable()
-                        .SingleOrDefaultAsync(acc => acc.AccountId == packet.CounterpartId)
-                        .ConfigureAwait(false);
-                    if (counterpart == null)
-                    {
-                        response.StatusCode = CreateChannelStatus.InvalidCounterpart;
-                        await Client.Send(response).ConfigureAwait(false);
-                    }
-                    else if (await Database.BlockedAccounts.AsQueryable()
-                        .AnyAsync(b => b.OwnerId == packet.CounterpartId && b.AccountId == Client.AccountId 
-                            || b.OwnerId == Client.AccountId && b.AccountId == packet.CounterpartId)
-                        .ConfigureAwait(false))
-                    {
-                        response.StatusCode = CreateChannelStatus.Blocked;
-                        await Client.Send(response).ConfigureAwait(false);
-                    }
-                    else if (await Database.ChannelMembers.AsQueryable()
-                        .Where(m => m.AccountId == packet.CounterpartId)
-                        .Join(Database.ChannelMembers.AsQueryable()
-                            .Where(m => m.AccountId == Client.AccountId)
-                            .Join(Database.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                            .Where(c => c.ChannelType == ChannelType.Direct),
-                            m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                        .AnyAsync().ConfigureAwait(false))
-                    {
-                        response.StatusCode = CreateChannelStatus.AlreadyExists;
-                        await Client.Send(response).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        // Create a new direct channel
-                        channel = await Database.AddChannel(
-                            new Channel
-                            {
-                                OwnerId = Client.AccountId,
-                                ChannelType = ChannelType.Direct
-                            },
-                            new ChannelMember { AccountId = Client.AccountId },
-                            new ChannelMember { AccountId = packet.CounterpartId })
-                            .ConfigureAwait(false);
-
-                        // TODO: Check for existing direct channels and delete if another channel was created in the meantime
-
-                        var createAlice = Packets.New<P0ACreateChannel>();
-                        createAlice.ChannelId = channel.ChannelId;
-                        createAlice.ChannelType = ChannelType.Direct;
-                        createAlice.OwnerId = Client.AccountId;
-                        createAlice.CounterpartId = packet.CounterpartId;
-                        await Delivery.SendPacket(createAlice, Client.AccountId, Client).ConfigureAwait(false);
-
-                        var createBob = Packets.New<P0ACreateChannel>();
-                        createBob.ChannelId = channel.ChannelId;
-                        createBob.ChannelType = ChannelType.Direct;
-                        createBob.OwnerId = Client.AccountId;
-                        createBob.CounterpartId = Client.AccountId;
-                        await Delivery.SendPacket(createBob, packet.CounterpartId, null).ConfigureAwait(false);
-
-                        response.StatusCode = CreateChannelStatus.Success;
-                        response.ChannelId = channel.ChannelId;
-                        await Client.Send(response).ConfigureAwait(false);
-
-                        await Client.ForwardAccountChannels(Database, Client.Account, counterpart);
-
-                        Message alicePublic = await Database.GetLatestPublicKey(Client.AccountId).ConfigureAwait(false);
-                        Message bobPublic = await Database.GetLatestPublicKey(counterpart.AccountId).ConfigureAwait(false);
-
-                        if (alicePublic != null && bobPublic != null)
-                        {
-                            var message = await injector
-                                .CreateDirectChannelUpdate(channel, Client.AccountId, alicePublic, counterpart.AccountId, bobPublic).ConfigureAwait(false);
-                            _ = Delivery.SendMessage(message, null);
-                        }
-                    }
-                    break;
+                    return CreateDirectChannel(packet.CounterpartId, response);
                 case ChannelType.Group:
                 case ChannelType.ProfileData:
                     throw new NotImplementedException();
                 default:
                     throw new ArgumentOutOfRangeException($"{nameof(packet)}.{nameof(P0ACreateChannel.ChannelType)}");
             }
+        }
+
+        private async ValueTask CreateDirectChannel(long counterpartId, P2FCreateChannelResponse response)
+        {
+            var counterpart = await Database.Accounts.AsQueryable()
+                .SingleOrDefaultAsync(acc => acc.AccountId == counterpartId).ConfigureAwait(false);
+            if (counterpart == null)
+            {
+                response.StatusCode = CreateChannelStatus.InvalidCounterpart;
+                await Client.Send(response).ConfigureAwait(false);
+            }
+            else if (await Database.BlockedAccounts.AsQueryable()
+                .AnyAsync(b => b.OwnerId == counterpartId && b.AccountId == Client.AccountId
+                    || b.OwnerId == Client.AccountId && b.AccountId == counterpartId)
+                .ConfigureAwait(false))
+            {
+                response.StatusCode = CreateChannelStatus.Blocked;
+                await Client.Send(response).ConfigureAwait(false);
+            }
+            else if (await Database.ChannelMembers.AsQueryable()
+                .Where(m => m.AccountId == counterpartId)
+                .Join(Database.ChannelMembers.AsQueryable()
+                    .Where(m => m.AccountId == Client.AccountId)
+                    .Join(Database.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                    .Where(c => c.ChannelType == ChannelType.Direct),
+                    m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                .AnyAsync().ConfigureAwait(false))
+            {
+                response.StatusCode = CreateChannelStatus.AlreadyExists;
+                await Client.Send(response).ConfigureAwait(false);
+            }
+            else
+            {
+                // Create a new direct channel
+                Channel channel = await Database.AddChannel(
+                    new Channel
+                    {
+                        OwnerId = Client.AccountId,
+                        ChannelType = ChannelType.Direct
+                    },
+                    new ChannelMember { AccountId = Client.AccountId },
+                    new ChannelMember { AccountId = counterpartId })
+                    .ConfigureAwait(false);
+
+                // TODO: Check for existing direct channels and delete if another channel was created in the meantime
+
+                (long aliceChannelId, long bobChannelId) = await AddToAccountChannels(Client.AccountId, counterpartId).ConfigureAwait(false);
+
+                response.StatusCode = CreateChannelStatus.Success;
+                response.ChannelId = channel.ChannelId;
+                Task responseTask = Client.Send(response);
+
+                // The following actions can be retried and are therefore executed asynchronously for both clients
+                var createAlice = Packets.New<P0ACreateChannel>();
+                createAlice.ChannelId = channel.ChannelId;
+                createAlice.ChannelType = ChannelType.Direct;
+                createAlice.OwnerId = Client.AccountId;
+                createAlice.CounterpartId = counterpartId;
+                _ = Delivery.SendPacket(createAlice, Client.AccountId, Client);
+
+                var createBob = Packets.New<P0ACreateChannel>();
+                createBob.ChannelId = channel.ChannelId;
+                createBob.ChannelType = ChannelType.Direct;
+                createBob.OwnerId = Client.AccountId;
+                createBob.CounterpartId = Client.AccountId;
+                _ = Delivery.SendPacket(createBob, counterpartId, null);
+
+                // Start messages forwarding before injecting the direct channel update
+                // Otherwise clients could not resolve the dependencies to the keys
+                _ = ForwardAccountChannel(bobChannelId, counterpartId, Client.AccountId);
+                _ = ForwardAccountChannel(aliceChannelId, Client.AccountId, counterpartId);
+
+                Message alicePublic = await Database.GetLatestPublicKey(Client.AccountId).ConfigureAwait(false);
+                Message bobPublic = await Database.GetLatestPublicKey(counterpart.AccountId).ConfigureAwait(false);
+
+                if (alicePublic != null && bobPublic != null)
+                {
+                    var message = await injector
+                        .CreateDirectChannelUpdate(channel, Client.AccountId, alicePublic, counterpart.AccountId, bobPublic).ConfigureAwait(false);
+                    _ = Delivery.SendMessage(message, null);
+                }
+
+                await responseTask.ConfigureAwait(false);
+            }
+        }
+
+        private async Task<(long aliceChannelId, long bobChannelId)> AddToAccountChannels(long aliceId, long bobId)
+        {
+            long aliceChannelId = await Database.Channels.AsQueryable()
+                .Where(c => c.ChannelType == ChannelType.AccountData && c.OwnerId == aliceId)
+                .Select(c => c.ChannelId)
+                .SingleAsync().ConfigureAwait(false);
+            long bobChannelId = await Database.Channels.AsQueryable()
+                .Where(c => c.ChannelType == ChannelType.AccountData && c.OwnerId == bobId)
+                .Select(c => c.ChannelId)
+                .SingleAsync().ConfigureAwait(false);
+
+            Database.ChannelMembers.Add(new ChannelMember { ChannelId = aliceChannelId, AccountId = bobId });
+            Database.ChannelMembers.Add(new ChannelMember { ChannelId = bobChannelId, AccountId = aliceId });
+            await Database.SaveChangesAsync().ConfigureAwait(false);
+
+            return (aliceChannelId, bobChannelId);
+        }
+
+        private async Task ForwardAccountChannel(long channelId, long ownerId, long recipientId)
+        {
+            var createAlice = Packets.New<P0ACreateChannel>();
+            createAlice.ChannelId = channelId;
+            createAlice.ChannelType = ChannelType.AccountData;
+            createAlice.OwnerId = ownerId;
+
+            // Don't wait for the create channel packet to be sent to make sure that the following send operation is enqueued immediately
+            Task createTask = Delivery.SendPacket(createAlice, recipientId, null);
+            Task syncTask = Delivery.SyncMessages(recipientId, channelId);
+
+            await Task.WhenAll(createTask, syncTask).ConfigureAwait(false);
         }
     }
 }

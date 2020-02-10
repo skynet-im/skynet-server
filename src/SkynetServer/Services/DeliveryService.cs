@@ -215,11 +215,22 @@ namespace SkynetServer.Services
                     if (packet.ChannelType == ChannelType.Direct)
                         packet.CounterpartId = await database.ChannelMembers.AsQueryable()
                             .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != client.AccountId)
-                            .Select(m => m.AccountId).SingleAsync();
+                            .Select(m => m.AccountId)
+                            .SingleAsync().ConfigureAwait(false);
                     await client.Send(packet).ConfigureAwait(false);
                     currentState.Add(channel.ChannelId);
                 }
             }
+        }
+
+        public Task SyncMessages(Client client, long lastMessageId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task SyncMessages(long accountId, long channelId)
+        {
+            throw new NotImplementedException();
         }
         #endregion
     }

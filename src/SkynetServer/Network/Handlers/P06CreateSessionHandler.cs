@@ -52,8 +52,9 @@ namespace SkynetServer.Network.Handlers
             response.StatusCode = CreateSessionStatus.Success;
             await Client.Send(response).ConfigureAwait(false);
 
+            // TODO: Change the following code not to be awaited anymore
             await Delivery.SyncChannels(Client, new List<long>()).ConfigureAwait(false);
-            // TODO: Send messages
+            await Delivery.SyncMessages(Client, lastMessageId: default).ConfigureAwait(false);
             await Client.Send(Packets.New<P0FSyncFinished>()).ConfigureAwait(false);
         }
     }

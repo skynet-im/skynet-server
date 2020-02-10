@@ -23,7 +23,7 @@ namespace SkynetServer.Web.Controllers
         [HttpGet("{token}")]
         public async Task<IActionResult> Get(string token)
         {
-            MailConfirmation confirmation = await ctx.MailConfirmations.SingleOrDefaultAsync(x => x.Token == token);
+            MailConfirmation confirmation = await ctx.MailConfirmations.SingleOrDefaultAsync(x => x.Token == token).ConfigureAwait(false);
             if (confirmation == null)
                 return View("Invalid");
             if (confirmation.ConfirmationTime == default)
@@ -35,7 +35,7 @@ namespace SkynetServer.Web.Controllers
         [HttpPost("{token}")]
         public async Task<IActionResult> Post(string token)
         {
-            MailConfirmation confirmation = await ctx.MailConfirmations.SingleOrDefaultAsync(x => x.Token == token);
+            MailConfirmation confirmation = await ctx.MailConfirmations.SingleOrDefaultAsync(x => x.Token == token).ConfigureAwait(false);
             if (confirmation == null)
                 return View("Invalid");
             if (confirmation.ConfirmationTime == default)
@@ -46,7 +46,7 @@ namespace SkynetServer.Web.Controllers
                     ctx.MailConfirmations.Where(c => c.AccountId == confirmation.AccountId && c.Token != token));
 
                 confirmation.ConfirmationTime = DateTime.Now;
-                await ctx.SaveChangesAsync();
+                await ctx.SaveChangesAsync().ConfigureAwait(false);
                 return View("Success", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
             }
             else
