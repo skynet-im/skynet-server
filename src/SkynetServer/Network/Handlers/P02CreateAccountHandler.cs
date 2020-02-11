@@ -61,7 +61,7 @@ namespace SkynetServer.Network.Handlers
                     passwordUpdate.KeyHash = packet.KeyHash;
                     passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
                     var passwordUpdateEntity = await injector.CreateMessage(passwordUpdate, loopback, newAccount.AccountId).ConfigureAwait(false);
-                    _ = Delivery.SendMessage(passwordUpdateEntity, null);
+                    _ = await Delivery.SendMessage(passwordUpdateEntity, null).ConfigureAwait(false);
 
                     // Send email address
                     var mailAddress = Packets.New<P14MailAddress>();
@@ -70,7 +70,7 @@ namespace SkynetServer.Network.Handlers
                         .Select(c => c.MailAddress).SingleAsync().ConfigureAwait(false);
                     mailAddress.MessageFlags = MessageFlags.Unencrypted;
                     var mailAddressEntity = await injector.CreateMessage(mailAddress, accountData, newAccount.AccountId).ConfigureAwait(false);
-                    _ = Delivery.SendMessage(mailAddressEntity, null);
+                    _ = await Delivery.SendMessage(mailAddressEntity, null).ConfigureAwait(false);
 
                     await mail.ConfigureAwait(false);
                     response.StatusCode = CreateAccountStatus.Success;

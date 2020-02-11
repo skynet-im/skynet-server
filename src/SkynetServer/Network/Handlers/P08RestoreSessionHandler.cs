@@ -40,7 +40,7 @@ namespace SkynetServer.Network.Handlers
             await Client.Send(response).ConfigureAwait(false);
 
             // TODO: Change the following code not to be awaited anymore
-            await Delivery.SyncChannels(Client, packet.Channels).ConfigureAwait(false);
+            await (await Delivery.SyncChannels(Client, packet.Channels).ConfigureAwait(false)).ConfigureAwait(false);
             await Delivery.SyncMessages(Client, packet.LastMessageId).ConfigureAwait(false);
             await Client.Send(Packets.New<P0FSyncFinished>()).ConfigureAwait(false);
         }

@@ -88,7 +88,7 @@ namespace SkynetServer.Services
         }
 
         #region packet and message broadcast
-        public async Task SendPacket(Packet packet, long accountId, Client exclude)
+        public async Task<Task> SendPacket(Packet packet, long accountId, Client exclude)
         {
             long[] sessions = await database.Sessions.AsQueryable()
                 .Where(s => s.AccountId == accountId)
@@ -106,10 +106,10 @@ namespace SkynetServer.Services
                 }
             }
 
-            await Task.WhenAll(send()).ConfigureAwait(false);
+            return Task.WhenAll(send());
         }
 
-        public async Task SendMessage(Message message, Client exclude)
+        public async Task<Task> SendMessage(Message message, Client exclude)
         {
             bool isLoopback = message.MessageFlags.HasFlag(MessageFlags.Loopback);
             bool isNoSenderSync = message.MessageFlags.HasFlag(MessageFlags.NoSenderSync);
@@ -132,7 +132,7 @@ namespace SkynetServer.Services
                 }
             }
 
-            await Task.WhenAll(send()).ConfigureAwait(false);
+            return Task.WhenAll(send());
         }
 
         public async Task SendPriorityMessage(Message message, Client exclude, Account excludeFcm)
@@ -196,12 +196,14 @@ namespace SkynetServer.Services
         #endregion
 
         #region channel and message restore
-        public async Task SyncChannels(Client client, List<long> currentState)
+        public async Task<Task> SyncChannels(Client client, List<long> currentState)
         {
             Channel[] channels = await database.ChannelMembers.AsQueryable()
                 .Where(m => m.AccountId == client.AccountId)
                 .Join(database.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
                 .ToArrayAsync().ConfigureAwait(false);
+
+            List<Task> sendTasks = new List<Task>();
 
             foreach (Channel channel in channels)
             {
@@ -217,20 +219,52 @@ namespace SkynetServer.Services
                             .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != client.AccountId)
                             .Select(m => m.AccountId)
                             .SingleAsync().ConfigureAwait(false);
-                    await client.Send(packet).ConfigureAwait(false);
+                    sendTasks.Add(client.Send(packet));
                     currentState.Add(channel.ChannelId);
                 }
             }
+
+            return Task.WhenAll(sendTasks);
         }
 
         public Task SyncMessages(Client client, long lastMessageId)
         {
-            throw new NotImplementedException();
+            var query = database.ChannelMembers.AsQueryable()
+                .Where(member => member.AccountId == client.AccountId)
+                .Join(database.Messages, member => member.ChannelId, m => m.ChannelId, (member, m) => m)
+                .Where(m => (m.MessageId > lastMessageId)
+                    && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == client.AccountId)
+                    && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != client.AccountId))
+                .Include(m => m.Dependencies).OrderBy(m => m.MessageId);
+
+            return client.Send(query.AsAsyncEnumerable().Select(m => m.ToPacket(client.AccountId)));
         }
 
-        public Task SyncMessages(long accountId, long channelId)
+        public async Task<Task> SyncMessages(long accountId, long channelId)
         {
-            throw new NotImplementedException();
+            long[] sessions = await database.Sessions.AsQueryable()
+                .Where(s => s.AccountId == accountId)
+                .Select(s => s.SessionId)
+                .ToArrayAsync().ConfigureAwait(false);
+
+            IEnumerable<Task> send()
+            {
+                foreach (long sessionId in sessions)
+                {
+                    if (connections.TryGet(sessionId, out Client client))
+                    {
+                        var query = database.Messages.AsQueryable()
+                            .Where(m => (m.ChannelId == channelId)
+                                && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == accountId)
+                                && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != accountId))
+                            .Include(m => m.Dependencies).OrderBy(m => m.MessageId);
+
+                        yield return client.Send(query.AsAsyncEnumerable().Select(m => m.ToPacket(accountId)));
+                    }
+                }
+            }
+
+            return Task.WhenAll(send());
         }
         #endregion
     }

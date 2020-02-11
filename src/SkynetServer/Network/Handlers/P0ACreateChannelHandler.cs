@@ -97,19 +97,19 @@ namespace SkynetServer.Network.Handlers
                 createAlice.ChannelType = ChannelType.Direct;
                 createAlice.OwnerId = Client.AccountId;
                 createAlice.CounterpartId = counterpartId;
-                _ = Delivery.SendPacket(createAlice, Client.AccountId, Client);
+                _ = await Delivery.SendPacket(createAlice, Client.AccountId, Client).ConfigureAwait(false);
 
                 var createBob = Packets.New<P0ACreateChannel>();
                 createBob.ChannelId = channel.ChannelId;
                 createBob.ChannelType = ChannelType.Direct;
                 createBob.OwnerId = Client.AccountId;
                 createBob.CounterpartId = Client.AccountId;
-                _ = Delivery.SendPacket(createBob, counterpartId, null);
+                _ = await Delivery.SendPacket(createBob, counterpartId, null).ConfigureAwait(false);
 
                 // Start messages forwarding before injecting the direct channel update
                 // Otherwise clients could not resolve the dependencies to the keys
-                _ = ForwardAccountChannel(bobChannelId, counterpartId, Client.AccountId);
-                _ = ForwardAccountChannel(aliceChannelId, Client.AccountId, counterpartId);
+                _ = await ForwardAccountChannel(bobChannelId, counterpartId, Client.AccountId).ConfigureAwait(false);
+                _ = await ForwardAccountChannel(aliceChannelId, Client.AccountId, counterpartId).ConfigureAwait(false);
 
                 Message alicePublic = await Database.GetLatestPublicKey(Client.AccountId).ConfigureAwait(false);
                 Message bobPublic = await Database.GetLatestPublicKey(counterpart.AccountId).ConfigureAwait(false);
@@ -118,7 +118,7 @@ namespace SkynetServer.Network.Handlers
                 {
                     var message = await injector
                         .CreateDirectChannelUpdate(channel, Client.AccountId, alicePublic, counterpart.AccountId, bobPublic).ConfigureAwait(false);
-                    _ = Delivery.SendMessage(message, null);
+                    _ = await Delivery.SendMessage(message, null).ConfigureAwait(false);
                 }
 
                 await responseTask.ConfigureAwait(false);
@@ -143,7 +143,7 @@ namespace SkynetServer.Network.Handlers
             return (aliceChannelId, bobChannelId);
         }
 
-        private async Task ForwardAccountChannel(long channelId, long ownerId, long recipientId)
+        private async Task<Task> ForwardAccountChannel(long channelId, long ownerId, long recipientId)
         {
             var createAlice = Packets.New<P0ACreateChannel>();
             createAlice.ChannelId = channelId;
@@ -151,10 +151,10 @@ namespace SkynetServer.Network.Handlers
             createAlice.OwnerId = ownerId;
 
             // Don't wait for the create channel packet to be sent to make sure that the following send operation is enqueued immediately
-            Task createTask = Delivery.SendPacket(createAlice, recipientId, null);
-            Task syncTask = Delivery.SyncMessages(recipientId, channelId);
+            Task createTask = await Delivery.SendPacket(createAlice, recipientId, null).ConfigureAwait(false);
+            Task syncTask = await Delivery.SyncMessages(recipientId, channelId).ConfigureAwait(false);
 
-            await Task.WhenAll(createTask, syncTask).ConfigureAwait(false);
+            return Task.WhenAll(createTask, syncTask);
         }
     }
 }
