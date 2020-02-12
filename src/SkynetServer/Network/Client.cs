@@ -108,9 +108,9 @@ namespace SkynetServer.Network
             using IServiceScope scope = serviceProvider.CreateScope();
 
             var handler = (IPacketHandler)ActivatorUtilities.CreateInstance(serviceProvider, this.packets.Handlers[id]);
-            DatabaseContext database = scope.ServiceProvider.GetService<DatabaseContext>();
-            PacketService packets = scope.ServiceProvider.GetService<PacketService>();
-            DeliveryService delivery = scope.ServiceProvider.GetService<DeliveryService>();
+            DatabaseContext database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+            PacketService packets = scope.ServiceProvider.GetRequiredService<PacketService>();
+            DeliveryService delivery = scope.ServiceProvider.GetRequiredService<DeliveryService>();
             handler.Init(this, database, packets, delivery);
 
             await handler.Handle(instance).ConfigureAwait(false);

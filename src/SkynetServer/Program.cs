@@ -31,8 +31,8 @@ namespace SkynetServer
                 services.AddSingleton<FirebaseService>();
                 services.AddSingleton<ConnectionsService>();
                 services.AddSingleton<PacketService>();
-                services.AddSingleton<DeliveryService>();
                 services.AddDatabaseContext(context.Configuration);
+                services.AddScoped<DeliveryService>();
                 services.AddScoped<MessageInjectionService>();
                 services.AddHostedService<ListenerService>();
             });

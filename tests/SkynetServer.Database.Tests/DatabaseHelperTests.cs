@@ -36,7 +36,7 @@ namespace SkynetServer.Tests
             await AsyncParallel.ForAsync(0, 500, async i =>
             {
                 using IServiceScope scope = serviceProvider.CreateScope();
-                var database = scope.ServiceProvider.GetService<DatabaseContext>();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
                 (_, _, bool success) = await database.AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
                 Assert.IsTrue(success);
             }).ConfigureAwait(false);
@@ -49,7 +49,7 @@ namespace SkynetServer.Tests
 
             using (IServiceScope scope = serviceProvider.CreateScope())
             {
-                var database = scope.ServiceProvider.GetService<DatabaseContext>();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
                 await database.AddAccount(address, Array.Empty<byte>()).ConfigureAwait(false);
             }
 
@@ -57,7 +57,7 @@ namespace SkynetServer.Tests
 
             using (IServiceScope scope = serviceProvider.CreateScope())
             {
-                var database = scope.ServiceProvider.GetService<DatabaseContext>();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
                 (_, _, bool success) = await database.AddAccount(address, Array.Empty<byte>()).ConfigureAwait(false);
                 Assert.IsFalse(success);
             }
@@ -69,7 +69,7 @@ namespace SkynetServer.Tests
             await AsyncParallel.ForAsync(0, 100, async i =>
             {
                 using IServiceScope scope = serviceProvider.CreateScope();
-                var database = scope.ServiceProvider.GetService<DatabaseContext>();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
 
                 (var account, _, bool success) = await database
                     .AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
@@ -78,7 +78,7 @@ namespace SkynetServer.Tests
                 await AsyncParallel.ForAsync(0, 10, async j =>
                 {
                     using IServiceScope scope = serviceProvider.CreateScope();
-                    var database = scope.ServiceProvider.GetService<DatabaseContext>();
+                    var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
 
                     Session session = new Session()
                     {
@@ -96,7 +96,7 @@ namespace SkynetServer.Tests
             await AsyncParallel.ForAsync(0, 500, async i =>
             {
                 using IServiceScope scope = serviceProvider.CreateScope();
-                var database = scope.ServiceProvider.GetService<DatabaseContext>();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
 
                 Channel channel = new Channel() { ChannelType = ChannelType.Loopback };
                 await database.AddChannel(channel).ConfigureAwait(false);
@@ -109,7 +109,7 @@ namespace SkynetServer.Tests
             await AsyncParallel.ForAsync(0, 50, async i =>
             {
                 using IServiceScope scope = serviceProvider.CreateScope();
-                var database = scope.ServiceProvider.GetService<DatabaseContext>();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
 
                 (var account, _, bool success) = await database
                     .AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
@@ -130,7 +130,7 @@ namespace SkynetServer.Tests
             await AsyncParallel.ForAsync(0, 5, async i =>
             {
                 using IServiceScope scope = serviceProvider.CreateScope();
-                var database = scope.ServiceProvider.GetService<DatabaseContext>();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
 
                 Channel channel = new Channel() { ChannelType = ChannelType.Loopback };
                 await database.AddChannel(channel).ConfigureAwait(false);
@@ -138,7 +138,7 @@ namespace SkynetServer.Tests
                 await AsyncParallel.ForAsync(0, 100, async j =>
                 {
                     using IServiceScope scope = serviceProvider.CreateScope();
-                    var database = scope.ServiceProvider.GetService<DatabaseContext>();
+                    var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
 
                     Message message = new Message()
                     {
@@ -155,7 +155,7 @@ namespace SkynetServer.Tests
         public async Task TestAddMessageAndDependency()
         {
             using IServiceScope scope = serviceProvider.CreateScope();
-            var database = scope.ServiceProvider.GetService<DatabaseContext>();
+            var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
 
             Channel channel = new Channel() { ChannelType = ChannelType.Loopback };
             await database.AddChannel(channel).ConfigureAwait(false);
@@ -164,7 +164,7 @@ namespace SkynetServer.Tests
             await AsyncParallel.ForAsync(0, 100, async i =>
             {
                 using IServiceScope scope = serviceProvider.CreateScope();
-                var database = scope.ServiceProvider.GetService<DatabaseContext>();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
 
                 var dependencies = new List<MessageDependency>();
                 if (previous != null)

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using SkynetServer.Configuration;
 using SkynetServer.Database;
@@ -17,15 +18,17 @@ namespace SkynetServer.Services
 {
     internal class DeliveryService
     {
+        private readonly IServiceProvider serviceProvider;
         private readonly PacketService packets;
         private readonly ConnectionsService connections;
         private readonly FirebaseService firebase;
         private readonly IOptions<FcmOptions> fcmOptions;
         private readonly DatabaseContext database;
 
-        public DeliveryService(PacketService packets, ConnectionsService connections,
+        public DeliveryService(IServiceProvider serviceProvider, PacketService packets, ConnectionsService connections,
             FirebaseService firebase, IOptions<FcmOptions> fcmOptions, DatabaseContext database)
         {
+            this.serviceProvider = serviceProvider;
             this.packets = packets;
             this.connections = connections;
             this.firebase = firebase;
@@ -227,8 +230,11 @@ namespace SkynetServer.Services
             return Task.WhenAll(sendTasks);
         }
 
-        public Task SyncMessages(Client client, long lastMessageId)
+        public async Task SyncMessages(Client client, long lastMessageId)
         {
+            using IServiceScope scope = serviceProvider.CreateScope();
+            var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+
             var query = database.ChannelMembers.AsQueryable()
                 .Where(member => member.AccountId == client.AccountId)
                 .Join(database.Messages, member => member.ChannelId, m => m.ChannelId, (member, m) => m)
@@ -237,7 +243,9 @@ namespace SkynetServer.Services
                     && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != client.AccountId))
                 .Include(m => m.Dependencies).OrderBy(m => m.MessageId);
 
-            return client.Send(query.AsAsyncEnumerable().Select(m => m.ToPacket(client.AccountId)));
+            await client.Send(query.AsAsyncEnumerable().Select(m => m.ToPacket(client.AccountId))).ConfigureAwait(false);
+
+            // Independent service scope is disposed after await return
         }
 
         public async Task<Task> SyncMessages(long accountId, long channelId)
@@ -247,19 +255,29 @@ namespace SkynetServer.Services
                 .Select(s => s.SessionId)
                 .ToArrayAsync().ConfigureAwait(false);
 
+            async Task sendTo(Client client)
+            {
+                IServiceScope scope = serviceProvider.CreateScope();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+
+                var query = database.Messages.AsQueryable()
+                    .Where(m => (m.ChannelId == channelId)
+                        && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == accountId)
+                        && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != accountId))
+                    .Include(m => m.Dependencies).OrderBy(m => m.MessageId);
+
+                await client.Send(query.AsAsyncEnumerable().Select(m => m.ToPacket(accountId))).ConfigureAwait(false);
+
+                // Independent service scope is disposed after await return
+            }
+
             IEnumerable<Task> send()
             {
                 foreach (long sessionId in sessions)
                 {
                     if (connections.TryGet(sessionId, out Client client))
                     {
-                        var query = database.Messages.AsQueryable()
-                            .Where(m => (m.ChannelId == channelId)
-                                && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == accountId)
-                                && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != accountId))
-                            .Include(m => m.Dependencies).OrderBy(m => m.MessageId);
-
-                        yield return client.Send(query.AsAsyncEnumerable().Select(m => m.ToPacket(accountId)));
+                        yield return sendTo(client);
                     }
                 }
             }
