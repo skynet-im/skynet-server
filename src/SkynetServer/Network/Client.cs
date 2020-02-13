@@ -26,12 +26,7 @@ namespace SkynetServer.Network
             this.packets = packets;
             this.stream = stream;
             this.ct = ct;
-            sendQueue = new JobQueue<Packet>(packet =>
-            {
-                PacketBuffer buffer = new PacketBuffer();
-                packet.WritePacket(buffer);
-                return stream.WriteAsync(packet.Id, buffer.GetBuffer());
-            });
+            sendQueue = new JobQueue<Packet>(packet => stream.WriteAsync(packet));
         }
 
         public string ApplicationIdentifier { get; private set; }

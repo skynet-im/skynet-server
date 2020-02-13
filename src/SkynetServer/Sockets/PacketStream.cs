@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Buffers.Binary;
 using System.IO;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,7 +27,7 @@ namespace SkynetServer.Sockets
             if (disposedValue) throw new ObjectDisposedException(nameof(PacketStream));
 
             byte[] buffer = new byte[4];
-            await ReadInternal(buffer, ct);
+            await ReadInternal(buffer, ct).ConfigureAwait(false);
             int packetMeta = BitConverter.ToInt32(buffer);
             if (!BitConverter.IsLittleEndian)
                 packetMeta = BinaryPrimitives.ReverseEndianness(packetMeta);
@@ -38,7 +36,7 @@ namespace SkynetServer.Sockets
             int length = packetMeta >> 8;
 
             buffer = new byte[length];
-            await ReadInternal(buffer, ct);
+            await ReadInternal(buffer, ct).ConfigureAwait(false);
 
             return (id, buffer);
         }
@@ -49,20 +47,23 @@ namespace SkynetServer.Sockets
         /// <exception cref="ArgumentOutOfRangeException">The <paramref name="buffer"/> is larger than 0x00ffffff bytes.</exception>
         /// <exception cref="IOException">Failed to write on the underlying stream.</exception>
         /// <exception cref="ObjectDisposedException">The <see cref="PacketStream"/> has been disposed.</exception>
-        public async ValueTask WriteAsync(byte id, ReadOnlyMemory<byte> buffer, CancellationToken ct = default)
+        public ValueTask WriteAsync(IPacket packet, CancellationToken ct = default)
         {
+            if (packet == null) throw new ArgumentNullException(nameof(packet));
             if (disposedValue) throw new ObjectDisposedException(nameof(PacketStream));
 
-            if (buffer.Length > 0x00ffffff) throw new ArgumentOutOfRangeException(nameof(buffer));
+            // Create buffer with four bytes alignment for packet meta
+            var buffer = new PacketBuffer { Position = sizeof(int) };
+            packet.WritePacket(buffer);
 
-            int packetMeta = buffer.Length << 8 | id;
-            if (!BitConverter.IsLittleEndian)
-                packetMeta = BinaryPrimitives.ReverseEndianness(packetMeta);
+            int length = buffer.Position - sizeof(int);
+            if (length > 0x00ffffff) throw new ArgumentOutOfRangeException(nameof(packet), "The packet payload is too large");
 
-            Memory<byte> sendBuffer = new byte[sizeof(int) + buffer.Length];
-            Unsafe.WriteUnaligned(ref MemoryMarshal.GetReference(sendBuffer.Span), packetMeta);
-            buffer.CopyTo(sendBuffer.Slice(sizeof(int)));
-            await innerStream.WriteAsync(sendBuffer, ct);
+            buffer.Position = 0;
+            buffer.WriteInt32(length << 8 | packet.Id);
+            buffer.Position = length + sizeof(int);
+
+            return innerStream.WriteAsync(buffer.GetBuffer(), ct);
         }
 
         private async ValueTask ReadInternal(Memory<byte> buffer, CancellationToken ct)

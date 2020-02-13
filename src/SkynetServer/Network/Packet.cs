@@ -3,7 +3,7 @@ using System;
 
 namespace SkynetServer.Network
 {
-    internal abstract class Packet
+    internal abstract class Packet : IPacket
     {
         public byte Id { get; set; }
         public PacketPolicies Policies { get; set; }

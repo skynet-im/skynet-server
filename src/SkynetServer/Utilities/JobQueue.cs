@@ -18,6 +18,7 @@ namespace SkynetServer.Utilities
             this.executor = executor;
             queue = new StreamQueue<T, TaskCompletionSource<bool>>();
             insert = new StreamQueue<T, TaskCompletionSource<bool>>();
+            executeLock = new object();
         }
 
         public Task Enqueue(T item)
