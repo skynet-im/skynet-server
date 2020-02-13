@@ -5,30 +5,43 @@ using SkynetServer.Network.Packets;
 using SkynetServer.Services;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace SkynetServer.Tests
 {
     [TestClass]
-    public class PacketTests
+    public class PacketServiceTests
     {
         private PacketService packets;
 
-        [ClassInitialize]
-        public void Constructor()
+        [TestInitialize]
+        public void Initialize()
         {
             packets = new PacketService();
         }
 
         [TestMethod]
-        public void TestInitialize()
+        public void TestPackets()
         {
-            Packet[] packets = this.packets.Packets;
+            ReadOnlySpan<Packet> packets = this.packets.Packets;
             for (int i = 0; i < packets.Length; i++)
             {
-                if (packets[i] == null) continue;
-                Assert.AreEqual(i, packets[i].Id);
+                if (packets[i] != null)
+                    Assert.AreEqual(i, packets[i].Id);
+            }
+        }
+
+        [TestMethod]
+        public void TestHandlers()
+        {
+            ReadOnlySpan<Packet> packets = this.packets.Packets;
+            for (int i = 0; i < packets.Length; i++)
+            {
+                if (packets[i] != null && packets[i].Policies.HasFlag(PacketPolicies.Receive))
+                {
+                    Type handler = this.packets.Handlers[i];
+                    Assert.IsNotNull(handler);
+                    Assert.AreEqual(packets[i].GetType(), handler.GetGenericArguments()[0]);
+                }
             }
         }
 

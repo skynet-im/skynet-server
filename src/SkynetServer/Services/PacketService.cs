@@ -9,14 +9,17 @@ namespace SkynetServer.Services
 {
     internal class PacketService
     {
+        private readonly Packet[] packets;
+        private readonly Type[] handlers;
+
         public PacketService()
         {
-            Packets = MapPackets();
-            Handlers = MapHandlers(Packets);
+            packets = MapPackets();
+            handlers = MapHandlers(packets);
         }
 
-        public Packet[] Packets { get; }
-        public Type[] Handlers { get; }
+        public ReadOnlySpan<Packet> Packets => packets;
+        public ReadOnlySpan<Type> Handlers => handlers;
 
         public T New<T>() where T : Packet
         {
@@ -51,7 +54,7 @@ namespace SkynetServer.Services
                 {
                     object[] flags = type.GetCustomAttributes(typeof(MessageFlagsAttribute), inherit: true);
                     var messageFlags = (MessageFlagsAttribute)flags.FirstOrDefault(x => x.GetType() == typeof(MessageFlagsAttribute));
-         
+
                     var requiredFlags = (RequiredFlagsAttribute)flags.FirstOrDefault(x => x.GetType() == typeof(RequiredFlagsAttribute));
                     var allowedFlags = (AllowedFlagsAttribute)flags.FirstOrDefault(x => x.GetType() == typeof(AllowedFlagsAttribute));
                     if (messageFlags != null)
@@ -84,13 +87,35 @@ namespace SkynetServer.Services
         {
             Type[] result = new Type[packets.Length];
 
+            for (int i = 0; i < packets.Length; i++)
+            {
+                Packet packet = packets[i];
+                if (packet == null || !packet.Policies.HasFlag(PacketPolicies.Receive))
+                    continue;
+
+                Type handler = Assembly.GetExecutingAssembly().GetType(packet.GetType().Name + "Handler");
+                if (handler != null
+                    && handler.IsSubclassOf(typeof(PacketHandler<>))
+                    && handler.GetGenericArguments()[0] == packet.GetType())
+                {
+                    result[i] = handler;
+                }
+                else if (packet is ChannelMessage)
+                {
+                    result[i] = typeof(MessageHandler<ChannelMessage>);
+                }
+
+                // Only unit tests will enforce handlers for all packets
+                // In most cases they will not be necessary for the server to run
+            }
+
             foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
             {
                 if (!type.IsSubclassOf(typeof(PacketHandler<>))) continue;
-                
+
                 Type packetType = type.GetGenericArguments().Single();
                 bool found = false;
-                
+
                 for (int i = 0; i < packets.Length; i++)
                 {
                     if (packets[i]?.GetType() == packetType)
@@ -101,7 +126,7 @@ namespace SkynetServer.Services
                     }
                 }
 
-                if (!found) 
+                if (!found)
                     throw new ArgumentException($"Could not find a matching packet for handler {type.Name}");
             }
 

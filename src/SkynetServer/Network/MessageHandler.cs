@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Network
 {
-    internal abstract class MessageHandler<T> : PacketHandler<T> where T : ChannelMessage
+    internal class MessageHandler<T> : PacketHandler<T> where T : ChannelMessage
     {
         public sealed override async ValueTask Handle(T packet)
         {
@@ -73,7 +73,7 @@ namespace SkynetServer.Network
             if (packet.Id == 0x20)
                 await Delivery.SendPriorityMessage(entity, exclude: Client, excludeFcm: Client.Account);
             else
-                await Delivery.SendMessage(entity, exclude: Client).ConfigureAwait(false);
+                _ = await Delivery.SendMessage(entity, exclude: Client).ConfigureAwait(false);
 
             await PostHandling(packet, entity).ConfigureAwait(false);
         }
