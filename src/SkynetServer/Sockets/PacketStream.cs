@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Sockets
 {
+    /// <summary>
+    /// Provides a reading and writing wrapper to reassemble packets with their ID from a segmented stream.
+    /// </summary>
     internal class PacketStream : IAsyncDisposable
     {
         private readonly Stream innerStream;
@@ -42,9 +45,9 @@ namespace SkynetServer.Sockets
         }
 
         /// <summary>
-        /// Writes a packet to the underlying stream
+        /// Writes a packet to the underlying stream.
         /// </summary>
-        /// <exception cref="ArgumentOutOfRangeException">The <paramref name="buffer"/> is larger than 0x00ffffff bytes.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">The packet payload is larger than 0x00ffffff bytes.</exception>
         /// <exception cref="IOException">Failed to write on the underlying stream.</exception>
         /// <exception cref="ObjectDisposedException">The <see cref="PacketStream"/> has been disposed.</exception>
         public ValueTask WriteAsync(IPacket packet, CancellationToken ct = default)

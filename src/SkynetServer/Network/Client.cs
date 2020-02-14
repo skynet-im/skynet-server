@@ -37,6 +37,8 @@ namespace SkynetServer.Network
         public long FocusedChannelId { get; set; }
         public ChannelAction ChannelAction { get; set; }
 
+        public event Action<Client, Packet> PacketReceived;
+
         public void Initialize(string applicationIdentifier, int versionCode)
         {
             ApplicationIdentifier = applicationIdentifier;
@@ -99,6 +101,7 @@ namespace SkynetServer.Network
             instance.ReadPacket(buffer);
 
             Console.WriteLine($"Starting to handle packet {instance}");
+            PacketReceived?.Invoke(this, instance);
 
             using IServiceScope scope = serviceProvider.CreateScope();
 
@@ -119,6 +122,7 @@ namespace SkynetServer.Network
             if (!disposedValue)
             {
                 // TODO: Finish all pending handling operations
+                await sendQueue.DisposeAsync().ConfigureAwait(false);
                 await stream.DisposeAsync().ConfigureAwait(false);
 
                 disposedValue = true;

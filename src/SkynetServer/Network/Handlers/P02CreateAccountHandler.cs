@@ -56,21 +56,21 @@ namespace SkynetServer.Network.Handlers
                         new ChannelMember { AccountId = newAccount.AccountId })
                         .ConfigureAwait(false);
 
-                    // Send password update packet
+                    // Create password update packet
                     var passwordUpdate = Packets.New<P15PasswordUpdate>();
                     passwordUpdate.KeyHash = packet.KeyHash;
                     passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
-                    var passwordUpdateEntity = await injector.CreateMessage(passwordUpdate, loopback, newAccount.AccountId).ConfigureAwait(false);
-                    _ = await Delivery.SendMessage(passwordUpdateEntity, null).ConfigureAwait(false);
+                    _ = await injector.CreateMessage(passwordUpdate, loopback, newAccount.AccountId).ConfigureAwait(false);
 
-                    // Send email address
+                    // Create email address
                     var mailAddress = Packets.New<P14MailAddress>();
                     mailAddress.MailAddress = await Database.MailConfirmations.AsQueryable()
                         .Where(c => c.AccountId == newAccount.AccountId)
                         .Select(c => c.MailAddress).SingleAsync().ConfigureAwait(false);
                     mailAddress.MessageFlags = MessageFlags.Unencrypted;
-                    var mailAddressEntity = await injector.CreateMessage(mailAddress, accountData, newAccount.AccountId).ConfigureAwait(false);
-                    _ = await Delivery.SendMessage(mailAddressEntity, null).ConfigureAwait(false);
+                    _ = await injector.CreateMessage(mailAddress, accountData, newAccount.AccountId).ConfigureAwait(false);
+
+                    // As newly created account do not have sessions or contacts there is no need to deliver these packets immediately
 
                     await mail.ConfigureAwait(false);
                     response.StatusCode = CreateAccountStatus.Success;

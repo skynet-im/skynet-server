@@ -7,6 +7,9 @@ using System.Text;
 
 namespace SkynetServer.Sockets
 {
+    /// <summary>
+    /// Reads and writes primitive data types in a little endian binary format.
+    /// </summary>
     internal sealed class PacketBuffer
     {
         private const int DefaultCapacity = 65536;

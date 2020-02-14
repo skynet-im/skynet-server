@@ -5,6 +5,12 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Utilities
 {
+    /// <summary>
+    /// Provides a generic FIFO collection that can dynamically consume items from an <see cref="IAsyncEnumerable{T}"/>.
+    /// Only enqueue operations are thread safe. The state object is the same among all items of a stream.
+    /// </summary>
+    /// <typeparam name="TItem"></typeparam>
+    /// <typeparam name="TState"></typeparam>
     internal class StreamQueue<TItem, TState> : IAsyncDisposable
     {
         private readonly ConcurrentQueue<QueueItem> queue;
@@ -51,17 +57,17 @@ namespace SkynetServer.Utilities
                 {
                     // TODO: Provide an API to pass a CancellationToken here
                     IAsyncEnumerator<TItem> enumerator = queueItem.Items.GetAsyncEnumerator();
-                    bool next = await enumerator.MoveNextAsync();
+                    bool next = await enumerator.MoveNextAsync().ConfigureAwait(false);
                     if (!next)
                     {
-                        await enumerator.DisposeAsync();
-                        return await TryDequeue();
+                        await enumerator.DisposeAsync().ConfigureAwait(false);
+                        return await TryDequeue().ConfigureAwait(false);
                     }
                     else
                     {
                         currentEnumerator = enumerator;
                         currentState = queueItem.State;
-                        return await DequeueCached();
+                        return await DequeueCached().ConfigureAwait(false);
                     }
                 }
             }
@@ -93,7 +99,7 @@ namespace SkynetServer.Utilities
             if (!disposedValue)
             {
                 if (currentEnumerator != null)
-                    await currentEnumerator.DisposeAsync();
+                    await currentEnumerator.DisposeAsync().ConfigureAwait(false);
                 
                 disposedValue = true;
             }
