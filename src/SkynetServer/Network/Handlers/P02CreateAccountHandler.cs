@@ -60,7 +60,7 @@ namespace SkynetServer.Network.Handlers
                     var passwordUpdate = Packets.New<P15PasswordUpdate>();
                     passwordUpdate.KeyHash = packet.KeyHash;
                     passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
-                    _ = await injector.CreateMessage(passwordUpdate, loopback, newAccount.AccountId).ConfigureAwait(false);
+                    _ = await injector.CreateMessage(passwordUpdate, loopback.ChannelId, newAccount.AccountId).ConfigureAwait(false);
 
                     // Create email address
                     var mailAddress = Packets.New<P14MailAddress>();
@@ -68,7 +68,7 @@ namespace SkynetServer.Network.Handlers
                         .Where(c => c.AccountId == newAccount.AccountId)
                         .Select(c => c.MailAddress).SingleAsync().ConfigureAwait(false);
                     mailAddress.MessageFlags = MessageFlags.Unencrypted;
-                    _ = await injector.CreateMessage(mailAddress, accountData, newAccount.AccountId).ConfigureAwait(false);
+                    _ = await injector.CreateMessage(mailAddress, accountData.ChannelId, newAccount.AccountId).ConfigureAwait(false);
 
                     // As newly created account do not have sessions or contacts there is no need to deliver these packets immediately
 

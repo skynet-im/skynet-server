@@ -16,23 +16,21 @@ namespace SkynetServer.Services
     {
         private readonly DatabaseContext database;
         private readonly PacketService packets;
-        private readonly DeliveryService delivery;
 
-        public MessageInjectionService(DatabaseContext database, PacketService packets, DeliveryService delivery)
+        public MessageInjectionService(DatabaseContext database, PacketService packets)
         {
             this.database = database;
             this.packets = packets;
-            this.delivery = delivery;
         }
 
-        public async Task<Message> CreateMessage(ChannelMessage packet, Channel channel, long? senderId)
+        public async Task<Message> CreateMessage(ChannelMessage packet, long channelId, long? senderId)
         {
-            packet.ChannelId = channel.ChannelId;
+            packet.ChannelId = channelId;
             packet.MessageFlags |= MessageFlags.Unencrypted;
 
             Message message = new Message()
             {
-                ChannelId = channel.ChannelId,
+                ChannelId = channelId,
                 SenderId = senderId,
                 // TODO: Implement skip count
                 MessageFlags = packet.MessageFlags,
@@ -49,23 +47,23 @@ namespace SkynetServer.Services
         }
 
 
-        public async Task<Message> CreateDirectChannelUpdate(Channel channel, long aliceId, Message alicePublic, long bobId, Message bobPublic)
+        public async Task<Message> CreateDirectChannelUpdate(long channelId, long aliceId, long alicePublicId, long bobId, long bobPublicId)
         {
-            Message alicePrivate = await database.MessageDependencies.AsQueryable()
-                .Where(d => d.OwningMessageId == alicePublic.MessageId)
-                .Select(d => d.Message).SingleAsync().ConfigureAwait(false);
+            long alicePrivateId = await database.MessageDependencies.AsQueryable()
+                .Where(d => d.OwningMessageId == alicePublicId)
+                .Select(d => d.MessageId).SingleAsync().ConfigureAwait(false);
 
-            Message bobPrivate = await database.MessageDependencies.AsQueryable()
-                .Where(d => d.OwningMessageId == bobPublic.MessageId)
-                .Select(d => d.Message).SingleAsync().ConfigureAwait(false);
+            long bobPrivateId = await database.MessageDependencies.AsQueryable()
+                .Where(d => d.OwningMessageId == bobPublicId)
+                .Select(d => d.MessageId).SingleAsync().ConfigureAwait(false);
 
             var update = packets.New<P1BDirectChannelUpdate>();
             update.MessageFlags = MessageFlags.Unencrypted;
-            update.Dependencies.Add(new Dependency(aliceId, alicePrivate.MessageId));
-            update.Dependencies.Add(new Dependency(aliceId, bobPublic.MessageId));
-            update.Dependencies.Add(new Dependency(bobId, bobPrivate.MessageId));
-            update.Dependencies.Add(new Dependency(bobId, alicePublic.MessageId));
-            return await CreateMessage(update, channel, null).ConfigureAwait(false);
+            update.Dependencies.Add(new Dependency(aliceId, alicePrivateId));
+            update.Dependencies.Add(new Dependency(aliceId, bobPublicId));
+            update.Dependencies.Add(new Dependency(bobId, bobPrivateId));
+            update.Dependencies.Add(new Dependency(bobId, alicePublicId));
+            return await CreateMessage(update, channelId, null).ConfigureAwait(false);
         }
     }
 }

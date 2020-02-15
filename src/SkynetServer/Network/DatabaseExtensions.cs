@@ -50,13 +50,12 @@ namespace SkynetServer.Network
         }
 
 
-        public static Task<Message> GetLatestPublicKey(this DatabaseContext database, long accountId)
+        public static Task<long> GetLatestPublicKey(this DatabaseContext database, long accountId)
         {
             return database.Channels.AsQueryable()
                 .Where(c => c.ChannelType == ChannelType.AccountData && c.OwnerId == accountId)
-                .Join(database.Messages, c => c.ChannelId, m => m.ChannelId, (c, m) => m)
-                .Where(m => m.PacketId == 0x18)
-                .OrderByDescending(m => m.MessageId).FirstOrDefaultAsync();
+                .Join(database.Messages.AsQueryable().Where(m => m.PacketId == 0x18), c => c.ChannelId, m => m.ChannelId, (c, m) => m.MessageId)
+                .OrderByDescending(id => id).FirstOrDefaultAsync();
         }
     }
 }

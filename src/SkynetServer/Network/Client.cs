@@ -33,6 +33,7 @@ namespace SkynetServer.Network
         public int VersionCode { get; private set; }
         public long AccountId { get; private set; }
         public long SessionId { get; private set; }
+        public bool SoonActive { get; set; }
         public bool Active { get; set; }
         public long FocusedChannelId { get; set; }
         public ChannelAction ChannelAction { get; set; }
@@ -69,7 +70,7 @@ namespace SkynetServer.Network
             }
             catch (IOException)
             {
-                // TODO: Handle disconnect
+                await DisposeAsync().ConfigureAwait(false);
             }
         }
 
@@ -123,6 +124,9 @@ namespace SkynetServer.Network
             {
                 // TODO: Unregister from ConnectionsService
                 // TODO: Finish all pending handling operations
+                // TODO: Call DeliveryService.ChannelActionChanged()
+                // TODO: Call DeliveryService.ActiveChanged()
+
                 await sendQueue.DisposeAsync().ConfigureAwait(false);
                 await stream.DisposeAsync().ConfigureAwait(false);
 

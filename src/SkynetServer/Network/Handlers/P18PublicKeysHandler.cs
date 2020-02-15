@@ -53,12 +53,12 @@ namespace SkynetServer.Network.Handlers
 
                 // Get Bob's latest public key packet in this channel and take Alice's new public key
 
-                Message bobPublic = await Database.GetLatestPublicKey(bobId).ConfigureAwait(false);
+                long bobPublicId = await Database.GetLatestPublicKey(bobId).ConfigureAwait(false);
 
-                if (bobPublic == null) continue; // The server will create the DirectChannelUpdate when Bob sends his public key
+                if (bobPublicId == default) continue; // The server will create the DirectChannelUpdate when Bob sends his public key
 
                 var directChannelUpdate = await injector
-                    .CreateDirectChannelUpdate(channel, Client.AccountId, message, bobId, bobPublic).ConfigureAwait(false);
+                    .CreateDirectChannelUpdate(channel.ChannelId, Client.AccountId, message.MessageId, bobId, bobPublicId).ConfigureAwait(false);
                 _ = await Delivery.SendMessage(directChannelUpdate, null).ConfigureAwait(false);
             }
         }

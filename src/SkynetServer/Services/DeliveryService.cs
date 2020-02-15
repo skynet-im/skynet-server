@@ -11,7 +11,6 @@ using SkynetServer.Network.Packets;
 using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -35,66 +34,114 @@ namespace SkynetServer.Services
             this.database = database;
         }
 
-        public void Unregister(Client client)
+        #region online state
+        public async Task<Task> ChannelActionChanged(Client client, long channelId, ChannelAction action)
         {
-            if (client.ChannelAction != ChannelAction.None) OnChannelActionChanged(client, 0, ChannelAction.None);
-            if (client.Active) OnActiveChanged(client, active: false);
-        }
-
-        public void OnChannelActionChanged(Client client, long channelId, ChannelAction action)
-        {
-            if (client.Account == null) throw new ArgumentNullException($"{nameof(client)}.{nameof(Client.Account)}");
-
+            Task notifyOld = null;
             if (client.FocusedChannelId != channelId)
-                notifyChannel(client.FocusedChannelId, ChannelAction.None);
+            {
+                var packet = packets.New<P2CChannelAction>();
+                packet.ChannelId = client.FocusedChannelId;
+                packet.AccountId = client.AccountId;
+                packet.Action = ChannelAction.None;
+                notifyOld = await SendToChannel(packet, client.FocusedChannelId, client).ConfigureAwait(false);
+            }
 
-            notifyChannel(channelId, action);
+            Task notifyNew = null;
+            if (channelId != default)
+            {
+                var packet = packets.New<P2CChannelAction>();
+                packet.ChannelId = channelId;
+                packet.AccountId = client.AccountId;
+                packet.Action = action;
+                notifyNew = await SendToChannel(packet, channelId, client).ConfigureAwait(false);
+            }
 
             client.FocusedChannelId = channelId;
             client.ChannelAction = action;
 
-            void notifyChannel(long _channelId, ChannelAction _action) => Task.Run(async () =>
+            return (notifyOld, notifyNew) switch
             {
-                using DatabaseContext ctx = new DatabaseContext();
-                long[] members = await ctx.ChannelMembers.Where(m => m.ChannelId == _channelId).Select(m => m.AccountId).ToArrayAsync();
-                if (!members.Contains(client.Account.AccountId))
-                    return; // This is a protocol violation but throwing an exception would be useless in an async context.
-                var packet = packets.New<P2CChannelAction>();
-                packet.ChannelId = _channelId;
-                packet.AccountId = client.Account.AccountId;
-                packet.Action = _action;
-                await Task.WhenAll(clients
-                    .Where(c => c.Account != null && members.Contains(c.Account.AccountId) && !ReferenceEquals(c, client))
-                    .Select(c => c.SendPacket(packet)));
-            });
+                (null, null) => Task.CompletedTask,
+                (Task x, null) => x,
+                (null, Task y) => y,
+                (Task x, Task y) => Task.WhenAll(x, y)
+            };
         }
 
-        public void OnActiveChanged(Client client, bool active)
+        public async Task<Task> ActiveChanged(Client client, bool active)
         {
-            if (client.Account == null) throw new ArgumentNullException($"{nameof(client)}.{nameof(Client.Account)}");
+            if (client.Active == active)
+                throw new InvalidOperationException("You must not call this method if the active state has not changed");
 
-            bool notify = !clients.Any(c => c.Account != null && c.Account.AccountId == client.Account.AccountId
-                && !ReferenceEquals(c, client) && c.Active);
+            long[] sessions = await database.Sessions.AsQueryable()
+                .Where(s => s.AccountId == client.AccountId)
+                .Select(s => s.SessionId)
+                .ToArrayAsync().ConfigureAwait(false);
+
+            client.SoonActive = active;
+
+            bool notify = true;
+
+            foreach (long sessionId in sessions)
+            {
+                if (connections.TryGet(sessionId, out Client _client)
+                    && !ReferenceEquals(_client, client)
+                    && _client.SoonActive && (_client.Active || !active))
+                {
+                    // If going online: No need to notify if another session is already online and staying online
+                    // If going offline: No need to notify if another session is online or coming online in the meantime
+                    notify = false;
+                }
+            }
+
             client.Active = active;
 
-            Task.Run(async () =>
-            {
-                using DatabaseContext ctx = new DatabaseContext();
-                Channel channel = await ctx.Channels.SingleAsync(c => c.OwnerId == client.Account.AccountId && c.ChannelType == ChannelType.AccountData);
-                var packet = packets.New<P2BOnlineState>();
-                packet.OnlineState = active ? OnlineState.Active : OnlineState.Inactive;
-                packet.LastActive = DateTime.Now;
-                packet.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
-                await CreateMessage(packet, channel, client.Account.AccountId);
-            });
+            if (!notify) return Task.CompletedTask;
+
+            long accountChannelId = await database.Channels.AsQueryable()
+                .Where(c => c.OwnerId == client.AccountId && c.ChannelType == ChannelType.AccountData)
+                .Select(c => c.ChannelId)
+                .SingleAsync().ConfigureAwait(false);
+
+            var packet = packets.New<P2BOnlineState>();
+            packet.OnlineState = active ? OnlineState.Active : OnlineState.Inactive;
+            packet.LastActive = DateTime.Now;
+            packet.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
+            
+            var injector = new MessageInjectionService(database, packets);
+            Message message = await injector.CreateMessage(packet, accountChannelId, client.AccountId).ConfigureAwait(false);
+            return await SendMessage(message, client).ConfigureAwait(false);
         }
+        #endregion
 
         #region packet and message broadcast
-        public async Task<Task> SendPacket(Packet packet, long accountId, Client exclude)
+        public async Task<Task> SendToAccount(Packet packet, long accountId, Client exclude)
         {
             long[] sessions = await database.Sessions.AsQueryable()
                 .Where(s => s.AccountId == accountId)
                 .Select(s => s.SessionId)
+                .ToArrayAsync().ConfigureAwait(false);
+
+            IEnumerable<Task> send()
+            {
+                foreach (long sessionId in sessions)
+                {
+                    if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
+                    {
+                        yield return client.Send(packet);
+                    }
+                }
+            }
+
+            return Task.WhenAll(send());
+        }
+
+        public async Task<Task> SendToChannel(Packet packet, long channelId, Client exclude)
+        {
+            long[] sessions = await database.ChannelMembers.AsQueryable()
+                .Where(m => m.ChannelId == channelId)
+                .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s.SessionId)
                 .ToArrayAsync().ConfigureAwait(false);
 
             IEnumerable<Task> send()
