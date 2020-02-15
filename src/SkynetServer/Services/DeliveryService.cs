@@ -8,6 +8,7 @@ using SkynetServer.Model;
 using SkynetServer.Network;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
+using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -21,17 +22,15 @@ namespace SkynetServer.Services
         private readonly IServiceProvider serviceProvider;
         private readonly PacketService packets;
         private readonly ConnectionsService connections;
-        private readonly FirebaseService firebase;
         private readonly IOptions<FcmOptions> fcmOptions;
         private readonly DatabaseContext database;
 
-        public DeliveryService(IServiceProvider serviceProvider, PacketService packets, ConnectionsService connections,
-            FirebaseService firebase, IOptions<FcmOptions> fcmOptions, DatabaseContext database)
+        public DeliveryService(IServiceProvider serviceProvider, PacketService packets,
+            ConnectionsService connections, IOptions<FcmOptions> fcmOptions, DatabaseContext database)
         {
             this.serviceProvider = serviceProvider;
             this.packets = packets;
             this.connections = connections;
-            this.firebase = firebase;
             this.fcmOptions = fcmOptions;
             this.database = database;
         }
@@ -138,63 +137,96 @@ namespace SkynetServer.Services
             return Task.WhenAll(send());
         }
 
-        public async Task SendPriorityMessage(Message message, Client exclude, Account excludeFcm)
+        public async Task<Task> SendPriorityMessage(Message message, Client exclude, long excludeFcmAccountId)
         {
-            long[] accounts;
-            FcmOptions options = fcmOptions.Value;
+            var sessions = await database.ChannelMembers.AsQueryable()
+                .Where(m => m.ChannelId == message.ChannelId)
+                .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => new { s.AccountId, s.SessionId })
+                .OrderBy(s => s.AccountId)
+                .ToArrayAsync().ConfigureAwait(false);
 
-            using (DatabaseContext ctx = new DatabaseContext())
+            List<Task> sendAndWaitTasks = new List<Task>();
+
+            long lastAccountId = default;
+            DelayedTask lastTimer = null;
+
+            foreach (var session in sessions)
             {
-                accounts = await ctx.ChannelMembers.Where(m => m.ChannelId == message.ChannelId)
-                    .Select(m => m.AccountId).ToArrayAsync();
-            }
-
-            await Task.WhenAll(accounts.Select(accountId => Task.Run(async () =>
-            {
-                bool found = false;
-
-                await Task.WhenAll(clients.Where(c => c.Account != null && c.Account.AccountId == accountId)
-                    .Select(async c =>
-                    {
-                        if (ReferenceEquals(c, exclude) || await c.SendPacket(message.ToPacket(accountId)))
-                            found = true;
-                    }));
-
-                if ((!found && accountId != excludeFcm.AccountId) || options.NotifyAllDevices)
+                if (session.AccountId != lastAccountId)
                 {
-                    using DatabaseContext ctx = new DatabaseContext();
-                    Session[] sessions = await ctx.Sessions
-                        .Where(s => s.AccountId == accountId && s.FcmToken != null
-                            && (s.LastFcmMessage < s.LastConnected || options.NotifyForEveryMessage))
-                        .ToArrayAsync();
-                    foreach (Session session in sessions)
-                    {
-                        try
-                        {
-                            await firebase.SendAsync(session.FcmToken);
+                    lastAccountId = session.AccountId;
+                    lastTimer = new DelayedTask(() => SendFcmNotification(session.AccountId), fcmOptions.Value.PriorityMessageAckTimeout);
+                    sendAndWaitTasks.Add(lastTimer.Task);
+                }
 
-                            session.LastFcmMessage = DateTime.Now;
-                            ctx.Entry(session).Property(s => s.LastFcmMessage).IsModified = true;
-                            await ctx.SaveChangesAsync();
-                            Console.WriteLine($"Successfully sent FCM message to {session.FcmToken.Remove(16)} last connected {session.LastConnected}");
-                        }
-                        catch (FirebaseAdmin.FirebaseException ex)
-                        {
-                            Console.WriteLine($"Failed to send FCM message to {session.FcmToken.Remove(16)}... {ex.Message}");
-                            if (options.DeleteSessionOnError)
-                            {
-                                foreach (Client client in clients)
-                                {
-                                    if (client.Session != null && client.Session.AccountId == session.AccountId && client.Session.SessionId == session.SessionId)
-                                        client.CloseConnection("Session deleted");
-                                }
-                                ctx.Sessions.Remove(session);
-                                await ctx.SaveChangesAsync();
-                            }
-                        }
+                // Declare a separate variable that can be safely captured and is not changed with the next iteration
+                DelayedTask timer = lastTimer;
+
+                void callback(Client client, Packet packet)
+                {
+                    if (packet is P22MessageReceived received && received.Dependencies[0].MessageId == message.MessageId)
+                    {
+                        timer.Cancel(); // Cancel timer because message has been received
+                        client.PacketReceived -= callback;
                     }
                 }
-            })));
+
+                if (connections.TryGet(session.SessionId, out Client client) && !ReferenceEquals(client, exclude))
+                {
+                    client.PacketReceived += callback;
+                    sendAndWaitTasks.Add(client.Send(message.ToPacket(client.AccountId)));
+                }
+            }
+
+            return Task.WhenAll(sendAndWaitTasks);
+        }
+
+        private async Task SendFcmNotification(long accountId)
+        {
+            Session[] sessions;
+
+            using (IServiceScope scope = serviceProvider.CreateScope())
+            {
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+
+                sessions = await database.Sessions.AsQueryable()
+                    .Where(s => s.AccountId == accountId && s.FcmToken != null
+                        && (s.LastFcmMessage < s.LastConnected || fcmOptions.Value.NotifyForEveryMessage))
+                    .ToArrayAsync().ConfigureAwait(false);
+            }
+
+            async Task process(Session session)
+            {
+                using IServiceScope scope = serviceProvider.CreateScope();
+                var firebase = scope.ServiceProvider.GetRequiredService<FirebaseService>();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+
+                try
+                {
+                    await firebase.SendAsync(session.FcmToken).ConfigureAwait(false);
+
+                    session.LastFcmMessage = DateTime.Now;
+                    database.Entry(session).Property(s => s.LastFcmMessage).IsModified = true;
+                    await database.SaveChangesAsync().ConfigureAwait(false);
+                    Console.WriteLine($"Successfully sent FCM message to {session.FcmToken.Remove(16)} last connected {session.LastConnected}");
+                }
+                catch (FirebaseAdmin.FirebaseException ex)
+                {
+                    Console.WriteLine($"Failed to send FCM message to {session.FcmToken.Remove(16)}... {ex.Message}");
+                    if (fcmOptions.Value.DeleteSessionOnError)
+                    {
+                        // Kick client if connected to avoid conflicting information in RAM vs DB
+                        if (connections.TryGet(session.SessionId, out Client client))
+                        {
+                            await client.DisposeAsync().ConfigureAwait(false);
+                        }
+                        database.Sessions.Remove(session);
+                        await database.SaveChangesAsync().ConfigureAwait(false);
+                    }
+                }
+            }
+
+            await Task.WhenAll(sessions.Select(s => process(s))).ConfigureAwait(false);
         }
         #endregion
 

@@ -71,7 +71,7 @@ namespace SkynetServer.Network
             packet.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
 
             if (packet.Id == 0x20)
-                await Delivery.SendPriorityMessage(entity, exclude: Client, excludeFcm: Client.Account);
+                _ = await Delivery.SendPriorityMessage(entity, exclude: Client, excludeFcmAccountId: Client.AccountId).ConfigureAwait(false);
             else
                 _ = await Delivery.SendMessage(entity, exclude: Client).ConfigureAwait(false);
 

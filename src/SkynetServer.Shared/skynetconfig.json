@@ -4,8 +4,8 @@
   },
   "FcmOptions": {
     "NotifyAllDevices": false,
-    "NotifyForEveryMessage": false,
-    "DeleteSessionOnError": false
+    "DeleteSessionOnError": false,
+    "PriorityMessageAckTimeout": 60000
   },
   "ListenerOptions": {
     "Backlog": 64,

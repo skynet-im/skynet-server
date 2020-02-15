@@ -121,6 +121,7 @@ namespace SkynetServer.Network
         {
             if (!disposedValue)
             {
+                // TODO: Unregister from ConnectionsService
                 // TODO: Finish all pending handling operations
                 await sendQueue.DisposeAsync().ConfigureAwait(false);
                 await stream.DisposeAsync().ConfigureAwait(false);
