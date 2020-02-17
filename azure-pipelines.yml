@@ -41,10 +41,7 @@ steps:
   inputs:
     command: run
     projects: 'src/SkynetServer.Cli/SkynetServer.Cli.csproj'
-    arguments: |
-      --configuration $(buildConfiguration)
-      database create
-    nobuild: true
+    arguments: '--configuration $(buildConfiguration) --no-build database create'
 - task: DotNetCoreCLI@2
   displayName: Test
   inputs:
