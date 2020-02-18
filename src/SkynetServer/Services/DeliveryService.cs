@@ -6,7 +6,6 @@ using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
 using SkynetServer.Network;
-using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using SkynetServer.Utilities;
 using System;
@@ -16,104 +15,26 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Services
 {
+    // TODO: Return Task<SendOperation> rather than Task<Task>
     internal class DeliveryService
     {
         private readonly IServiceProvider serviceProvider;
         private readonly PacketService packets;
         private readonly ConnectionsService connections;
+        private readonly NotificationService notification;
         private readonly IOptions<FcmOptions> fcmOptions;
         private readonly DatabaseContext database;
 
-        public DeliveryService(IServiceProvider serviceProvider, PacketService packets,
-            ConnectionsService connections, IOptions<FcmOptions> fcmOptions, DatabaseContext database)
+        public DeliveryService(IServiceProvider serviceProvider, PacketService packets, ConnectionsService connections,
+            NotificationService notification, IOptions<FcmOptions> fcmOptions, DatabaseContext database)
         {
             this.serviceProvider = serviceProvider;
             this.packets = packets;
             this.connections = connections;
+            this.notification = notification;
             this.fcmOptions = fcmOptions;
             this.database = database;
         }
-
-        #region online state
-        public async Task<Task> ChannelActionChanged(Client client, long channelId, ChannelAction action)
-        {
-            Task notifyOld = null;
-            if (client.FocusedChannelId != channelId)
-            {
-                var packet = packets.New<P2CChannelAction>();
-                packet.ChannelId = client.FocusedChannelId;
-                packet.AccountId = client.AccountId;
-                packet.Action = ChannelAction.None;
-                notifyOld = await SendToChannel(packet, client.FocusedChannelId, client).ConfigureAwait(false);
-            }
-
-            Task notifyNew = null;
-            if (channelId != default)
-            {
-                var packet = packets.New<P2CChannelAction>();
-                packet.ChannelId = channelId;
-                packet.AccountId = client.AccountId;
-                packet.Action = action;
-                notifyNew = await SendToChannel(packet, channelId, client).ConfigureAwait(false);
-            }
-
-            client.FocusedChannelId = channelId;
-            client.ChannelAction = action;
-
-            return (notifyOld, notifyNew) switch
-            {
-                (null, null) => Task.CompletedTask,
-                (Task x, null) => x,
-                (null, Task y) => y,
-                (Task x, Task y) => Task.WhenAll(x, y)
-            };
-        }
-
-        public async Task<Task> ActiveChanged(Client client, bool active)
-        {
-            if (client.Active == active)
-                throw new InvalidOperationException("You must not call this method if the active state has not changed");
-
-            long[] sessions = await database.Sessions.AsQueryable()
-                .Where(s => s.AccountId == client.AccountId)
-                .Select(s => s.SessionId)
-                .ToArrayAsync().ConfigureAwait(false);
-
-            client.SoonActive = active;
-
-            bool notify = true;
-
-            foreach (long sessionId in sessions)
-            {
-                if (connections.TryGet(sessionId, out Client _client)
-                    && !ReferenceEquals(_client, client)
-                    && _client.SoonActive && (_client.Active || !active))
-                {
-                    // If going online: No need to notify if another session is already online and staying online
-                    // If going offline: No need to notify if another session is online or coming online in the meantime
-                    notify = false;
-                }
-            }
-
-            client.Active = active;
-
-            if (!notify) return Task.CompletedTask;
-
-            long accountChannelId = await database.Channels.AsQueryable()
-                .Where(c => c.OwnerId == client.AccountId && c.ChannelType == ChannelType.AccountData)
-                .Select(c => c.ChannelId)
-                .SingleAsync().ConfigureAwait(false);
-
-            var packet = packets.New<P2BOnlineState>();
-            packet.OnlineState = active ? OnlineState.Active : OnlineState.Inactive;
-            packet.LastActive = DateTime.Now;
-            packet.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
-            
-            var injector = new MessageInjectionService(database, packets);
-            Message message = await injector.CreateMessage(packet, accountChannelId, client.AccountId).ConfigureAwait(false);
-            return await SendMessage(message, client).ConfigureAwait(false);
-        }
-        #endregion
 
         #region packet and message broadcast
         public async Task<Task> SendToAccount(Packet packet, long accountId, Client exclude)
@@ -202,7 +123,7 @@ namespace SkynetServer.Services
                 if (session.AccountId != lastAccountId)
                 {
                     lastAccountId = session.AccountId;
-                    lastTimer = new DelayedTask(() => SendFcmNotification(session.AccountId), fcmOptions.Value.PriorityMessageAckTimeout);
+                    lastTimer = new DelayedTask(() => notification.SendFcmNotification(session.AccountId), fcmOptions.Value.PriorityMessageAckTimeout);
                     sendAndWaitTasks.Add(lastTimer.Task);
                 }
 
@@ -226,54 +147,6 @@ namespace SkynetServer.Services
             }
 
             return Task.WhenAll(sendAndWaitTasks);
-        }
-
-        private async Task SendFcmNotification(long accountId)
-        {
-            Session[] sessions;
-
-            using (IServiceScope scope = serviceProvider.CreateScope())
-            {
-                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-
-                sessions = await database.Sessions.AsQueryable()
-                    .Where(s => s.AccountId == accountId && s.FcmToken != null
-                        && (s.LastFcmMessage < s.LastConnected || fcmOptions.Value.NotifyForEveryMessage))
-                    .ToArrayAsync().ConfigureAwait(false);
-            }
-
-            async Task process(Session session)
-            {
-                using IServiceScope scope = serviceProvider.CreateScope();
-                var firebase = scope.ServiceProvider.GetRequiredService<FirebaseService>();
-                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-
-                try
-                {
-                    await firebase.SendAsync(session.FcmToken).ConfigureAwait(false);
-
-                    session.LastFcmMessage = DateTime.Now;
-                    database.Entry(session).Property(s => s.LastFcmMessage).IsModified = true;
-                    await database.SaveChangesAsync().ConfigureAwait(false);
-                    Console.WriteLine($"Successfully sent FCM message to {session.FcmToken.Remove(16)} last connected {session.LastConnected}");
-                }
-                catch (FirebaseAdmin.FirebaseException ex)
-                {
-                    Console.WriteLine($"Failed to send FCM message to {session.FcmToken.Remove(16)}... {ex.Message}");
-                    if (fcmOptions.Value.DeleteSessionOnError)
-                    {
-                        // Kick client if connected to avoid conflicting information in RAM vs DB
-                        if (connections.TryGet(session.SessionId, out Client client))
-                        {
-                            await client.DisposeAsync().ConfigureAwait(false);
-                        }
-                        database.Sessions.Remove(session);
-                        await database.SaveChangesAsync().ConfigureAwait(false);
-                    }
-                }
-            }
-
-            await Task.WhenAll(sessions.Select(s => process(s))).ConfigureAwait(false);
         }
         #endregion
 
