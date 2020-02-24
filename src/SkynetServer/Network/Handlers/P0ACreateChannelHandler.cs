@@ -144,18 +144,20 @@ namespace SkynetServer.Network.Handlers
             return (aliceChannelId, bobChannelId);
         }
 
-        private async Task<Task> ForwardAccountChannel(long channelId, long ownerId, long recipientId)
+        private async Task<IReadOnlyList<Task>> ForwardAccountChannel(long channelId, long ownerId, long recipientId)
         {
             var createAlice = Packets.New<P0ACreateChannel>();
             createAlice.ChannelId = channelId;
             createAlice.ChannelType = ChannelType.AccountData;
             createAlice.OwnerId = ownerId;
 
-            // Don't wait for the create channel packet to be sent to make sure that the following send operation is enqueued immediately
-            Task createTask = await Delivery.SendToAccount(createAlice, recipientId, null).ConfigureAwait(false);
-            Task syncTask = await Delivery.SyncMessages(recipientId, channelId).ConfigureAwait(false);
+            var operations = new List<Task>();
 
-            return Task.WhenAll(createTask, syncTask);
+            // Don't wait for the create channel packet to be sent to make sure that the following send operation is enqueued immediately
+            operations.AddRange(await Delivery.SendToAccount(createAlice, recipientId, null).ConfigureAwait(false));
+            operations.AddRange(await Delivery.SyncMessages(recipientId, channelId).ConfigureAwait(false));
+
+            return operations;
         }
     }
 }

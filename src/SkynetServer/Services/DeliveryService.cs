@@ -15,7 +15,6 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Services
 {
-    // TODO: Return Task<SendOperation> rather than Task<Task>
     internal class DeliveryService
     {
         private readonly IServiceProvider serviceProvider;
@@ -37,49 +36,47 @@ namespace SkynetServer.Services
         }
 
         #region packet and message broadcast
-        public async Task<Task> SendToAccount(Packet packet, long accountId, Client exclude)
+        public async Task<IReadOnlyList<Task>> SendToAccount(Packet packet, long accountId, Client exclude)
         {
             long[] sessions = await database.Sessions.AsQueryable()
                 .Where(s => s.AccountId == accountId)
                 .Select(s => s.SessionId)
                 .ToArrayAsync().ConfigureAwait(false);
 
-            IEnumerable<Task> send()
+            var operations = new List<Task>();
+
+            foreach (long sessionId in sessions)
             {
-                foreach (long sessionId in sessions)
+                if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
                 {
-                    if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
-                    {
-                        yield return client.Send(packet);
-                    }
+                    operations.Add(client.Send(packet));
                 }
             }
 
-            return Task.WhenAll(send());
+            return operations;
         }
 
-        public async Task<Task> SendToChannel(Packet packet, long channelId, Client exclude)
+        public async Task<IReadOnlyList<Task>> SendToChannel(Packet packet, long channelId, Client exclude)
         {
             long[] sessions = await database.ChannelMembers.AsQueryable()
                 .Where(m => m.ChannelId == channelId)
                 .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s.SessionId)
                 .ToArrayAsync().ConfigureAwait(false);
 
-            IEnumerable<Task> send()
+            var operations = new List<Task>();
+
+            foreach (long sessionId in sessions)
             {
-                foreach (long sessionId in sessions)
+                if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
                 {
-                    if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
-                    {
-                        yield return client.Send(packet);
-                    }
+                    operations.Add(client.Send(packet));
                 }
             }
 
-            return Task.WhenAll(send());
+            return operations;
         }
 
-        public async Task<Task> SendMessage(Message message, Client exclude)
+        public async Task<IReadOnlyList<Task>> SendMessage(Message message, Client exclude)
         {
             bool isLoopback = message.MessageFlags.HasFlag(MessageFlags.Loopback);
             bool isNoSenderSync = message.MessageFlags.HasFlag(MessageFlags.NoSenderSync);
@@ -91,21 +88,20 @@ namespace SkynetServer.Services
                 .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s.SessionId)
                 .ToArrayAsync().ConfigureAwait(false);
 
-            IEnumerable<Task> send()
+            var operations = new List<Task>();
+
+            foreach (long sessionId in sessions)
             {
-                foreach (long sessionId in sessions)
+                if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
                 {
-                    if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
-                    {
-                        yield return client.Send(message.ToPacket(client.AccountId));
-                    }
+                    operations.Add(client.Send(message.ToPacket(client.AccountId)));
                 }
             }
 
-            return Task.WhenAll(send());
+            return operations;
         }
 
-        public async Task<Task> SendPriorityMessage(Message message, Client exclude, long excludeFcmAccountId)
+        public async Task<IReadOnlyList<Task>> SendPriorityMessage(Message message, Client exclude, long excludeFcmAccountId)
         {
             var sessions = await database.ChannelMembers.AsQueryable()
                 .Where(m => m.ChannelId == message.ChannelId)
@@ -113,7 +109,7 @@ namespace SkynetServer.Services
                 .OrderBy(s => s.AccountId)
                 .ToArrayAsync().ConfigureAwait(false);
 
-            List<Task> sendAndWaitTasks = new List<Task>();
+            var operations = new List<Task>();
 
             long lastAccountId = default;
             DelayedTask lastTimer = null;
@@ -123,8 +119,14 @@ namespace SkynetServer.Services
                 if (session.AccountId != lastAccountId)
                 {
                     lastAccountId = session.AccountId;
-                    lastTimer = new DelayedTask(() => notification.SendFcmNotification(session.AccountId), fcmOptions.Value.PriorityMessageAckTimeout);
-                    sendAndWaitTasks.Add(lastTimer.Task);
+                    lastTimer = new DelayedTask(() =>
+                    {
+                        if (session.AccountId != excludeFcmAccountId)
+                            return notification.SendFcmNotification(session.AccountId);
+                        else
+                            return Task.CompletedTask;
+                    }, fcmOptions.Value.PriorityMessageAckTimeout);
+                    operations.Add(lastTimer.Task);
                 }
 
                 // Declare a separate variable that can be safely captured and is not changed with the next iteration
@@ -142,23 +144,23 @@ namespace SkynetServer.Services
                 if (connections.TryGet(session.SessionId, out Client client) && !ReferenceEquals(client, exclude))
                 {
                     client.PacketReceived += callback;
-                    sendAndWaitTasks.Add(client.Send(message.ToPacket(client.AccountId)));
+                    operations.Add(client.Send(message.ToPacket(client.AccountId)));
                 }
             }
 
-            return Task.WhenAll(sendAndWaitTasks);
+            return operations;
         }
         #endregion
 
         #region channel and message restore
-        public async Task<Task> SyncChannels(Client client, List<long> currentState)
+        public async Task<IReadOnlyList<Task>> SyncChannels(Client client, List<long> currentState)
         {
             Channel[] channels = await database.ChannelMembers.AsQueryable()
                 .Where(m => m.AccountId == client.AccountId)
                 .Join(database.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
                 .ToArrayAsync().ConfigureAwait(false);
 
-            List<Task> sendTasks = new List<Task>();
+            var operations = new List<Task>();
 
             foreach (Channel channel in channels)
             {
@@ -174,12 +176,12 @@ namespace SkynetServer.Services
                             .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != client.AccountId)
                             .Select(m => m.AccountId)
                             .SingleAsync().ConfigureAwait(false);
-                    sendTasks.Add(client.Send(packet));
+                    operations.Add(client.Send(packet));
                     currentState.Add(channel.ChannelId);
                 }
             }
 
-            return Task.WhenAll(sendTasks);
+            return operations;
         }
 
         public async Task SyncMessages(Client client, long lastMessageId)
@@ -200,7 +202,7 @@ namespace SkynetServer.Services
             // Independent service scope is disposed after await return
         }
 
-        public async Task<Task> SyncMessages(long accountId, long channelId)
+        public async Task<IReadOnlyList<Task>> SyncMessages(long accountId, long channelId)
         {
             long[] sessions = await database.Sessions.AsQueryable()
                 .Where(s => s.AccountId == accountId)
@@ -223,18 +225,17 @@ namespace SkynetServer.Services
                 // Independent service scope is disposed after await return
             }
 
-            IEnumerable<Task> send()
+            var operations = new List<Task>();
+
+            foreach (long sessionId in sessions)
             {
-                foreach (long sessionId in sessions)
+                if (connections.TryGet(sessionId, out Client client))
                 {
-                    if (connections.TryGet(sessionId, out Client client))
-                    {
-                        yield return sendTo(client);
-                    }
+                    operations.Add(sendTo(client));
                 }
             }
 
-            return Task.WhenAll(send());
+            return operations;
         }
         #endregion
     }

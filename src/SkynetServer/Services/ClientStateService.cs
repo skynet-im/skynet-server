@@ -30,41 +30,35 @@ namespace SkynetServer.Services
             this.database = database;
         }
 
-        public async Task<Task> ChannelActionChanged(Client client, long channelId, ChannelAction action)
+        public async Task<IReadOnlyList<Task>> ChannelActionChanged(Client client, long channelId, ChannelAction action)
         {
-            Task notifyOld = null;
+            var operations = new List<Task>();
+
             if (client.FocusedChannelId != channelId)
             {
                 var packet = packets.New<P2CChannelAction>();
                 packet.ChannelId = client.FocusedChannelId;
                 packet.AccountId = client.AccountId;
                 packet.Action = ChannelAction.None;
-                notifyOld = await delivery.SendToChannel(packet, client.FocusedChannelId, client).ConfigureAwait(false);
+                operations.AddRange(await delivery.SendToChannel(packet, client.FocusedChannelId, client).ConfigureAwait(false));
             }
 
-            Task notifyNew = null;
             if (channelId != default)
             {
                 var packet = packets.New<P2CChannelAction>();
                 packet.ChannelId = channelId;
                 packet.AccountId = client.AccountId;
                 packet.Action = action;
-                notifyNew = await delivery.SendToChannel(packet, channelId, client).ConfigureAwait(false);
+                operations.AddRange(await delivery.SendToChannel(packet, channelId, client).ConfigureAwait(false));
             }
 
             client.FocusedChannelId = channelId;
             client.ChannelAction = action;
 
-            return (notifyOld, notifyNew) switch
-            {
-                (null, null) => Task.CompletedTask,
-                (Task x, null) => x,
-                (null, Task y) => y,
-                (Task x, Task y) => Task.WhenAll(x, y)
-            };
+            return operations;
         }
 
-        public async Task<Task> ActiveChanged(Client client, bool active)
+        public async Task<IReadOnlyList<Task>> ActiveChanged(Client client, bool active)
         {
             if (client.Active == active)
                 throw new InvalidOperationException("You must not call this method if the active state has not changed");
@@ -92,7 +86,7 @@ namespace SkynetServer.Services
 
             client.Active = active;
 
-            if (!notify) return Task.CompletedTask;
+            if (!notify) return new List<Task>(capacity: 0);
 
             long accountChannelId = await database.Channels.AsQueryable()
                 .Where(c => c.OwnerId == client.AccountId && c.ChannelType == ChannelType.AccountData)
