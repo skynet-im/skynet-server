@@ -1,10 +1,10 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SkynetServer.Extensions;
 using SkynetServer.Model;
 using SkynetServer.Network;
 using SkynetServer.Network.Packets;
 using SkynetServer.Services;
 using System;
-using System.Collections.Generic;
 
 namespace SkynetServer.Tests
 {
@@ -40,7 +40,9 @@ namespace SkynetServer.Tests
                 {
                     Type handler = this.packets.Handlers[i];
                     Assert.IsNotNull(handler);
-                    Assert.AreEqual(packets[i].GetType(), handler.GetGenericArguments()[0]);
+
+                    Type baseInterface = handler.GetGenericInterface(typeof(PacketHandler<>));
+                    Assert.AreEqual(packets[i].GetType(), baseInterface.GetGenericArguments()[0]);
                 }
             }
         }

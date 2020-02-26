@@ -1,4 +1,5 @@
-﻿using SkynetServer.Network;
+﻿using SkynetServer.Extensions;
+using SkynetServer.Network;
 using SkynetServer.Network.Attributes;
 using System;
 using System.Collections.Generic;
@@ -85,6 +86,13 @@ namespace SkynetServer.Services
 
         private static Type[] MapHandlers(Packet[] packets)
         {
+            Dictionary<Type, Type> handlers = new Dictionary<Type, Type>();
+            foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
+            {
+                Type handler = type.GetGenericInterface(typeof(PacketHandler<>));
+                if (handler != null) handlers.Add(handler.GetGenericArguments()[0], type);
+            }
+
             Type[] result = new Type[packets.Length];
 
             for (int i = 0; i < packets.Length; i++)
@@ -93,10 +101,7 @@ namespace SkynetServer.Services
                 if (packet == null || !packet.Policies.HasFlag(PacketPolicies.Receive))
                     continue;
 
-                Type handler = Assembly.GetExecutingAssembly().GetType(packet.GetType().Name + "Handler");
-                if (handler != null
-                    && handler.IsSubclassOf(typeof(PacketHandler<>))
-                    && handler.GetGenericArguments()[0] == packet.GetType())
+                if (handlers.TryGetValue(packet.GetType(), out Type handler))
                 {
                     result[i] = handler;
                 }
