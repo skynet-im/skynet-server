@@ -123,7 +123,7 @@ namespace SkynetServer.Network
             if (!disposedValue)
             {
                 // TODO: Unregister from ConnectionsService
-                // TODO: Finish all pending handling operations
+                // TODO: Finish all pending handling operations (high risk for dead locks)
                 // TODO: Call DeliveryService.ChannelActionChanged()
                 // TODO: Call DeliveryService.ActiveChanged()
 

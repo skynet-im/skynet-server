@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace SkynetServer.Database.Entities
 {
@@ -8,6 +7,8 @@ namespace SkynetServer.Database.Entities
     {
         public long AccountId { get; set; }
         public byte[] KeyHash { get; set; }
+        public DateTime CreationTime { get; set; }
+        public DateTime DeletionTime { get; set; }
 
         public IEnumerable<Session> Sessions { get; set; }
         public IEnumerable<BlockedAccount> BlockedAccounts { get; set; }
