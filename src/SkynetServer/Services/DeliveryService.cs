@@ -202,6 +202,29 @@ namespace SkynetServer.Services
             // Independent service scope is disposed after await return
         }
 
+        public async Task SyncMessages(Client client, long channelId, long after, long before, ushort maxCount)
+        {
+            using IServiceScope scope = serviceProvider.CreateScope();
+            var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+
+            // The JOIN with ChannelMembers prevents unauthorized access
+            IQueryable<Message> query = database.ChannelMembers.AsQueryable()
+                .Where(member => member.AccountId == client.AccountId)
+                .Join(database.Messages, member => member.ChannelId, m => m.ChannelId, (member, m) => m)
+                .Where(m => (channelId == default || m.ChannelId == channelId) 
+                    && m.MessageId > after
+                    && m.MessageId < before
+                    && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == client.AccountId)
+                    && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != client.AccountId))
+                .Include(m => m.Dependencies).OrderBy(m => m.MessageId);
+
+            if (maxCount != default) query = query.Take(maxCount);
+
+            await client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(client.AccountId))).ConfigureAwait(false);
+
+            // Independent service scope is disposed after await return
+        }
+
         public async Task<IReadOnlyList<Task>> SyncMessages(long accountId, long channelId)
         {
             long[] sessions = await database.Sessions.AsQueryable()

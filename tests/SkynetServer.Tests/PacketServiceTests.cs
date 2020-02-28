@@ -39,10 +39,10 @@ namespace SkynetServer.Tests
                 if (packets[i] != null && packets[i].Policies.HasFlag(PacketPolicies.Receive))
                 {
                     Type handler = this.packets.Handlers[i];
-                    Assert.IsNotNull(handler);
+                    Assert.IsNotNull(handler, $"Could not find a handler for {packets[i].GetType().Name}");
 
                     Type baseInterface = handler.GetGenericInterface(typeof(PacketHandler<>));
-                    Assert.AreEqual(packets[i].GetType(), baseInterface.GetGenericArguments()[0]);
+                    Assert.IsTrue(baseInterface.GetGenericArguments()[0].IsAssignableFrom(packets[i].GetType()));
                 }
             }
         }
