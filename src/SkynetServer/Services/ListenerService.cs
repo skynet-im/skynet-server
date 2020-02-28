@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Services
 {
-    internal class ListenerService : IHostedService, IDisposable
+    internal sealed class ListenerService : IHostedService, IDisposable
     {
         private readonly IOptions<ListenerOptions> listenerOptions;
         private readonly IServiceProvider serviceProvider;
@@ -96,8 +96,7 @@ namespace SkynetServer.Services
             else
             {
                 PacketStream stream = new PacketStream(sslStream, leaveInnerStreamOpen: false);
-                Client client = ActivatorUtilities.CreateInstance<Client>(serviceProvider, stream, cts.Token);
-                client.Listen();
+                _ = ActivatorUtilities.CreateInstance<Client>(serviceProvider, stream, cts.Token);
             }
         }
 

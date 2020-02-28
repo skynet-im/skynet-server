@@ -39,10 +39,15 @@ namespace SkynetServer.Network.Handlers
             response.StatusCode = RestoreSessionStatus.Success;
             await Client.Send(response).ConfigureAwait(false);
 
-            // TODO: Change the following code not to be awaited anymore
-            await Task.WhenAll(await Delivery.SyncChannels(Client, packet.Channels).ConfigureAwait(false)).ConfigureAwait(false);
-            await Delivery.SyncMessages(Client, packet.LastMessageId).ConfigureAwait(false);
-            await Client.Send(Packets.New<P0FSyncFinished>()).ConfigureAwait(false);
+            _ = await Delivery.SyncChannels(Client, packet.Channels).ConfigureAwait(false);
+            _ = Delivery.SyncMessages(Client, packet.LastMessageId);
+            _ = Client.Enqueue(Packets.New<P0FSyncFinished>());
+
+            Client old = connections.Add(Client);
+            if (old != null)
+            {
+                _ = old.DisposeAsync(true, false);
+            }
         }
     }
 }

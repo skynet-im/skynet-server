@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Network.Handlers
 {
-    internal class P34SetClientStateHandler : PacketHandler<P34SetClientState>
+    internal sealed class P34SetClientStateHandler : PacketHandler<P34SetClientState>
     {
         private readonly ClientStateService clientState;
 
@@ -18,11 +18,11 @@ namespace SkynetServer.Network.Handlers
 
         public override async ValueTask Handle(P34SetClientState packet)
         {
-            if (Client.FocusedChannelId != packet.ChannelId || Client.ChannelAction != packet.Action)
-                _ = await clientState.ChannelActionChanged(Client, packet.ChannelId, packet.Action).ConfigureAwait(false);
+            if (packet.ChannelId == default && packet.Action != ChannelAction.None)
+                throw new ProtocolException("A ChannelAction other than None requires a ChannelId.");
 
-            if (Client.Active != (packet.OnlineState == OnlineState.Active))
-                _ = await clientState.ActiveChanged(Client, packet.OnlineState == OnlineState.Active).ConfigureAwait(false);
+            _ = await clientState.SetChannelAction(Client, packet.ChannelId, packet.Action).ConfigureAwait(false);
+            _ = await clientState.SetActive(Client, packet.OnlineState == OnlineState.Active).ConfigureAwait(false);
         }
     }
 }

@@ -14,6 +14,11 @@ namespace SkynetServer.Network.Handlers
     {
         private readonly ConnectionsService connections;
 
+        public P04DeleteAccountHandler(ConnectionsService connections)
+        {
+            this.connections = connections;
+        }
+
         public override async ValueTask Handle(P04DeleteAccount packet)
         {
             var response = Packets.New<P05DeleteAccountResponse>();
@@ -54,8 +59,7 @@ namespace SkynetServer.Network.Handlers
             // Finish handling and close last connection
             response.StatusCode = DeleteAccountStatus.Success;
             await Client.Send(response).ConfigureAwait(false);
-            // TODO: Awaiting is necessary but leads to a dead lock in all cases
-            await Client.DisposeAsync().ConfigureAwait(false);
+            await Client.DisposeAsync(false, true).ConfigureAwait(false);
 
             ChannelMember[] memberships = await Database.ChannelMembers.AsQueryable()
                 .Where(m => m.AccountId == Client.AccountId)

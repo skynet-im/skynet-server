@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Services
 {
-    internal class ClientStateService
+    internal sealed class ClientStateService
     {
         private readonly ConnectionsService connections;
         private readonly PacketService packets;
@@ -30,11 +30,11 @@ namespace SkynetServer.Services
             this.database = database;
         }
 
-        public async Task<IReadOnlyList<Task>> ChannelActionChanged(Client client, long channelId, ChannelAction action)
+        public async Task<IReadOnlyList<Task>> SetChannelAction(Client client, long channelId, ChannelAction action)
         {
             var operations = new List<Task>();
 
-            if (client.FocusedChannelId != channelId)
+            if (client.FocusedChannelId != default && client.FocusedChannelId != channelId)
             {
                 var packet = packets.New<P2CChannelAction>();
                 packet.ChannelId = client.FocusedChannelId;
@@ -43,7 +43,7 @@ namespace SkynetServer.Services
                 operations.AddRange(await delivery.SendToChannel(packet, client.FocusedChannelId, client).ConfigureAwait(false));
             }
 
-            if (channelId != default)
+            if (channelId != default && (channelId != client.FocusedChannelId || action != client.ChannelAction))
             {
                 var packet = packets.New<P2CChannelAction>();
                 packet.ChannelId = channelId;
@@ -58,10 +58,10 @@ namespace SkynetServer.Services
             return operations;
         }
 
-        public async Task<IReadOnlyList<Task>> ActiveChanged(Client client, bool active)
+        public async Task<IReadOnlyList<Task>> SetActive(Client client, bool active)
         {
             if (client.Active == active)
-                throw new InvalidOperationException("You must not call this method if the active state has not changed");
+                return new List<Task>(capacity: 0);
 
             long[] sessions = await database.Sessions.AsQueryable()
                 .Where(s => s.AccountId == client.AccountId)

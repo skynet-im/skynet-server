@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace SkynetServer.Services
 {
-    internal class ConnectionsService
+    internal sealed class ConnectionsService
     {
         private readonly ConcurrentDictionary<long, Client> connections;
 

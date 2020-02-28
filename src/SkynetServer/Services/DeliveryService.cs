@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Services
 {
-    internal class DeliveryService
+    internal sealed class DeliveryService
     {
         private readonly IServiceProvider serviceProvider;
         private readonly PacketService packets;
@@ -94,7 +94,7 @@ namespace SkynetServer.Services
             {
                 if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
                 {
-                    operations.Add(client.Send(message.ToPacket(client.AccountId)));
+                    operations.Add(client.Enqueue(message.ToPacket(client.AccountId)));
                 }
             }
 
@@ -144,7 +144,7 @@ namespace SkynetServer.Services
                 if (connections.TryGet(session.SessionId, out Client client) && !ReferenceEquals(client, exclude))
                 {
                     client.PacketReceived += callback;
-                    operations.Add(client.Send(message.ToPacket(client.AccountId)));
+                    operations.Add(client.Enqueue(message.ToPacket(client.AccountId)));
                 }
             }
 
@@ -197,7 +197,7 @@ namespace SkynetServer.Services
                     && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != client.AccountId))
                 .Include(m => m.Dependencies).OrderBy(m => m.MessageId);
 
-            await client.Send(query.AsAsyncEnumerable().Select(m => m.ToPacket(client.AccountId))).ConfigureAwait(false);
+            await client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(client.AccountId))).ConfigureAwait(false);
 
             // Independent service scope is disposed after await return
         }
@@ -220,7 +220,7 @@ namespace SkynetServer.Services
                         && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != accountId))
                     .Include(m => m.Dependencies).OrderBy(m => m.MessageId);
 
-                await client.Send(query.AsAsyncEnumerable().Select(m => m.ToPacket(accountId))).ConfigureAwait(false);
+                await client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(accountId))).ConfigureAwait(false);
 
                 // Independent service scope is disposed after await return
             }

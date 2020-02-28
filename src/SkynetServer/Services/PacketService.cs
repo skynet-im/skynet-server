@@ -8,7 +8,7 @@ using System.Reflection;
 
 namespace SkynetServer.Services
 {
-    internal class PacketService
+    internal sealed class PacketService
     {
         private readonly Packet[] packets;
         private readonly Type[] handlers;

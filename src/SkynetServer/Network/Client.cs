@@ -12,21 +12,25 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Network
 {
-    internal partial class Client : IAsyncDisposable
+    internal sealed class Client : IAsyncDisposable
     {
         private readonly IServiceProvider serviceProvider;
+        private readonly ConnectionsService connections;
         private readonly PacketService packets;
         private readonly PacketStream stream;
         private readonly CancellationToken ct;
         private readonly JobQueue<Packet> sendQueue;
+        private readonly Task handler;
 
-        public Client(IServiceProvider serviceProvider, PacketService packets, PacketStream stream, CancellationToken ct)
+        public Client(IServiceProvider serviceProvider, ConnectionsService connections, PacketService packets, PacketStream stream, CancellationToken ct)
         {
             this.serviceProvider = serviceProvider;
+            this.connections = connections;
             this.packets = packets;
             this.stream = stream;
             this.ct = ct;
             sendQueue = new JobQueue<Packet>(packet => stream.WriteAsync(packet));
+            handler = Listen();
         }
 
         public string ApplicationIdentifier { get; private set; }
@@ -58,25 +62,30 @@ namespace SkynetServer.Network
             SessionId = sessionId;
         }
 
-        public async void Listen()
+        public Task Send(Packet packet) => sendQueue.Insert(packet);
+        public Task Enqueue(Packet packet) => sendQueue.Enqueue(packet);
+        public Task Enqueue(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages);
+
+        private async Task Listen()
         {
-            try
+            while (!ct.IsCancellationRequested)
             {
-                while (true)
+                byte id;
+                ReadOnlyMemory<byte> content;
+
+                try
                 {
-                    (byte id, ReadOnlyMemory<byte> content) = await stream.ReadAsync(ct).ConfigureAwait(false);
-                    await HandlePacket(id, content).ConfigureAwait(false);
+                    (id, content) = await stream.ReadAsync(ct).ConfigureAwait(false);
                 }
-            }
-            catch (IOException)
-            {
-                await DisposeAsync().ConfigureAwait(false);
+                catch (IOException)
+                {
+                    await DisposeAsync(false, true).ConfigureAwait(false);
+                    return;
+                }
+
+                await HandlePacket(id, content).ConfigureAwait(false);
             }
         }
-
-        public Task Send(Packet packet) => sendQueue.Insert(packet);
-        public Task Send(ChannelMessage message) => sendQueue.Enqueue(message);
-        public Task Send(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages);
 
         private async ValueTask HandlePacket(byte id, ReadOnlyMemory<byte> content)
         {
@@ -118,14 +127,29 @@ namespace SkynetServer.Network
         #region IAsyncDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 
-        public async ValueTask DisposeAsync()
+        /// <summary>
+        /// Gracefully shuts down this client's operations, updates its state and releases all unmanaged resources.
+        /// This method waits for all handling operations to finish which can lead to dead locks.
+        /// </summary>
+        public ValueTask DisposeAsync() => DisposeAsync(true, true);
+
+        public async ValueTask DisposeAsync(bool waitForHandling, bool updateState)
         {
             if (!disposedValue)
             {
-                // TODO: Unregister from ConnectionsService
-                // TODO: Finish all pending handling operations (high risk for dead locks)
-                // TODO: Call DeliveryService.ChannelActionChanged()
-                // TODO: Call DeliveryService.ActiveChanged()
+                if (SessionId != default)
+                    connections.TryRemove(SessionId, out _);
+
+                if (waitForHandling) 
+                    await handler.ConfigureAwait(false);
+
+                if (updateState && SessionId != default)
+                {
+                    using IServiceScope scope = serviceProvider.CreateScope();
+                    var clientState = scope.ServiceProvider.GetRequiredService<ClientStateService>();
+                    _ = await clientState.SetChannelAction(this, default, ChannelAction.None).ConfigureAwait(false);
+                    _ = await clientState.SetActive(this, false).ConfigureAwait(false);
+                }
 
                 await sendQueue.DisposeAsync().ConfigureAwait(false);
                 await stream.DisposeAsync().ConfigureAwait(false);

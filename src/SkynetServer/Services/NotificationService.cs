@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Services
 {
-    internal class NotificationService
+    internal sealed class NotificationService
     {
         private readonly IServiceProvider serviceProvider;
         private readonly FirebaseService firebase;
@@ -60,6 +60,11 @@ namespace SkynetServer.Services
                     Console.WriteLine($"Failed to send FCM message to {session.FcmToken.Remove(16)}... {ex.Message}");
                     if (options.Value.DeleteSessionOnError)
                     {
+                        // Prevent quick re-login after kick
+                        session.SessionToken = Array.Empty<byte>();
+                        database.Entry(session).Property(s => s.SessionToken).IsModified = true;
+                        await database.SaveChangesAsync().ConfigureAwait(false);
+
                         // Kick client if connected to avoid conflicting information in RAM vs DB
                         if (connections.TryGet(session.SessionId, out Client client))
                         {

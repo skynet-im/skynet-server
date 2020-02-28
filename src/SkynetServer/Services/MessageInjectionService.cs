@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Services
 {
-    internal class MessageInjectionService
+    internal sealed class MessageInjectionService
     {
         private readonly DatabaseContext database;
         private readonly PacketService packets;

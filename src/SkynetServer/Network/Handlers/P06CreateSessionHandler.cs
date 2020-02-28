@@ -3,6 +3,7 @@ using SkynetServer.Database.Entities;
 using SkynetServer.Extensions;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
+using SkynetServer.Services;
 using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;
@@ -12,6 +13,13 @@ namespace SkynetServer.Network.Handlers
 {
     internal class P06CreateSessionHandler : PacketHandler<P06CreateSession>
     {
+        private readonly ConnectionsService connections;
+
+        public P06CreateSessionHandler(ConnectionsService connections)
+        {
+            this.connections = connections;
+        }
+
         public override async ValueTask Handle(P06CreateSession packet)
         {
             packet.AccountName = MailUtilities.SimplifyAddress(packet.AccountName);
@@ -52,10 +60,15 @@ namespace SkynetServer.Network.Handlers
             response.StatusCode = CreateSessionStatus.Success;
             await Client.Send(response).ConfigureAwait(false);
 
-            // TODO: Change the following code not to be awaited anymore
-            await Task.WhenAll(await Delivery.SyncChannels(Client, new List<long>()).ConfigureAwait(false)).ConfigureAwait(false);
-            await Delivery.SyncMessages(Client, lastMessageId: default).ConfigureAwait(false);
-            await Client.Send(Packets.New<P0FSyncFinished>()).ConfigureAwait(false);
+            _ = await Delivery.SyncChannels(Client, new List<long>()).ConfigureAwait(false);
+            _ = Delivery.SyncMessages(Client, lastMessageId: default);
+            _ = Client.Enqueue(Packets.New<P0FSyncFinished>());
+
+            Client old = connections.Add(Client);
+            if (old != null)
+            {
+                _ = old.DisposeAsync(true, false);
+            }
         }
     }
 }
