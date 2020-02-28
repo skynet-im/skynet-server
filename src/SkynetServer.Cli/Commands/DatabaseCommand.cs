@@ -70,7 +70,7 @@ namespace SkynetServer.Cli.Commands
                 {
                     DatabaseContext database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
                     (var account, var confirmation, bool success) = await database
-                        .AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
+                        .AddAccount($"{SkynetRandom.String(10)}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
                     accountId = account.AccountId;
                     console.Out.WriteLine($"Created account {confirmation.MailAddress} with ID {accountId}");
                     console.Out.WriteLine($"Created mail confirmation for {confirmation.MailAddress} with token {confirmation.Token}");
@@ -93,7 +93,7 @@ namespace SkynetServer.Cli.Commands
                     {
                         using IServiceScope scope = provider.CreateScope();
                         DatabaseContext ctx = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-                        await ctx.AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
+                        await ctx.AddAccount($"{SkynetRandom.String(10)}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
                     }).ConfigureAwait(false);
 
                     stopwatch.Stop();

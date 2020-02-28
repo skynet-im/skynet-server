@@ -37,7 +37,7 @@ namespace SkynetServer.Tests
             {
                 using IServiceScope scope = serviceProvider.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-                (_, _, bool success) = await database.AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
+                (_, _, bool success) = await database.AddAccount($"{SkynetRandom.String(10)}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
                 Assert.IsTrue(success);
             }).ConfigureAwait(false);
         }
@@ -72,7 +72,7 @@ namespace SkynetServer.Tests
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
 
                 (var account, _, bool success) = await database
-                    .AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
+                    .AddAccount($"{SkynetRandom.String(10)}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
                 Assert.IsTrue(success);
 
                 await AsyncParallel.ForAsync(0, 10, async j =>
@@ -112,7 +112,7 @@ namespace SkynetServer.Tests
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
 
                 (var account, _, bool success) = await database
-                    .AddAccount($"{DatabaseContext.RandomToken()}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
+                    .AddAccount($"{SkynetRandom.String(10)}@example.com", Array.Empty<byte>()).ConfigureAwait(false);
                 Assert.IsTrue(success);
 
                 Channel channel = new Channel()

@@ -7,6 +7,8 @@ namespace SkynetServer.Database.Entities
     public class Session
     {
         public long AccountId { get; set; }
+        public byte[] SessionToken { get; set; }
+        public string WebToken { get; set; }
         public Account Account { get; set; }
 
         public long SessionId { get; set; }

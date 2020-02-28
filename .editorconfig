@@ -15,6 +15,9 @@ dotnet_diagnostic.CA1305.severity = none
 # CA1308: Normalize strings to uppercase
 dotnet_diagnostic.CA1308.severity = none
 
+# CA1720: Identifier contains type name
+dotnet_diagnostic.CA1720.severity = none
+
 # CA1819: Properties should not return arrays
 dotnet_diagnostic.CA1819.severity = none
 

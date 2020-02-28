@@ -1,7 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using MySql.Data.MySqlClient;
 using SkynetServer.Database.Entities;
+using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SkynetServer.Database
 {
@@ -28,11 +31,13 @@ namespace SkynetServer.Database
             account.Property(a => a.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
             var session = modelBuilder.Entity<Session>();
-            session.HasKey(s => new { s.AccountId, s.SessionId });
-            session.HasOne(s => s.Account).WithMany(a => a.Sessions).HasForeignKey(s => s.AccountId);
+            session.HasKey(s => s.SessionId);
+            session.HasAlternateKey(s => s.WebToken);
             session.Property(s => s.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             session.Property(s => s.SessionId).ValueGeneratedNever();
+            session.Property(s => s.SessionToken).IsRequired();
             session.Property(s => s.ApplicationIdentifier).IsRequired();
+            session.HasOne(s => s.Account).WithMany(a => a.Sessions).HasForeignKey(s => s.AccountId);
 
             var channel = modelBuilder.Entity<Channel>();
             channel.HasKey(c => c.ChannelId);
@@ -75,5 +80,88 @@ namespace SkynetServer.Database
             mailConfirmation.Property(c => c.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             mailConfirmation.HasOne(c => c.Account).WithMany(a => a.MailConfirmations).HasForeignKey(c => c.AccountId);
         }
+
+        #region insertion helpers
+        public async Task<(Account, MailConfirmation, bool)> AddAccount(string mailAddress, byte[] keyHash)
+        {
+            Account account = new Account { KeyHash = keyHash };
+            MailConfirmation confirmation = new MailConfirmation { Account = account, MailAddress = mailAddress };
+
+            bool saved = false;
+            do
+            {
+                try
+                {
+                    long id = SkynetRandom.Id();
+                    string token = SkynetRandom.String(10);
+                    account.AccountId = id;
+                    confirmation.Token = token;
+                    Accounts.Add(account);
+                    MailConfirmations.Add(confirmation);
+                    await SaveChangesAsync().ConfigureAwait(false);
+                    saved = true;
+                }
+                catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
+                {
+                    // Return false if unique constraint violation is caused by the mail address
+                    // An example for mex.Message is "Duplicate entry 'concurrency@unit.test' for key 'PRIMARY'"
+
+                    if (mex.Message.Contains('@', StringComparison.Ordinal))
+                        return (null, null, false);
+                }
+            } while (!saved);
+            return (account, confirmation, true);
+        }
+
+        public async Task<Session> AddSession(Session session)
+        {
+            bool saved = false;
+            do
+            {
+                try
+                {
+                    long id = SkynetRandom.Id();
+                    session.SessionId = id;
+                    session.SessionToken = SkynetRandom.Bytes(32);
+                    session.WebToken = SkynetRandom.String(30);
+                    Sessions.Add(session);
+                    await SaveChangesAsync().ConfigureAwait(false);
+                    saved = true;
+                }
+                catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
+                {
+                }
+            } while (!saved);
+            return session;
+        }
+
+        public async Task<Channel> AddChannel(Channel channel, params ChannelMember[] members)
+        {
+            bool saved = false;
+            do
+            {
+                try
+                {
+                    long id = SkynetRandom.Id();
+                    channel.ChannelId = id;
+                    Channels.Add(channel);
+
+                    foreach (ChannelMember member in members)
+                    {
+                        member.ChannelId = id;
+                    }
+
+                    ChannelMembers.AddRange(members);
+
+                    await SaveChangesAsync().ConfigureAwait(false);
+                    saved = true;
+                }
+                catch (DbUpdateException ex) when (ex?.InnerException is MySqlException mex && mex.Number == 1062)
+                {
+                }
+            } while (!saved);
+            return channel;
+        }
+#endregion
     }
 }
