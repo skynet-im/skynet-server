@@ -45,6 +45,8 @@ namespace SkynetServer.Services
             {
                 using IServiceScope scope = serviceProvider.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+                var injector = scope.ServiceProvider.GetRequiredService<MessageInjectionService>();
+                var delivery = scope.ServiceProvider.GetRequiredService<DeliveryService>();
 
                 try
                 {
@@ -72,6 +74,9 @@ namespace SkynetServer.Services
                         }
                         database.Sessions.Remove(session);
                         await database.SaveChangesAsync().ConfigureAwait(false);
+
+                        Message deviceList = await injector.CreateDeviceList(session.AccountId).ConfigureAwait(false);
+                        _ = await delivery.SendMessage(deviceList, null).ConfigureAwait(false);
                     }
                 }
             }

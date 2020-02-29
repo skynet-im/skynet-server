@@ -65,5 +65,22 @@ namespace SkynetServer.Services
             update.Dependencies.Add(new Dependency(bobId, alicePublicId));
             return await CreateMessage(update, channelId, null).ConfigureAwait(false);
         }
+
+        public async Task<Message> CreateDeviceList(long accountId)
+        {
+            long loopbackId = await database.Channels.AsQueryable()
+                .Where(c => c.OwnerId == accountId && c.ChannelType == ChannelType.Loopback)
+                .Select(c => c.ChannelId).SingleAsync().ConfigureAwait(false);
+
+            List<SessionInformation> sessionInformation = await database.Sessions.AsQueryable()
+                .Where(s => s.AccountId == accountId)
+                .Select(s => new SessionInformation(s.AccountId, s.CreationTime, s.ApplicationIdentifier))
+                .ToListAsync().ConfigureAwait(false);
+
+            var deviceList = packets.New<P29DeviceList>();
+            deviceList.MessageFlags = MessageFlags.Loopback | MessageFlags.Unencrypted;
+            deviceList.Sessions = sessionInformation;
+            return await CreateMessage(deviceList, loopbackId, accountId).ConfigureAwait(false);
+        }
     }
 }

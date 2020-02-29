@@ -10,7 +10,7 @@ namespace SkynetServer.Network.Packets
     [Packet(0x29, PacketPolicies.Send)]
     internal sealed class P29DeviceList : ChannelMessage
     {
-        List<SessionInformation> Sessions { get; set; } = new List<SessionInformation>();
+        public List<SessionInformation> Sessions { get; set; } = new List<SessionInformation>();
 
         public override Packet Create() => new P29DeviceList().Init(this);
 

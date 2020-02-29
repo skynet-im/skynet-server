@@ -11,8 +11,8 @@ namespace SkynetServer.Network.Packets
     [MessageFlags(MessageFlags.Loopback | MessageFlags.Unencrypted)]
     internal sealed class P28BlockList : ChannelMessage
     {
-        List<long> BlockedAccounts { get; set; } = new List<long>();
-        List<long> BlockedConversations { get; set; } = new List<long>();
+        public List<long> BlockedAccounts { get; set; } = new List<long>();
+        public List<long> BlockedConversations { get; set; } = new List<long>();
 
         public override Packet Create() => new P28BlockList().Init(this);
 

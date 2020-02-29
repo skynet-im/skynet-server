@@ -14,10 +14,12 @@ namespace SkynetServer.Network.Handlers
     internal class P06CreateSessionHandler : PacketHandler<P06CreateSession>
     {
         private readonly ConnectionsService connections;
+        private readonly MessageInjectionService injector;
 
-        public P06CreateSessionHandler(ConnectionsService connections)
+        public P06CreateSessionHandler(ConnectionsService connections, MessageInjectionService injector)
         {
             this.connections = connections;
+            this.injector = injector;
         }
 
         public override async ValueTask Handle(P06CreateSession packet)
@@ -55,6 +57,8 @@ namespace SkynetServer.Network.Handlers
                 FcmToken = packet.FcmRegistrationToken
             }).ConfigureAwait(false);
 
+            Message deviceList = await injector.CreateDeviceList(Client.AccountId).ConfigureAwait(false);
+
             Client.Authenticate(confirmation.Account.AccountId, session.SessionId);
 
             response.StatusCode = CreateSessionStatus.Success;
@@ -63,6 +67,8 @@ namespace SkynetServer.Network.Handlers
             _ = await Delivery.SyncChannels(Client, new List<long>()).ConfigureAwait(false);
             _ = Delivery.SyncMessages(Client, lastMessageId: default);
             _ = Client.Enqueue(Packets.New<P0FSyncFinished>());
+
+            _ = Delivery.SendMessage(deviceList, null);
 
             Client old = connections.Add(Client);
             if (old != null)
