@@ -32,6 +32,7 @@ namespace SkynetServer.Network.Handlers
             }
 
             session.LastConnected = DateTime.Now;
+            session.LastVersionCode = Client.VersionCode;
             await Database.SaveChangesAsync().ConfigureAwait(false);
 
             Client.Authenticate(session.Account.AccountId, session.SessionId);
