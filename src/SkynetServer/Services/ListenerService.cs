@@ -23,14 +23,14 @@ namespace SkynetServer.Services
 
         private readonly Socket listener;
         private readonly IPEndPoint endPoint;
-        private readonly X509Certificate certificate;
+        private readonly X509Certificate2 certificate;
 
         public ListenerService(IOptions<ListenerOptions> listenerOptions, IServiceProvider serviceProvider)
         {
             this.listenerOptions = listenerOptions;
             this.serviceProvider = serviceProvider;
 
-            certificate = new X509Certificate(listenerOptions.Value.CertificatePath);
+            certificate = new X509Certificate2(listenerOptions.Value.CertificatePath);
             endPoint = new IPEndPoint(IPAddress.IPv6Any, listenerOptions.Value.Port);
 
             listener = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp)
@@ -59,18 +59,25 @@ namespace SkynetServer.Services
 
         private async void Loop()
         {
-            while (true)
+            try
             {
-                Socket client = await listener.AcceptAsync().ConfigureAwait(false);
-                if (cts.IsCancellationRequested)
+                while (true)
                 {
-                    client.Dispose();
-                    break;
+                    Socket client = await listener.AcceptAsync().ConfigureAwait(false);
+                    if (cts.IsCancellationRequested)
+                    {
+                        client.Dispose();
+                        break;
+                    }
+                    else
+                    {
+                        Authenticate(client);
+                    }
                 }
-                else
-                {
-                    Authenticate(client);
-                }
+            }
+            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)
+            {
+                // Server is shutting down
             }
         }
 

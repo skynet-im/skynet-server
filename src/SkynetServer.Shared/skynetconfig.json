@@ -10,7 +10,7 @@
   "ListenerOptions": {
     "Backlog": 64,
     "Port": 32761,
-    "CertificatePath": "skynet.pfx"
+    "CertificatePath": "devcert.pfx"
   },
   "MailOptions": {
     "EnableMailing": true,

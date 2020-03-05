@@ -20,4 +20,10 @@
     <ProjectReference Include="..\SkynetServer.Shared\SkynetServer.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="devcert.pfx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
