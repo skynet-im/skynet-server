@@ -11,6 +11,8 @@ namespace SkynetServer.Configuration
 
         [Required] public IEnumerable<Platform> Platforms { get; set; }
 
+        public bool CountMessagesBeforeSync { get; set; }
+
         public class Platform
         {
             [Required] public string Name { get; set; }

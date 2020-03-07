@@ -22,16 +22,18 @@ namespace SkynetServer.Services
         private readonly ConnectionsService connections;
         private readonly NotificationService notification;
         private readonly IOptions<FcmOptions> fcmOptions;
+        private readonly IOptions<ProtocolOptions> protocolOptions;
         private readonly DatabaseContext database;
 
         public DeliveryService(IServiceProvider serviceProvider, PacketService packets, ConnectionsService connections,
-            NotificationService notification, IOptions<FcmOptions> fcmOptions, DatabaseContext database)
+            NotificationService notification, IOptions<FcmOptions> fcmOptions, IOptions<ProtocolOptions> protocolOptions, DatabaseContext database)
         {
             this.serviceProvider = serviceProvider;
             this.packets = packets;
             this.connections = connections;
             this.notification = notification;
             this.fcmOptions = fcmOptions;
+            this.protocolOptions = protocolOptions;
             this.database = database;
         }
 
@@ -153,76 +155,36 @@ namespace SkynetServer.Services
         #endregion
 
         #region channel and message restore
-        public async Task<IReadOnlyList<Task>> SyncChannels(Client client, List<long> currentState)
+        public async Task<Task> SyncChannels(Client client, List<long> channelState, long lastMessageId)
         {
-            Channel[] channels = await database.ChannelMembers.AsQueryable()
-                .Where(m => m.AccountId == client.AccountId)
-                .Join(database.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                .ToArrayAsync().ConfigureAwait(false);
-
-            var operations = new List<Task>();
-
-            foreach (Channel channel in channels)
-            {
-                if (!currentState.Contains(channel.ChannelId))
-                {
-                    // Notify client about new channels
-                    var packet = packets.New<P0ACreateChannel>();
-                    packet.ChannelId = channel.ChannelId;
-                    packet.ChannelType = channel.ChannelType;
-                    packet.OwnerId = channel.OwnerId ?? 0;
-                    if (packet.ChannelType == ChannelType.Direct)
-                        packet.CounterpartId = await database.ChannelMembers.AsQueryable()
-                            .Where(m => m.ChannelId == channel.ChannelId && m.AccountId != client.AccountId)
-                            .Select(m => m.AccountId)
-                            .SingleAsync().ConfigureAwait(false);
-                    operations.Add(client.Send(packet));
-                    currentState.Add(channel.ChannelId);
-                }
-            }
-
-            return operations;
-        }
-
-        public async Task SyncMessages(Client client, long lastMessageId)
-        {
-            using IServiceScope scope = serviceProvider.CreateScope();
-            var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-
-            var query = database.ChannelMembers.AsQueryable()
+            return await ExecuteSync(
+                client,
+                database => database.ChannelMembers.AsQueryable()
                 .Where(member => member.AccountId == client.AccountId)
                 .Join(database.Messages, member => member.ChannelId, m => m.ChannelId, (member, m) => m)
                 .Where(m => (m.MessageId > lastMessageId)
                     && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == client.AccountId)
-                    && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != client.AccountId))
-                .Include(m => m.Dependencies).OrderBy(m => m.MessageId);
-
-            await client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(client.AccountId))).ConfigureAwait(false);
-
-            // Independent service scope is disposed after await return
+                    && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != client.AccountId)),
+                channelState: channelState
+            ).ConfigureAwait(false);
         }
 
-        public async Task SyncMessages(Client client, long channelId, long after, long before, ushort maxCount)
+        public async Task<Task> SyncMessages(Client client, long channelId, long after, long before, ushort maxCount)
         {
-            using IServiceScope scope = serviceProvider.CreateScope();
-            var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-
             // The JOIN with ChannelMembers prevents unauthorized access
-            IQueryable<Message> query = database.ChannelMembers.AsQueryable()
-                .Where(member => member.AccountId == client.AccountId)
-                .Join(database.Messages, member => member.ChannelId, m => m.ChannelId, (member, m) => m)
-                .Where(m => (channelId == default || m.ChannelId == channelId) 
-                    && m.MessageId > after
-                    && m.MessageId < before
-                    && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == client.AccountId)
-                    && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != client.AccountId))
-                .Include(m => m.Dependencies).OrderBy(m => m.MessageId);
 
-            if (maxCount != default) query = query.Take(maxCount);
-
-            await client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(client.AccountId))).ConfigureAwait(false);
-
-            // Independent service scope is disposed after await return
+            return await ExecuteSync(
+                client,
+                database => database.ChannelMembers.AsQueryable()
+                    .Where(member => member.AccountId == client.AccountId)
+                    .Join(database.Messages, member => member.ChannelId, m => m.ChannelId, (member, m) => m)
+                    .Where(m => (channelId == default || m.ChannelId == channelId)
+                        && m.MessageId > after
+                        && m.MessageId < before
+                        && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == client.AccountId)
+                        && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != client.AccountId)),
+                maxCount: maxCount
+            ).ConfigureAwait(false);
         }
 
         public async Task<IReadOnlyList<Task>> SyncMessages(long accountId, long channelId)
@@ -232,33 +194,102 @@ namespace SkynetServer.Services
                 .Select(s => s.SessionId)
                 .ToArrayAsync().ConfigureAwait(false);
 
-            async Task sendTo(Client client)
-            {
-                IServiceScope scope = serviceProvider.CreateScope();
-                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-
-                var query = database.Messages.AsQueryable()
-                    .Where(m => (m.ChannelId == channelId)
-                        && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == accountId)
-                        && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != accountId))
-                    .Include(m => m.Dependencies).OrderBy(m => m.MessageId);
-
-                await client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(accountId))).ConfigureAwait(false);
-
-                // Independent service scope is disposed after await return
-            }
-
-            var operations = new List<Task>();
+            var operations = new List<Task<Task>>();
 
             foreach (long sessionId in sessions)
             {
                 if (connections.TryGet(sessionId, out Client client))
                 {
-                    operations.Add(sendTo(client));
+                    // The JOIN with ChannelMembers prevents unauthorized access
+
+                    operations.Add(ExecuteSync(
+                        client,
+                        database => database.ChannelMembers.AsQueryable()
+                            .Where(member => member.AccountId == client.AccountId)
+                            .Join(database.Messages, member => member.ChannelId, m => m.ChannelId, (member, m) => m)
+                            .Where(m => (m.ChannelId == channelId)
+                                && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == accountId)
+                                && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != accountId))
+                    ));
                 }
             }
 
-            return operations;
+            return await Task.WhenAll(operations).ConfigureAwait(false);
+        }
+
+        private async Task<Task> ExecuteSync(
+            Client client,
+            Func<DatabaseContext, IQueryable<Message>> queryBuilder,
+            List<long> channelState = null,
+            ushort maxCount = default)
+        {
+            var start = packets.New<P0BSyncStarted>();
+
+            if (protocolOptions.Value.CountMessagesBeforeSync)
+            {
+                IQueryable<Message> countQuery = queryBuilder(database);
+                if (maxCount != default)
+                    countQuery = countQuery.Take(maxCount);
+
+                start.MinCount = await countQuery.CountAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                start.MinCount = -1;
+            }
+
+            _ = client.Send(start);
+
+            if (channelState != null)
+                await StartSyncChannels(client, channelState).ConfigureAwait(false);
+
+            async Task executeScoped()
+            {
+                using IServiceScope scope = serviceProvider.CreateScope();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+
+                IQueryable<Message> query = queryBuilder(database).Include(m => m.Dependencies).OrderBy(m => m.MessageId);
+                if (maxCount != default)
+                    query = query.Take(maxCount);
+
+                Task send = client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(client.AccountId)));
+                _ = client.Enqueue(packets.New<P0FSyncFinished>());
+                await send.ConfigureAwait(false);
+
+                // Independent service scope is disposed after await returns
+            }
+
+            return executeScoped();
+        }
+
+        private async Task StartSyncChannels(Client client, IReadOnlyList<long> currentState)
+        {
+            // This query selects all channels of the client's account and performs LEFT JOIN on other channel members
+            var query = from m in database.ChannelMembers.AsNoTracking().AsQueryable().Where(m => m.AccountId == client.AccountId)
+                        join c in database.Channels
+                            on m.ChannelId equals c.ChannelId
+                        join other in database.ChannelMembers.AsQueryable().Where(m => m.AccountId != client.AccountId)
+                            on c.ChannelId equals other.ChannelId into grouping
+                        from other in grouping.DefaultIfEmpty()
+                        select new { c.ChannelId, c.ChannelType, c.OwnerId, c.CreationTime, other.AccountId };
+
+            var channels = await query.ToArrayAsync().ConfigureAwait(false);
+
+            foreach (var channel in channels)
+            {
+                if (!currentState.Contains(channel.ChannelId))
+                {
+                    // Notify client about new channels
+                    var packet = packets.New<P0ACreateChannel>();
+                    packet.ChannelId = channel.ChannelId;
+                    packet.ChannelType = channel.ChannelType;
+                    packet.OwnerId = channel.OwnerId ?? 0;
+                    packet.CreationTime = channel.CreationTime;
+                    if (packet.ChannelType == ChannelType.Direct)
+                        packet.CounterpartId = channel.AccountId;
+                    _ = client.Send(packet);
+                }
+            }
         }
         #endregion
     }

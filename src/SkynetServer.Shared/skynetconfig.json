@@ -32,6 +32,7 @@
         "RecommendUpdateThreshold": 55,
         "ForceUpdateThreshold": 55
       }
-    ]
+    ],
+    "CountMessagesBeforeSync": true
   }
 }

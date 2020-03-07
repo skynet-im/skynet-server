@@ -64,11 +64,8 @@ namespace SkynetServer.Network.Handlers
             response.StatusCode = CreateSessionStatus.Success;
             await Client.Send(response).ConfigureAwait(false);
 
-            _ = await Delivery.SyncChannels(Client, new List<long>()).ConfigureAwait(false);
-            _ = Delivery.SyncMessages(Client, lastMessageId: default);
-            _ = Client.Enqueue(Packets.New<P0FSyncFinished>());
-
-            _ = Delivery.SendMessage(deviceList, null);
+            _ = await Delivery.SyncChannels(Client, new List<long>(), lastMessageId: default).ConfigureAwait(false);
+            _ = await Delivery.SendMessage(deviceList, null).ConfigureAwait(false);
 
             Client old = connections.Add(Client);
             if (old != null)
