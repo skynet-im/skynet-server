@@ -29,7 +29,8 @@ namespace SkynetServer.Web.Controllers
         {
             string status;
             string content;
-            MailConfirmation confirmation = await ctx.MailConfirmations.SingleOrDefaultAsync(x => x.Token == token).ConfigureAwait(false);
+            MailConfirmation confirmation = await ctx.MailConfirmations.AsTracking()
+                .SingleOrDefaultAsync(x => x.Token == token).ConfigureAwait(false);
             if (confirmation == null)
             {
                 status = "Invalid";

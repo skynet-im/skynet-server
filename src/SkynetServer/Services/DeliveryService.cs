@@ -264,11 +264,19 @@ namespace SkynetServer.Services
 
         private async Task StartSyncChannels(Client client, IReadOnlyList<long> currentState)
         {
-            // This query selects all channels of the client's account and performs LEFT JOIN on other channel members
-            var query = from m in database.ChannelMembers.AsNoTracking().AsQueryable().Where(m => m.AccountId == client.AccountId)
+            // This query returns all channels of the client's account and the counterpart's account ID for direct channels.
+            // We find all channels of the client and perform a LEFT JOIN on other direct channel.
+            // If we would get an other channel members, group channels and accound data channels would appear multiple times in the result set.
+
+            var query = from m in database.ChannelMembers.AsQueryable().Where(m => m.AccountId == client.AccountId)
                         join c in database.Channels
                             on m.ChannelId equals c.ChannelId
-                        join other in database.ChannelMembers.AsQueryable().Where(m => m.AccountId != client.AccountId)
+                        join other in (
+                                from m in database.ChannelMembers.AsQueryable().Where(m => m.AccountId != client.AccountId)
+                                join c in database.Channels.AsQueryable().Where(c => c.ChannelType == ChannelType.Direct)
+                                    on m.ChannelId equals c.ChannelId
+                                select m
+                            )
                             on c.ChannelId equals other.ChannelId into grouping
                         from other in grouping.DefaultIfEmpty()
                         select new { c.ChannelId, c.ChannelType, c.OwnerId, c.CreationTime, other.AccountId };

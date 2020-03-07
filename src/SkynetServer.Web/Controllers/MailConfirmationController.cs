@@ -35,7 +35,8 @@ namespace SkynetServer.Web.Controllers
         [HttpPost("{token}")]
         public async Task<IActionResult> Post(string token)
         {
-            MailConfirmation confirmation = await ctx.MailConfirmations.SingleOrDefaultAsync(x => x.Token == token).ConfigureAwait(false);
+            MailConfirmation confirmation = await ctx.MailConfirmations.AsTracking()
+                .SingleOrDefaultAsync(x => x.Token == token).ConfigureAwait(false);
             if (confirmation == null)
                 return View("Invalid");
             if (confirmation.ConfirmationTime == default)

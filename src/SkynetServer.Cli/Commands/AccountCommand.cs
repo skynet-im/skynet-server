@@ -70,7 +70,8 @@ namespace SkynetServer.Cli.Commands
 
             private async Task<int> OnExecute(IConsole console, DatabaseContext database)
             {
-                MailConfirmation confirmation = await database.MailConfirmations.SingleOrDefaultAsync(c => c.MailAddress == MailAddress).ConfigureAwait(false);
+                MailConfirmation confirmation = await database.MailConfirmations.AsTracking()
+                    .SingleOrDefaultAsync(c => c.MailAddress == MailAddress).ConfigureAwait(false);
                 if (confirmation != null)
                 {
                     if (confirmation.ConfirmationTime == default)

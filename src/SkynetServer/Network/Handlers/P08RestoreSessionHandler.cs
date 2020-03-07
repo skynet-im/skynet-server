@@ -21,7 +21,7 @@ namespace SkynetServer.Network.Handlers
 
         public override async ValueTask Handle(P08RestoreSession packet)
         {
-            Session session = await Database.Sessions.Include(s => s.Account)
+            Session session = await Database.Sessions.AsTracking().Include(s => s.Account)
                 .SingleOrDefaultAsync(s => s.SessionId == packet.SessionId).ConfigureAwait(false);
             var response = Packets.New<P09RestoreSessionResponse>();
             if (session == null || !packet.SessionToken.SequenceEqual(session.Account.KeyHash))

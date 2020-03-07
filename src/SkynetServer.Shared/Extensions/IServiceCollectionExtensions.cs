@@ -43,6 +43,7 @@ namespace SkynetServer.Extensions
         {
             services.AddDbContextPool<DatabaseContext>(options =>
             {
+                options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
                 options.UseMySql(configuration.GetValue<string>("DatabaseOptions:ConnectionString"));
             });
 

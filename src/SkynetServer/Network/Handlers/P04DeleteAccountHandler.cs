@@ -23,7 +23,7 @@ namespace SkynetServer.Network.Handlers
         {
             var response = Packets.New<P05DeleteAccountResponse>();
 
-            Account account = await Database.Accounts.AsQueryable()
+            Account account = await Database.Accounts.AsTracking()
                 .SingleOrDefaultAsync(a => a.AccountId == Client.AccountId && a.KeyHash == packet.KeyHash).ConfigureAwait(false);
             if (account == null)
             {

@@ -176,7 +176,7 @@ namespace SkynetServer.Tests
                     MessageFlags = MessageFlags.Unencrypted,
                     Dependencies = dependencies
                 };
-              
+                database.Messages.Add(message);
                 await database.SaveChangesAsync().ConfigureAwait(false);
                 previous = message;
             }).ConfigureAwait(false);
