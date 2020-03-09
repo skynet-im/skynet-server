@@ -1,18 +1,37 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using McMaster.Extensions.CommandLineUtils;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SkynetServer.Commands;
 using SkynetServer.Extensions;
 using SkynetServer.Services;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace SkynetServer
 {
     internal static class Program
     {
-        public static void Main()
+        public static void Main(string[] args)
         {
-            CreateHostBuilder().Build().Run();
+#if DEBUG
+            if (Debugger.IsAttached)
+            {
+                Console.Write("SkynetServer is running in debug mode. Please enter your command: ");
+                args = Console.ReadLine().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                Console.WriteLine();
+            }
+#endif
+
+            if (args.Length == 0)
+            {
+                CreateHostBuilder().Build().Run();
+            }
+            else
+            {
+                CreateCommandLineApplication().Execute(args);
+            }
         }
 
         private static IHostBuilder CreateHostBuilder()
@@ -39,6 +58,25 @@ namespace SkynetServer
                 services.AddHostedService<ListenerService>();
             });
             return builder;
+        }
+
+        private static CommandLineApplication CreateCommandLineApplication()
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddJsonFile("skynetconfig.json", optional: false, reloadOnChange: true)
+                .Build();
+
+            var services = new ServiceCollection()
+                .AddSingleton(PhysicalConsole.Singleton)
+                .ConfigureSkynet(configuration)
+                .AddSingleton<MailingService>()
+                .AddDatabaseContext(configuration)
+                .BuildServiceProvider();
+
+            var application = new CommandLineApplication<SkynetCommand>();
+            application.Conventions.UseDefaultConventions();
+            application.Conventions.UseConstructorInjection(services);
+            return application;
         }
     }
 }

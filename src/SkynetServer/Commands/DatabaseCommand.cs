@@ -7,7 +7,9 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
-namespace SkynetServer.Cli.Commands
+#pragma warning disable IDE0051 // Remove unused private members
+
+namespace SkynetServer.Commands
 {
     [Command("database")]
     [Subcommand(typeof(Create), typeof(Delete), typeof(Benchmark))]

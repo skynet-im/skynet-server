@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace SkynetServer.Cli.Commands
+#pragma warning disable IDE0051 // Remove unused private members
+
+namespace SkynetServer.Commands
 {
     [Command("skynet", Description = "Skynet Server Management Console")]
     [Subcommand(typeof(AccountCommand), typeof(DatabaseCommand))]

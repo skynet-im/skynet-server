@@ -7,7 +7,9 @@ using SkynetServer.Utilities;
 using System;
 using System.Threading.Tasks;
 
-namespace SkynetServer.Cli.Commands
+#pragma warning disable IDE0051 // Remove unused private members
+
+namespace SkynetServer.Commands
 {
     [Command("account")]
     [Subcommand(typeof(Create), typeof(Confirm), typeof(Resend))]

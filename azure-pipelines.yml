@@ -40,7 +40,7 @@ steps:
   displayName: Prepare
   inputs:
     command: run
-    projects: 'src/SkynetServer.Cli/SkynetServer.Cli.csproj'
+    projects: 'src/SkynetServer/SkynetServer.csproj'
     arguments: '--configuration $(buildConfiguration) --no-build database create'
 - task: DotNetCoreCLI@2
   displayName: Test

@@ -8,16 +8,13 @@ WORKDIR /app
 COPY SkynetServer.sln .
 COPY NuGet.config .
 COPY src/SkynetServer/SkynetServer.csproj src/SkynetServer/
-COPY src/SkynetServer.Cli/SkynetServer.Cli.csproj src/SkynetServer.Cli/
 COPY src/SkynetServer.Shared/SkynetServer.Shared.csproj src/SkynetServer.Shared/
 
-RUN dotnet restore src/SkynetServer/SkynetServer.csproj \
-&& dotnet restore src/SkynetServer.Cli/SkynetServer.Cli.csproj
+RUN dotnet restore src/SkynetServer/SkynetServer.csproj
 
 # Copy everything else and build
 COPY src/ src/
-RUN dotnet publish -c Release -o /app/out src/SkynetServer/SkynetServer.csproj \
-&& dotnet publish -c Release -o /app/out src/SkynetServer.Cli/SkynetServer.Cli.csproj
+RUN dotnet publish -c Release -o /app/out src/SkynetServer/SkynetServer.csproj
 
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/core/runtime:3.1 AS runtime
