@@ -75,7 +75,14 @@ namespace SkynetServer.Network
 
                 try
                 {
-                    (id, content) = await stream.ReadAsync(ct).ConfigureAwait(false);
+                    bool success;
+                    (success, id, content) = await stream.ReadAsync(ct).ConfigureAwait(false);
+
+                    if (!success)
+                    {
+                        await DisposeAsync(false, true).ConfigureAwait(false);
+                        return;
+                    }
                 }
                 catch (IOException)
                 {

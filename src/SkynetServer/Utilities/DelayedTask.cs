@@ -26,7 +26,7 @@ namespace SkynetServer.Utilities
         }
 
         public Task Task { get; }
-        public bool TimedOut { get; private set; }
+        public bool? Canceled { get; private set; }
 
         public void Cancel()
         {
@@ -48,16 +48,19 @@ namespace SkynetServer.Utilities
             try
             {
                 await Task.Delay(millisecondsDelay, cts.Token).ConfigureAwait(false);
-                TimedOut = true;
+                Canceled = false;
             }
-            catch (TaskCanceledException) { }
+            catch (TaskCanceledException)
+            {
+                Canceled = true;
+            }
             finally
             {
                 disposed = true;
                 cts.Dispose();
             }
 
-            if (TimedOut) await callback().ConfigureAwait(false);
+            if (!Canceled.Value) await callback().ConfigureAwait(false);
         }
     }
 }

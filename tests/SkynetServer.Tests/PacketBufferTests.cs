@@ -23,6 +23,15 @@ namespace SkynetServer.Tests
         }
 
         [TestMethod]
+        public void TestPositionBoundry()
+        {
+            var buffer = new PacketBuffer(capacity: 4);
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => buffer.Position = -1);
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => buffer.Position = 5);
+            buffer.Position = 4;
+        }
+
+        [TestMethod]
         public void TestReadonlyCheck()
         {
             byte[] bytes = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };

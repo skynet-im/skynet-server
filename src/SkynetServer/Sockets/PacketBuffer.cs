@@ -50,7 +50,7 @@ namespace SkynetServer.Sockets
             get => position;
             set
             {
-                if (value < 0 || value >= Capacity) throw new ArgumentOutOfRangeException(nameof(value));
+                if (value < 0 || value > Capacity) throw new ArgumentOutOfRangeException(nameof(value));
                 position = value;
             }
         }

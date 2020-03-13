@@ -25,23 +25,25 @@ namespace SkynetServer.Sockets
         /// </summary>
         /// <exception cref="IOException">Failed to read from the underlying stream.</exception>
         /// <exception cref="ObjectDisposedException">The <see cref="PacketStream"/> has been disposed.</exception>
-        public async ValueTask<(byte id, ReadOnlyMemory<byte> buffer)> ReadAsync(CancellationToken ct = default)
+        public async ValueTask<(bool success, byte id, ReadOnlyMemory<byte> buffer)> ReadAsync(CancellationToken ct = default)
         {
             if (disposedValue) throw new ObjectDisposedException(nameof(PacketStream));
 
             byte[] buffer = new byte[4];
-            await ReadInternal(buffer, ct).ConfigureAwait(false);
-            int packetMeta = BitConverter.ToInt32(buffer);
+            if (!await ReadInternal(buffer, ct).ConfigureAwait(false))
+                return default;
+            uint packetMeta = BitConverter.ToUInt32(buffer);
             if (!BitConverter.IsLittleEndian)
                 packetMeta = BinaryPrimitives.ReverseEndianness(packetMeta);
 
             byte id = (byte)(packetMeta & 0x000000FF);
-            int length = packetMeta >> 8;
+            int length = (int)(packetMeta >> 8);
 
             buffer = new byte[length];
-            await ReadInternal(buffer, ct).ConfigureAwait(false);
+            if (!await ReadInternal(buffer, ct).ConfigureAwait(false))
+                return default;
 
-            return (id, buffer);
+            return (true, id, buffer);
         }
 
         /// <summary>
@@ -69,13 +71,21 @@ namespace SkynetServer.Sockets
             return innerStream.WriteAsync(buffer.GetBuffer(), ct);
         }
 
-        private async ValueTask ReadInternal(Memory<byte> buffer, CancellationToken ct)
+        private async ValueTask<bool> ReadInternal(Memory<byte> buffer, CancellationToken ct)
         {
+            if (buffer.Length == 0) 
+                return true;
+
             int read = 0;
             do
             {
-                read += await innerStream.ReadAsync(buffer.Slice(read), ct);
+                int length = await innerStream.ReadAsync(buffer.Slice(read), ct).ConfigureAwait(false);
+                if (length == 0)
+                    return false;
+                read += length;
             } while (read < buffer.Length);
+
+            return true;
         }
 
         #region IAsyncDisposable Support
