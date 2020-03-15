@@ -6,7 +6,7 @@ using SkynetServer.Network.Packets;
 using SkynetServer.Services;
 using System;
 
-namespace SkynetServer.Tests
+namespace SkynetServer.Tests.Services
 {
     [TestClass]
     public class PacketServiceTests
@@ -31,6 +31,18 @@ namespace SkynetServer.Tests
         }
 
         [TestMethod]
+        public void TestFlags()
+        {
+            var publicKeys = packets.New<P18PublicKeys>();
+            Assert.AreEqual(MessageFlags.Unencrypted, publicKeys.RequiredFlags);
+            Assert.AreEqual(MessageFlags.Unencrypted, publicKeys.AllowedFlags);
+
+            var nickname = packets.New<P25Nickname>();
+            Assert.AreEqual(MessageFlags.None, nickname.RequiredFlags);
+            Assert.AreEqual(MessageFlags.Unencrypted, nickname.AllowedFlags);
+        }
+
+        [TestMethod]
         public void TestHandlers()
         {
             ReadOnlySpan<Packet> packets = this.packets.Packets;
@@ -45,18 +57,6 @@ namespace SkynetServer.Tests
                     Assert.IsTrue(baseInterface.GetGenericArguments()[0].IsAssignableFrom(packets[i].GetType()));
                 }
             }
-        }
-
-        [TestMethod]
-        public void TestFlags()
-        {
-            var publicKeys = packets.New<P18PublicKeys>();
-            Assert.AreEqual(MessageFlags.Unencrypted, publicKeys.RequiredFlags);
-            Assert.AreEqual(MessageFlags.Unencrypted, publicKeys.AllowedFlags);
-
-            var nickname = packets.New<P25Nickname>();
-            Assert.AreEqual(MessageFlags.None, nickname.RequiredFlags);
-            Assert.AreEqual(MessageFlags.Unencrypted, nickname.AllowedFlags);
         }
     }
 }

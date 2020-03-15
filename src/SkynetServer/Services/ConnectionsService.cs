@@ -7,23 +7,23 @@ namespace SkynetServer.Services
 {
     internal sealed class ConnectionsService
     {
-        private readonly ConcurrentDictionary<long, Client> connections;
+        private readonly ConcurrentDictionary<long, IClient> connections;
 
         public ConnectionsService()
         {
-            connections = new ConcurrentDictionary<long, Client>();
+            connections = new ConcurrentDictionary<long, IClient>();
         }
 
-        public bool TryGet(long sessionId, out Client client)
+        public bool TryGet(long sessionId, out IClient client)
         {
             return connections.TryGetValue(sessionId, out client);
         }
 
-        public Client Add(Client client)
+        public IClient Add(IClient client)
         {
             if (client.SessionId == default) throw new InvalidOperationException();
 
-            Client old = null;
+            IClient old = null;
 
             connections.AddOrUpdate(client.SessionId, client, (sessionId, oldClient) =>
             {
@@ -34,7 +34,7 @@ namespace SkynetServer.Services
             return old;
         }
 
-        public bool TryRemove(long sessionId, out Client client)
+        public bool TryRemove(long sessionId, out IClient client)
         {
             return connections.TryRemove(sessionId, out client);
         }

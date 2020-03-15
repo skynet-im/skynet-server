@@ -38,7 +38,7 @@ namespace SkynetServer.Services
         }
 
         #region packet and message broadcast
-        public async Task<IReadOnlyList<Task>> SendToAccount(Packet packet, long accountId, Client exclude)
+        public async Task<IReadOnlyList<Task>> SendToAccount(Packet packet, long accountId, IClient exclude)
         {
             long[] sessions = await database.Sessions.AsQueryable()
                 .Where(s => s.AccountId == accountId)
@@ -49,7 +49,7 @@ namespace SkynetServer.Services
 
             foreach (long sessionId in sessions)
             {
-                if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
+                if (connections.TryGet(sessionId, out IClient client) && !ReferenceEquals(client, exclude))
                 {
                     operations.Add(client.Send(packet));
                 }
@@ -58,7 +58,7 @@ namespace SkynetServer.Services
             return operations;
         }
 
-        public async Task<IReadOnlyList<Task>> SendToChannel(Packet packet, long channelId, Client exclude)
+        public async Task<IReadOnlyList<Task>> SendToChannel(Packet packet, long channelId, IClient exclude)
         {
             long[] sessions = await database.ChannelMembers.AsQueryable()
                 .Where(m => m.ChannelId == channelId)
@@ -69,7 +69,7 @@ namespace SkynetServer.Services
 
             foreach (long sessionId in sessions)
             {
-                if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
+                if (connections.TryGet(sessionId, out IClient client) && !ReferenceEquals(client, exclude))
                 {
                     operations.Add(client.Send(packet));
                 }
@@ -78,7 +78,7 @@ namespace SkynetServer.Services
             return operations;
         }
 
-        public async Task<IReadOnlyList<Task>> SendMessage(Message message, Client exclude)
+        public async Task<IReadOnlyList<Task>> SendMessage(Message message, IClient exclude)
         {
             bool isLoopback = message.MessageFlags.HasFlag(MessageFlags.Loopback);
             bool isNoSenderSync = message.MessageFlags.HasFlag(MessageFlags.NoSenderSync);
@@ -94,7 +94,7 @@ namespace SkynetServer.Services
 
             foreach (long sessionId in sessions)
             {
-                if (connections.TryGet(sessionId, out Client client) && !ReferenceEquals(client, exclude))
+                if (connections.TryGet(sessionId, out IClient client) && !ReferenceEquals(client, exclude))
                 {
                     operations.Add(client.Enqueue(message.ToPacket(client.AccountId)));
                 }
@@ -103,7 +103,7 @@ namespace SkynetServer.Services
             return operations;
         }
 
-        public async Task<IReadOnlyList<Task>> SendPriorityMessage(Message message, Client exclude, long excludeFcmAccountId)
+        public async Task<IReadOnlyList<Task>> SendPriorityMessage(Message message, IClient exclude, long excludeFcmAccountId)
         {
             var sessions = await database.ChannelMembers.AsQueryable()
                 .Where(m => m.ChannelId == message.ChannelId)
@@ -134,7 +134,7 @@ namespace SkynetServer.Services
                 // Declare a separate variable that can be safely captured and is not changed with the next iteration
                 DelayedTask timer = lastTimer;
 
-                void callback(Client client, Packet packet)
+                void callback(IClient client, Packet packet)
                 {
                     if (packet is P22MessageReceived received && received.Dependencies[0].MessageId == message.MessageId)
                     {
@@ -143,7 +143,7 @@ namespace SkynetServer.Services
                     }
                 }
 
-                if (connections.TryGet(session.SessionId, out Client client) && !ReferenceEquals(client, exclude))
+                if (connections.TryGet(session.SessionId, out IClient client) && !ReferenceEquals(client, exclude))
                 {
                     client.PacketReceived += callback;
                     operations.Add(client.Enqueue(message.ToPacket(client.AccountId)));
@@ -155,7 +155,7 @@ namespace SkynetServer.Services
         #endregion
 
         #region channel and message restore
-        public async Task<Task> SyncChannels(Client client, List<long> channelState, long lastMessageId)
+        public async Task<Task> SyncChannels(IClient client, List<long> channelState, long lastMessageId)
         {
             return await ExecuteSync(
                 client,
@@ -169,7 +169,7 @@ namespace SkynetServer.Services
             ).ConfigureAwait(false);
         }
 
-        public async Task<Task> SyncMessages(Client client, long channelId, long after, long before, ushort maxCount)
+        public async Task<Task> SyncMessages(IClient client, long channelId, long after, long before, ushort maxCount)
         {
             // The JOIN with ChannelMembers prevents unauthorized access
 
@@ -198,7 +198,7 @@ namespace SkynetServer.Services
 
             foreach (long sessionId in sessions)
             {
-                if (connections.TryGet(sessionId, out Client client))
+                if (connections.TryGet(sessionId, out IClient client))
                 {
                     // The JOIN with ChannelMembers prevents unauthorized access
 
@@ -218,7 +218,7 @@ namespace SkynetServer.Services
         }
 
         private async Task<Task> ExecuteSync(
-            Client client,
+            IClient client,
             Func<DatabaseContext, IQueryable<Message>> queryBuilder,
             List<long> channelState = null,
             ushort maxCount = default)
@@ -262,7 +262,7 @@ namespace SkynetServer.Services
             return executeScoped();
         }
 
-        private async Task StartSyncChannels(Client client, IReadOnlyList<long> currentState)
+        private async Task StartSyncChannels(IClient client, IReadOnlyList<long> currentState)
         {
             // This query returns all channels of the client's account and the counterpart's account ID for direct channels.
             // We find all channels of the client and perform a LEFT JOIN on other direct channel.

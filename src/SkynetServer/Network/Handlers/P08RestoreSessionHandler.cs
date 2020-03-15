@@ -42,7 +42,7 @@ namespace SkynetServer.Network.Handlers
 
             _ = await Delivery.SyncChannels(Client, packet.Channels, packet.LastMessageId).ConfigureAwait(false);
 
-            Client old = connections.Add(Client);
+            IClient old = connections.Add(Client);
             if (old != null)
             {
                 _ = old.DisposeAsync(true, false);

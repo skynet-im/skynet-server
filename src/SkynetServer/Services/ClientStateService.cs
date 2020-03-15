@@ -30,7 +30,7 @@ namespace SkynetServer.Services
             this.database = database;
         }
 
-        public async Task<IReadOnlyList<Task>> SetChannelAction(Client client, long channelId, ChannelAction action)
+        public async Task<IReadOnlyList<Task>> SetChannelAction(IClient client, long channelId, ChannelAction action)
         {
             var operations = new List<Task>();
 
@@ -58,7 +58,7 @@ namespace SkynetServer.Services
             return operations;
         }
 
-        public async Task<IReadOnlyList<Task>> SetActive(Client client, bool active)
+        public async Task<IReadOnlyList<Task>> SetActive(IClient client, bool active)
         {
             if (client.Active == active)
                 return new List<Task>(capacity: 0);
@@ -74,7 +74,7 @@ namespace SkynetServer.Services
 
             foreach (long sessionId in sessions)
             {
-                if (connections.TryGet(sessionId, out Client _client)
+                if (connections.TryGet(sessionId, out IClient _client)
                     && !ReferenceEquals(_client, client)
                     && _client.SoonActive && (_client.Active || !active))
                 {

@@ -67,7 +67,7 @@ namespace SkynetServer.Network.Handlers
             _ = await Delivery.SyncChannels(Client, new List<long>(), lastMessageId: default).ConfigureAwait(false);
             _ = await Delivery.SendMessage(deviceList, null).ConfigureAwait(false);
 
-            Client old = connections.Add(Client);
+            IClient old = connections.Add(Client);
             if (old != null)
             {
                 _ = old.DisposeAsync(true, false);

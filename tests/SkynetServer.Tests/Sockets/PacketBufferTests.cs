@@ -4,7 +4,7 @@ using SkynetServer.Sockets;
 using System;
 using System.IO;
 
-namespace SkynetServer.Tests
+namespace SkynetServer.Tests.Sockets
 {
     [TestClass]
     public class PacketBufferTests

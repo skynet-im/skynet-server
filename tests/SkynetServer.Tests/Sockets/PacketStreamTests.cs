@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace SkynetServer.Tests
+namespace SkynetServer.Tests.Sockets
 {
     [TestClass]
     public class PacketStreamTests

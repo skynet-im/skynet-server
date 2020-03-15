@@ -8,7 +8,7 @@ namespace SkynetServer.Network
 {
     interface IPacketHandler
     {
-        void Init(Client client, DatabaseContext database, PacketService packets, DeliveryService delivery);
+        void Init(IClient client, DatabaseContext database, PacketService packets, DeliveryService delivery);
         ValueTask Handle(Packet packet);
     }
 }

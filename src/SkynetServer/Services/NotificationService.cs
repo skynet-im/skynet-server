@@ -68,7 +68,7 @@ namespace SkynetServer.Services
                         await database.SaveChangesAsync().ConfigureAwait(false);
 
                         // Kick client if connected to avoid conflicting information in RAM vs DB
-                        if (connections.TryGet(session.SessionId, out Client client))
+                        if (connections.TryGet(session.SessionId, out IClient client))
                         {
                             await client.DisposeAsync().ConfigureAwait(false);
                         }

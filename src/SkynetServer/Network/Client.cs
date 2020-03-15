@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Network
 {
-    internal sealed class Client : IAsyncDisposable
+    internal sealed class Client : IClient
     {
         private readonly IServiceProvider serviceProvider;
         private readonly ConnectionsService connections;
@@ -42,7 +42,7 @@ namespace SkynetServer.Network
         public long FocusedChannelId { get; set; }
         public ChannelAction ChannelAction { get; set; }
 
-        public event Action<Client, Packet> PacketReceived;
+        public event Action<IClient, Packet> PacketReceived;
 
         public void Initialize(string applicationIdentifier, int versionCode)
         {

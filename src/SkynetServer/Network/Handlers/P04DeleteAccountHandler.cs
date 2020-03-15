@@ -49,7 +49,7 @@ namespace SkynetServer.Network.Handlers
             var tasks = new List<Task>();
             foreach (Session session in sessions)
             {
-                if (connections.TryGet(session.SessionId, out Client client) && !ReferenceEquals(client, Client))
+                if (connections.TryGet(session.SessionId, out IClient client) && !ReferenceEquals(client, Client))
                 {
                     tasks.Add(client.DisposeAsync().AsTask());
                 }
