@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -8,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using SkynetServer.Database;
 using SkynetServer.Extensions;
 
 namespace SkynetServer.Web
@@ -33,7 +33,7 @@ namespace SkynetServer.Web
                 .AddViewLocalization()
                 .SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
 
-            services.AddDbContext<DatabaseContext>();
+            services.AddDatabaseContext(Configuration);
 
             services.Configure<RequestLocalizationOptions>(options =>
             {
@@ -46,7 +46,9 @@ namespace SkynetServer.Web
             });
         }
 
+
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Called by the runtime.")]
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())

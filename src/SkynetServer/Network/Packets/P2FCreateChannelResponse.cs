@@ -1,36 +1,33 @@
 ﻿using SkynetServer.Network.Attributes;
 using SkynetServer.Network.Model;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x2F, PacketPolicy.Send)]
+    [Packet(0x2F, PacketPolicies.Send)]
     internal sealed class P2FCreateChannelResponse : Packet
     {
         public long TempChannelId { get; set; }
-        public CreateChannelError ErrorCode { get; set; }
+        public CreateChannelStatus StatusCode { get; set; }
         public long ChannelId { get; set; }
+        public DateTime CreationTime { get; set; }
 
         public override Packet Create() => new P2FCreateChannelResponse().Init(this);
 
-        public override Task Handle(IPacketHandler handler) => throw new NotImplementedException();
-
-        public override void ReadPacket(PacketBuffer buffer) => throw new NotImplementedException();
-
         public override void WritePacket(PacketBuffer buffer)
         {
-            buffer.WriteLong(TempChannelId);
-            buffer.WriteByte((byte)ErrorCode);
-            buffer.WriteLong(ChannelId);
+            buffer.WriteInt64(TempChannelId);
+            buffer.WriteByte((byte)StatusCode);
+            buffer.WriteInt64(ChannelId);
+            buffer.WriteDateTime(CreationTime);
         }
 
         public override string ToString()
         {
-            return $"{{{nameof(P2FCreateChannelResponse)}: TempId={TempChannelId:x8} ErrorCode={ErrorCode} ChannelId={ChannelId.ToString("x8")}}}";
+            return $"{{{nameof(P2FCreateChannelResponse)}: TempId={TempChannelId:x8} ErrorCode={StatusCode} ChannelId={ChannelId.ToString("x8")}}}";
         }
     }
 }

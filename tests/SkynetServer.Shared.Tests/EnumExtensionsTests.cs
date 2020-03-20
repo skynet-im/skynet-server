@@ -3,7 +3,7 @@ using SkynetServer.Model;
 using System;
 using System.Collections.Generic;
 
-namespace SkynetServer.Shared.Tests
+namespace SkynetServer.Tests
 {
     [TestClass]
     public class EnumExtensionsTest

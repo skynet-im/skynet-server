@@ -5,13 +5,14 @@ using System.Text;
 namespace SkynetServer.Model
 {
     [Flags]
-    public enum MessageFlags : byte
+    public enum MessageFlags
     {
         None = 0,
         Loopback = 1,
         Unencrypted = 2,
-        FileAttached = 4,
-        NoSenderSync = 8,
-        All = Loopback | Unencrypted | FileAttached | NoSenderSync
+        NoSenderSync = 4,
+        MediaMessage = 8,
+        ExternalFile = 16,
+        All = Loopback | Unencrypted | NoSenderSync | MediaMessage | ExternalFile
     }
 }

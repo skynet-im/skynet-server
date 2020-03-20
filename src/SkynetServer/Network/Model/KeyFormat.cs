@@ -6,6 +6,6 @@ namespace SkynetServer.Network.Model
 {
     internal enum KeyFormat
     {
-        // TODO: Add notations
+        BouncyCastle
     }
 }

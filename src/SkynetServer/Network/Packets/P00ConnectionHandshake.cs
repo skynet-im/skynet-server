@@ -1,13 +1,12 @@
 ﻿using SkynetServer.Network.Attributes;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x00, PacketPolicy.Receive | PacketPolicy.Unauthenticated)]
+    [Packet(0x00, PacketPolicies.Receive | PacketPolicies.Unauthenticated | PacketPolicies.Uninitialized)]
     internal sealed class P00ConnectionHandshake : Packet
     {
         public int ProtocolVersion { get; set; }
@@ -16,18 +15,11 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P00ConnectionHandshake().Init(this);
 
-        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
-
         public override void ReadPacket(PacketBuffer buffer)
         {
-            ProtocolVersion = buffer.ReadInt();
-            ApplicationIdentifier = buffer.ReadString();
-            VersionCode = buffer.ReadInt();
-        }
-
-        public override void WritePacket(PacketBuffer buffer)
-        {
-            throw new NotImplementedException();
+            ProtocolVersion = buffer.ReadInt32();
+            ApplicationIdentifier = buffer.ReadShortString();
+            VersionCode = buffer.ReadInt32();
         }
     }
 }

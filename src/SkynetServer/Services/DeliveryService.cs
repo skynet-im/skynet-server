@@ -1,211 +1,304 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using SkynetServer.Configuration;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Model;
 using SkynetServer.Network;
-using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
+using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Services
 {
-    internal class DeliveryService
+    internal sealed class DeliveryService
     {
-        private readonly FirebaseService firebase;
+        private readonly IServiceProvider serviceProvider;
+        private readonly PacketService packets;
+        private readonly ConnectionsService connections;
+        private readonly NotificationService notification;
         private readonly IOptions<FcmOptions> fcmOptions;
-        private ImmutableList<Client> clients;
+        private readonly IOptions<ProtocolOptions> protocolOptions;
+        private readonly DatabaseContext database;
 
-        public DeliveryService(FirebaseService firebase, IOptions<FcmOptions> fcmOptions)
+        public DeliveryService(IServiceProvider serviceProvider, PacketService packets, ConnectionsService connections,
+            NotificationService notification, IOptions<FcmOptions> fcmOptions, IOptions<ProtocolOptions> protocolOptions, DatabaseContext database)
         {
-            this.firebase = firebase;
+            this.serviceProvider = serviceProvider;
+            this.packets = packets;
+            this.connections = connections;
+            this.notification = notification;
             this.fcmOptions = fcmOptions;
-            clients = ImmutableList.Create<Client>();
+            this.protocolOptions = protocolOptions;
+            this.database = database;
         }
 
-        public void Register(Client client)
+        #region packet and message broadcast
+        public async Task<IReadOnlyList<Task>> SendToAccount(Packet packet, long accountId, IClient exclude)
         {
-            ImmutableInterlocked.Update(ref clients, list => list.Add(client));
-        }
+            long[] sessions = await database.Sessions.AsQueryable()
+                .Where(s => s.AccountId == accountId)
+                .Select(s => s.SessionId)
+                .ToArrayAsync().ConfigureAwait(false);
 
-        public void Unregister(Client client)
-        {
-            ImmutableInterlocked.Update(ref clients, list => list.Remove(client));
-            if (client.ChannelAction != ChannelAction.None) OnChannelActionChanged(client, 0, ChannelAction.None);
-            if (client.Active) OnActiveChanged(client, active: false);
-        }
+            var operations = new List<Task>();
 
-        public void OnChannelActionChanged(Client client, long channelId, ChannelAction action)
-        {
-            if (client.Account == null) throw new ArgumentNullException(nameof(client.Account));
-
-            if (client.FocusedChannelId != channelId)
-                notifyChannel(client.FocusedChannelId, ChannelAction.None);
-
-            notifyChannel(channelId, action);
-
-            client.FocusedChannelId = channelId;
-            client.ChannelAction = action;
-
-            void notifyChannel(long _channelId, ChannelAction _action) => Task.Run(async () =>
+            foreach (long sessionId in sessions)
             {
-                using DatabaseContext ctx = new DatabaseContext();
-                long[] members = await ctx.ChannelMembers.Where(m => m.ChannelId == _channelId).Select(m => m.AccountId).ToArrayAsync();
-                if (!members.Contains(client.Account.AccountId))
-                    return; // This is a protocol violation but throwing an exception would be useless in an async context.
-                var packet = Packet.New<P2CChannelAction>();
-                packet.ChannelId = _channelId;
-                packet.AccountId = client.Account.AccountId;
-                packet.Action = action;
-                await Task.WhenAll(clients
-                    .Where(c => c.Account != null && members.Contains(c.Account.AccountId) && !ReferenceEquals(c, client))
-                    .Select(c => c.SendPacket(packet)));
-            });
-        }
-
-        public void OnActiveChanged(Client client, bool active)
-        {
-            if (client.Account == null) throw new ArgumentNullException(nameof(client.Account));
-
-            bool notify = !clients.Any(c => c.Account != null && c.Account.AccountId == client.Account.AccountId
-                && !ReferenceEquals(c, client) && c.Active);
-            client.Active = active;
-
-            Task.Run(async () =>
-            {
-                using DatabaseContext ctx = new DatabaseContext();
-                Channel channel = await ctx.Channels.SingleAsync(c => c.OwnerId == client.Account.AccountId && c.ChannelType == ChannelType.AccountData);
-                var packet = Packet.New<P2BOnlineState>();
-                packet.OnlineState = active ? OnlineState.Active : OnlineState.Inactive;
-                packet.LastActive = DateTime.Now;
-                packet.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
-                await CreateMessage(packet, channel, client.Account.AccountId);
-            });
-        }
-
-        public async Task<Message> CreateMessage(P0BChannelMessage packet, Channel channel, long? senderId)
-        {
-            packet.ChannelId = channel.ChannelId;
-            packet.MessageFlags |= MessageFlags.Unencrypted;
-            if (packet.ContentPacket == null)
-            {
-                using PacketBuffer buffer = PacketBuffer.CreateDynamic();
-                packet.WriteMessage(buffer);
-                packet.ContentPacket = buffer.ToArray();
-            }
-
-            Message message = new Message()
-            {
-                ChannelId = channel.ChannelId,
-                SenderId = senderId,
-                // TODO: Implement skip count
-                MessageFlags = packet.MessageFlags,
-                // TODO: Implement FileId
-                ContentPacketId = packet.ContentPacketId,
-                ContentPacketVersion = packet.ContentPacketVersion,
-                ContentPacket = packet.ContentPacket
-            };
-
-            message = await DatabaseHelper.AddMessage(message, packet.Dependencies.ToDatabase());
-
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                long[] members = await ctx.ChannelMembers.Where(m => m.ChannelId == channel.ChannelId).Select(m => m.AccountId).ToArrayAsync();
-                bool isLoopback = packet.MessageFlags.HasFlag(MessageFlags.Loopback);
-                bool isNoSenderSync = packet.MessageFlags.HasFlag(MessageFlags.NoSenderSync);
-                await Task.WhenAll(clients
-                    .Where(c => c.Account != null && members.Contains(c.Account.AccountId))
-                    .Where(c => !isLoopback || c.Account.AccountId == senderId)
-                    .Where(c => !isNoSenderSync || c.Account.AccountId != senderId)
-                    .Select(c => c.SendPacket(message.ToPacket(c.Account.AccountId))));
-            }
-
-            return message;
-        }
-
-        public async Task SendMessage(Message message, Client exclude)
-        {
-            long[] accounts;
-
-            using (DatabaseContext ctx = new DatabaseContext())
-                accounts = await ctx.ChannelMembers.Where(m => m.ChannelId == message.ChannelId)
-                    .Select(m => m.AccountId).ToArrayAsync();
-
-            await Task.WhenAll(clients
-                .Where(c => c.Account != null && accounts.Contains(c.Account.AccountId) && !ReferenceEquals(c, exclude))
-                .Select(c => c.SendPacket(message.ToPacket(c.Account.AccountId))));
-        }
-
-        public async Task SendPriorityMessage(Message message, Client exclude, Account excludeFcm)
-        {
-            long[] accounts;
-            FcmOptions options = fcmOptions.Value;
-
-            using (DatabaseContext ctx = new DatabaseContext())
-            {
-                accounts = await ctx.ChannelMembers.Where(m => m.ChannelId == message.ChannelId)
-                    .Select(m => m.AccountId).ToArrayAsync();
-            }
-
-            await Task.WhenAll(accounts.Select(accountId => Task.Run(async () =>
-            {
-                bool found = false;
-
-                await Task.WhenAll(clients.Where(c => c.Account != null && c.Account.AccountId == accountId)
-                    .Select(async c =>
-                    {
-                        if (ReferenceEquals(c, exclude) || await c.SendPacket(message.ToPacket(accountId)))
-                            found = true;
-                    }));
-
-                if ((!found && accountId != excludeFcm.AccountId) || options.NotifyAllDevices)
+                if (connections.TryGet(sessionId, out IClient client) && !ReferenceEquals(client, exclude))
                 {
-                    using DatabaseContext ctx = new DatabaseContext();
-                    Session[] sessions = await ctx.Sessions
-                        .Where(s => s.AccountId == accountId && s.FcmToken != null
-                            && (s.LastFcmMessage < s.LastConnected || options.NotifyForEveryMessage))
-                        .ToArrayAsync();
-                    foreach (Session session in sessions)
-                    {
-                        try
-                        {
-                            await firebase.SendAsync(session.FcmToken);
+                    operations.Add(client.Send(packet));
+                }
+            }
 
-                            session.LastFcmMessage = DateTime.Now;
-                            ctx.Entry(session).Property(s => s.LastFcmMessage).IsModified = true;
-                            await ctx.SaveChangesAsync();
-                            Console.WriteLine($"Successfully sent FCM message to {session.FcmToken.Remove(16)} last connected {session.LastConnected}");
-                        }
-                        catch (FirebaseAdmin.FirebaseException ex)
-                        {
-                            Console.WriteLine($"Failed to send FCM message to {session.FcmToken.Remove(16)}... {ex.Message}");
-                            if (options.DeleteSessionOnError)
-                            {
-                                foreach (Client client in clients)
-                                {
-                                    if (client.Session != null && client.Session.AccountId == session.AccountId && client.Session.SessionId == session.SessionId)
-                                        client.CloseConnection("Session deleted");
-                                }
-                                ctx.Sessions.Remove(session);
-                                await ctx.SaveChangesAsync();
-                            }
-                        }
+            return operations;
+        }
+
+        public async Task<IReadOnlyList<Task>> SendToChannel(Packet packet, long channelId, IClient exclude)
+        {
+            long[] sessions = await database.ChannelMembers.AsQueryable()
+                .Where(m => m.ChannelId == channelId)
+                .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s.SessionId)
+                .ToArrayAsync().ConfigureAwait(false);
+
+            var operations = new List<Task>();
+
+            foreach (long sessionId in sessions)
+            {
+                if (connections.TryGet(sessionId, out IClient client) && !ReferenceEquals(client, exclude))
+                {
+                    operations.Add(client.Send(packet));
+                }
+            }
+
+            return operations;
+        }
+
+        public async Task<IReadOnlyList<Task>> SendMessage(Message message, IClient exclude)
+        {
+            bool isLoopback = message.MessageFlags.HasFlag(MessageFlags.Loopback);
+            bool isNoSenderSync = message.MessageFlags.HasFlag(MessageFlags.NoSenderSync);
+
+            long[] sessions = await database.ChannelMembers.AsQueryable()
+                .Where(m => m.ChannelId == message.ChannelId
+                    && !isLoopback || m.AccountId == message.SenderId
+                    && !isNoSenderSync || m.AccountId != message.SenderId)
+                .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s.SessionId)
+                .ToArrayAsync().ConfigureAwait(false);
+
+            var operations = new List<Task>();
+
+            foreach (long sessionId in sessions)
+            {
+                if (connections.TryGet(sessionId, out IClient client) && !ReferenceEquals(client, exclude))
+                {
+                    operations.Add(client.Enqueue(message.ToPacket(client.AccountId)));
+                }
+            }
+
+            return operations;
+        }
+
+        public async Task<IReadOnlyList<Task>> SendPriorityMessage(Message message, IClient exclude, long excludeFcmAccountId)
+        {
+            var sessions = await database.ChannelMembers.AsQueryable()
+                .Where(m => m.ChannelId == message.ChannelId)
+                .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => new { s.AccountId, s.SessionId })
+                .OrderBy(s => s.AccountId)
+                .ToArrayAsync().ConfigureAwait(false);
+
+            var operations = new List<Task>();
+
+            long lastAccountId = default;
+            DelayedTask lastTimer = null;
+
+            foreach (var session in sessions)
+            {
+                if (session.AccountId != lastAccountId)
+                {
+                    lastAccountId = session.AccountId;
+                    lastTimer = new DelayedTask(() =>
+                    {
+                        if (session.AccountId != excludeFcmAccountId)
+                            return notification.SendFcmNotification(session.AccountId);
+                        else
+                            return Task.CompletedTask;
+                    }, fcmOptions.Value.PriorityMessageAckTimeout);
+                    operations.Add(lastTimer.Task);
+                }
+
+                // Declare a separate variable that can be safely captured and is not changed with the next iteration
+                DelayedTask timer = lastTimer;
+
+                void callback(IClient client, Packet packet)
+                {
+                    if (packet is P22MessageReceived received && received.Dependencies[0].MessageId == message.MessageId)
+                    {
+                        timer.Cancel(); // Cancel timer because message has been received
+                        client.PacketReceived -= callback;
                     }
                 }
-            })));
+
+                if (connections.TryGet(session.SessionId, out IClient client) && !ReferenceEquals(client, exclude))
+                {
+                    client.PacketReceived += callback;
+                    operations.Add(client.Enqueue(message.ToPacket(client.AccountId)));
+                }
+            }
+
+            return operations;
+        }
+        #endregion
+
+        #region channel and message restore
+        public async Task<Task> SyncChannels(IClient client, List<long> channelState, long lastMessageId)
+        {
+            return await ExecuteSync(
+                client,
+                database => database.ChannelMembers.AsQueryable()
+                .Where(member => member.AccountId == client.AccountId)
+                .Join(database.Messages, member => member.ChannelId, m => m.ChannelId, (member, m) => m)
+                .Where(m => (m.MessageId > lastMessageId)
+                    && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == client.AccountId)
+                    && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != client.AccountId)),
+                channelState: channelState
+            ).ConfigureAwait(false);
         }
 
-        public Task SendPacket(Packet packet, long accountId, Client exclude)
+        public async Task<Task> SyncMessages(IClient client, long channelId, long after, long before, ushort maxCount)
         {
-            return Task.WhenAll(clients
-                .Where(c => c.Account != null && c.Account.AccountId == accountId && !ReferenceEquals(c, exclude))
-                .Select(c => c.SendPacket(packet)));
+            // The JOIN with ChannelMembers prevents unauthorized access
+
+            return await ExecuteSync(
+                client,
+                database => database.ChannelMembers.AsQueryable()
+                    .Where(member => member.AccountId == client.AccountId)
+                    .Join(database.Messages, member => member.ChannelId, m => m.ChannelId, (member, m) => m)
+                    .Where(m => (channelId == default || m.ChannelId == channelId)
+                        && m.MessageId > after
+                        && m.MessageId < before
+                        && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == client.AccountId)
+                        && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != client.AccountId)),
+                maxCount: maxCount
+            ).ConfigureAwait(false);
         }
+
+        public async Task<IReadOnlyList<Task>> SyncMessages(long accountId, long channelId)
+        {
+            long[] sessions = await database.Sessions.AsQueryable()
+                .Where(s => s.AccountId == accountId)
+                .Select(s => s.SessionId)
+                .ToArrayAsync().ConfigureAwait(false);
+
+            var operations = new List<Task<Task>>();
+
+            foreach (long sessionId in sessions)
+            {
+                if (connections.TryGet(sessionId, out IClient client))
+                {
+                    // The JOIN with ChannelMembers prevents unauthorized access
+
+                    operations.Add(ExecuteSync(
+                        client,
+                        database => database.ChannelMembers.AsQueryable()
+                            .Where(member => member.AccountId == client.AccountId)
+                            .Join(database.Messages, member => member.ChannelId, m => m.ChannelId, (member, m) => m)
+                            .Where(m => (m.ChannelId == channelId)
+                                && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == accountId)
+                                && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != accountId))
+                    ));
+                }
+            }
+
+            return await Task.WhenAll(operations).ConfigureAwait(false);
+        }
+
+        private async Task<Task> ExecuteSync(
+            IClient client,
+            Func<DatabaseContext, IQueryable<Message>> queryBuilder,
+            List<long> channelState = null,
+            ushort maxCount = default)
+        {
+            var start = packets.New<P0BSyncStarted>();
+
+            if (protocolOptions.Value.CountMessagesBeforeSync)
+            {
+                IQueryable<Message> countQuery = queryBuilder(database);
+                if (maxCount != default)
+                    countQuery = countQuery.Take(maxCount);
+
+                start.MinCount = await countQuery.CountAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                start.MinCount = -1;
+            }
+
+            _ = client.Send(start);
+
+            if (channelState != null)
+                await StartSyncChannels(client, channelState).ConfigureAwait(false);
+
+            async Task executeScoped()
+            {
+                using IServiceScope scope = serviceProvider.CreateScope();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+
+                IQueryable<Message> query = queryBuilder(database).Include(m => m.Dependencies).OrderBy(m => m.MessageId);
+                if (maxCount != default)
+                    query = query.Take(maxCount);
+
+                Task send = client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(client.AccountId)));
+                _ = client.Enqueue(packets.New<P0FSyncFinished>());
+                await send.ConfigureAwait(false);
+
+                // Independent service scope is disposed after await returns
+            }
+
+            return executeScoped();
+        }
+
+        private async Task StartSyncChannels(IClient client, IReadOnlyList<long> currentState)
+        {
+            // This query returns all channels of the client's account and the counterpart's account ID for direct channels.
+            // We find all channels of the client and perform a LEFT JOIN on other direct channel.
+            // If we would get an other channel members, group channels and accound data channels would appear multiple times in the result set.
+
+            var query = from m in database.ChannelMembers.AsQueryable().Where(m => m.AccountId == client.AccountId)
+                        join c in database.Channels
+                            on m.ChannelId equals c.ChannelId
+                        join other in (
+                                from m in database.ChannelMembers.AsQueryable().Where(m => m.AccountId != client.AccountId)
+                                join c in database.Channels.AsQueryable().Where(c => c.ChannelType == ChannelType.Direct)
+                                    on m.ChannelId equals c.ChannelId
+                                select m
+                            )
+                            on c.ChannelId equals other.ChannelId into grouping
+                        from other in grouping.DefaultIfEmpty()
+                        select new { c.ChannelId, c.ChannelType, c.OwnerId, c.CreationTime, other.AccountId };
+
+            var channels = await query.ToArrayAsync().ConfigureAwait(false);
+
+            foreach (var channel in channels)
+            {
+                if (!currentState.Contains(channel.ChannelId))
+                {
+                    // Notify client about new channels
+                    var packet = packets.New<P0ACreateChannel>();
+                    packet.ChannelId = channel.ChannelId;
+                    packet.ChannelType = channel.ChannelType;
+                    packet.OwnerId = channel.OwnerId ?? 0;
+                    packet.CreationTime = channel.CreationTime;
+                    if (packet.ChannelType == ChannelType.Direct)
+                        packet.CounterpartId = channel.AccountId;
+                    _ = client.Send(packet);
+                }
+            }
+        }
+        #endregion
     }
 }

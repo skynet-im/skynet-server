@@ -1,5 +1,5 @@
-$mysqlName = "mysql-5.7.26-winx64"
-$mariadbName = "mariadb-10.4.6-winx64"
+$mysqlName = "mysql-5.7.28-winx64"
+$mariadbName = "mariadb-10.4.12-winx64"
 $installPath = Join-Path $PSScriptRoot "bin"
 
 function Install-DbServer {
@@ -13,8 +13,8 @@ function Install-DbServer {
 
 	begin {
 		# We require mirrors to support HTTPS
-		$mysqlMirror = "https://cdn.mysql.com//Downloads/MySQL-5.7/mysql-5.7.26-winx64.zip"
-		$mariadbMirror = "https://mirrors.ukfast.co.uk/sites/mariadb//mariadb-10.4.6/winx64-packages/mariadb-10.4.6-winx64.zip"
+		$mysqlMirror = "https://cdn.mysql.com//Downloads/MySQL-5.7/mysql-5.7.28-winx64.zip"
+		$mariadbMirror = "https://mirrors.ukfast.co.uk/sites/mariadb//mariadb-10.4.12/winx64-packages/mariadb-10.4.12-winx64.zip"
 
 		function InstallDbServer ($Mirror, $Name) {
 			$guid = [System.Guid]::NewGuid().ToString()
@@ -23,9 +23,10 @@ function Install-DbServer {
 			$versionPath = Join-Path $installPath $Name
 
 			$webResponse = Invoke-WebRequest -Uri $Mirror -Method Head -UseBasicParsing -ErrorAction Stop
-			$fileSize = [System.Math]::Round(($webResponse.Headers["Content-Length"] / 1024 / 1024), 1)
+			$contentLength = $webResponse.Headers[[System.Net.HttpResponseHeader]::ContentLength]
+			$displaySize = [System.Math]::Round(([System.Convert]::ToDouble($fileSize) / 1024 / 1024), 1)
 			$message = "Download and install?"
-			$question = "The download size is $fileSize MiB. Do you want to proceed?"
+			$question = "The download size is $displaySize MiB. Do you want to proceed?"
 			$choices = New-Object Collections.ObjectModel.Collection[Management.Automation.Host.ChoiceDescription]
 			$choices.Add((New-Object Management.Automation.Host.ChoiceDescription -ArgumentList "&Yes"))
 			$choices.Add((New-Object Management.Automation.Host.ChoiceDescription -ArgumentList "&No"))

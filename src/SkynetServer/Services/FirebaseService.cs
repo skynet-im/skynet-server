@@ -3,12 +3,11 @@ using FirebaseAdmin.Messaging;
 using Google.Apis.Auth.OAuth2;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SkynetServer.Services
 {
-    internal class FirebaseService
+    internal sealed class FirebaseService
     {
         private readonly FirebaseMessaging messaging;
 

@@ -8,8 +8,8 @@ namespace SkynetServer.Configuration
     {
         public DatabaseOptions DatabaseOptions { get; set; }
         public FcmOptions FcmOptions { get; set; }
+        public ListenerOptions ListenerOptions { get; set; }
         public MailOptions MailOptions { get; set; }
         public ProtocolOptions ProtocolOptions { get; set; }
-        public VslOptions VslOptions { get; set; }
     }
 }

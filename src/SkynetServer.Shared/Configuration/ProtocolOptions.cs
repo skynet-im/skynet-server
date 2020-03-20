@@ -9,7 +9,9 @@ namespace SkynetServer.Configuration
     {
         [Range(2, 2)] public int ProtocolVersion { get; set; }
 
-        [Required] public List<Platform> Platforms { get; set; }
+        [Required] public IEnumerable<Platform> Platforms { get; set; }
+
+        public bool CountMessagesBeforeSync { get; set; }
 
         public class Platform
         {

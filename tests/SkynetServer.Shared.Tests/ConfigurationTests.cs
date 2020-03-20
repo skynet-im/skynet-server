@@ -3,12 +3,13 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SkynetServer.Configuration;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
-namespace SkynetServer.Shared.Tests
+namespace SkynetServer.Tests
 {
     [TestClass]
-    public class InitializationTests
+    public class ConfigurationTests
     {
         [TestMethod]
         public void TestConfiguration()
@@ -20,11 +21,11 @@ namespace SkynetServer.Shared.Tests
             var options = configuration.Get<SkynetOptions>();
             Assert.IsNotNull(options);
             Assert.IsNotNull(options.DatabaseOptions);
+            Assert.IsNotNull(options.ListenerOptions);
             Assert.IsNotNull(options.MailOptions);
             Assert.IsNotNull(options.ProtocolOptions);
             Assert.IsNotNull(options.ProtocolOptions.Platforms);
-            Assert.IsTrue(options.ProtocolOptions.Platforms.Count > 0);
-            Assert.IsNotNull(options.VslOptions);
+            Assert.IsTrue(options.ProtocolOptions.Platforms.Any());
         }
     }
 }

@@ -1,17 +1,15 @@
 ﻿using SkynetServer.Model;
 using SkynetServer.Network.Attributes;
-using SkynetServer.Network.Model;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Message(0x1E, PacketPolicy.Duplex)]
+    [Packet(0x1E, PacketPolicies.Duplex)]
     [MessageFlags(MessageFlags.Unencrypted)]
-    internal sealed class P1EGroupChannelUpdate : P0BChannelMessage
+    internal sealed class P1EGroupChannelUpdate : ChannelMessage
     {
         public long GroupRevision { get; set; }
         public List<(long AccountId, GroupMemberFlags Flags)> Members { get; set; } = new List<(long AccountId, GroupMemberFlags Flags)>();
@@ -19,29 +17,27 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P1EGroupChannelUpdate().Init(this);
 
-        public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
-
-        public override void ReadMessage(PacketBuffer buffer)
+        protected override void ReadMessage(PacketBuffer buffer)
         {
-            GroupRevision = buffer.ReadLong();
-            ushort length = buffer.ReadUShort();
+            GroupRevision = buffer.ReadInt64();
+            ushort length = buffer.ReadUInt16();
             for (int i = 0; i < length; i++)
             {
-                Members.Add((buffer.ReadLong(), (GroupMemberFlags)buffer.ReadByte()));
+                Members.Add((buffer.ReadInt64(), (GroupMemberFlags)buffer.ReadByte()));
             }
-            KeyHistory = buffer.ReadByteArray();
+            KeyHistory = buffer.ReadByteArray().ToArray();
         }
 
-        public override void WriteMessage(PacketBuffer buffer)
+        protected override void WriteMessage(PacketBuffer buffer)
         {
-            buffer.WriteLong(GroupRevision);
-            buffer.WriteUShort((ushort)Members.Count);
+            buffer.WriteInt64(GroupRevision);
+            buffer.WriteUInt16((ushort)Members.Count);
             foreach ((long accountId, GroupMemberFlags flags) in Members)
             {
-                buffer.WriteLong(accountId);
+                buffer.WriteInt64(accountId);
                 buffer.WriteByte((byte)flags);
             }
-            buffer.WriteByteArray(KeyHistory, true);
+            buffer.WriteByteArray(KeyHistory);
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SkynetServer.Configuration;
 using SkynetServer.Database;
@@ -20,6 +21,9 @@ namespace SkynetServer.Extensions
             services.AddOptions<FcmOptions>()
                 .Bind(configuration.GetSection(nameof(FcmOptions)))
                 .ValidateDataAnnotations();
+            services.AddOptions<ListenerOptions>()
+                .Bind(configuration.GetSection(nameof(ListenerOptions)))
+                .ValidateDataAnnotations();
             services.AddOptions<MailOptions>()
                 .Bind(configuration.GetSection(nameof(MailOptions)))
                 .Validate(mailOptions =>
@@ -31,12 +35,17 @@ namespace SkynetServer.Extensions
             services.AddOptions<ProtocolOptions>()
                 .Bind(configuration.GetSection(nameof(ProtocolOptions)))
                 .ValidateDataAnnotations();
-            services.AddOptions<VslOptions>()
-                .Bind(configuration.GetSection(nameof(VslOptions)))
-                .ValidateDataAnnotations();
 
-            // TODO: Load DatabaseContexts via Dependency Injection
-            DatabaseContext.ConnectionString = configuration.GetSection("DatabaseOptions").GetValue<string>("ConnectionString");
+            return services;
+        }
+
+        public static IServiceCollection AddDatabaseContext(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddDbContextPool<DatabaseContext>(options =>
+            {
+                options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+                options.UseMySql(configuration.GetValue<string>("DatabaseOptions:ConnectionString"), options => options.EnableRetryOnFailure());
+            });
 
             return services;
         }

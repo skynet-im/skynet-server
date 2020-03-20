@@ -1,30 +1,26 @@
 ﻿using SkynetServer.Model;
 using SkynetServer.Network.Attributes;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Message(0x27, PacketPolicy.Duplex)]
-    [RequiredFlags(MessageFlags.FileAttached)]
-    [AllowedFlags(MessageFlags.Unencrypted | MessageFlags.FileAttached)]
-    internal sealed class P27ProfileImage : P0BChannelMessage
+    [Packet(0x27, PacketPolicies.Duplex)]
+    [AllowedFlags(MessageFlags.Unencrypted | MessageFlags.MediaMessage | MessageFlags.ExternalFile)]
+    internal sealed class P27ProfileImage : ChannelMessage
     {
         public string Caption { get; set; }
 
         public override Packet Create() => new P27ProfileImage().Init(this);
 
-        //public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
-
-        public override void ReadMessage(PacketBuffer buffer)
+        protected override void ReadMessage(PacketBuffer buffer)
         {
             Caption = buffer.ReadString();
         }
 
-        public override void WriteMessage(PacketBuffer buffer)
+        protected override void WriteMessage(PacketBuffer buffer)
         {
             buffer.WriteString(Caption);
         }

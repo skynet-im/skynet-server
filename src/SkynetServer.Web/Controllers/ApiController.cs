@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
@@ -30,7 +29,8 @@ namespace SkynetServer.Web.Controllers
         {
             string status;
             string content;
-            MailConfirmation confirmation = await ctx.MailConfirmations.SingleOrDefaultAsync(x => x.Token == token);
+            MailConfirmation confirmation = await ctx.MailConfirmations.AsTracking()
+                .SingleOrDefaultAsync(x => x.Token == token).ConfigureAwait(false);
             if (confirmation == null)
             {
                 status = "Invalid";
@@ -44,7 +44,7 @@ namespace SkynetServer.Web.Controllers
                     ctx.MailConfirmations.Where(c => c.AccountId == confirmation.AccountId && c.Token != token));
 
                 confirmation.ConfirmationTime = DateTime.Now;
-                await ctx.SaveChangesAsync();
+                await ctx.SaveChangesAsync().ConfigureAwait(false);
                 status = "Success";
                 content = localizer["SuccessContent", confirmation.MailAddress];
             }

@@ -1,52 +1,48 @@
 ﻿using SkynetServer.Model;
 using SkynetServer.Network.Attributes;
-using SkynetServer.Network.Model;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Message(0x28, PacketPolicy.Duplex)]
+    [Packet(0x28, PacketPolicies.Duplex)]
     [MessageFlags(MessageFlags.Loopback | MessageFlags.Unencrypted)]
-    internal sealed class P28BlockList : P0BChannelMessage
+    internal sealed class P28BlockList : ChannelMessage
     {
-        List<long> BlockedAccounts { get; set; } = new List<long>();
-        List<long> BlockedConversations { get; set; } = new List<long>();
+        public List<long> BlockedAccounts { get; set; } = new List<long>();
+        public List<long> BlockedConversations { get; set; } = new List<long>();
 
         public override Packet Create() => new P28BlockList().Init(this);
 
-        public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
-
-        public override void ReadMessage(PacketBuffer buffer)
+        protected override void ReadMessage(PacketBuffer buffer)
         {
-            ushort length = buffer.ReadUShort();
+            ushort length = buffer.ReadUInt16();
             for (int i = 0; i < length; i++)
             {
-                BlockedAccounts.Add(buffer.ReadLong());
+                BlockedAccounts.Add(buffer.ReadInt64());
             }
 
-            length = buffer.ReadUShort();
+            length = buffer.ReadUInt16();
             for (int i = 0; i < length; i++)
             {
-                BlockedConversations.Add(buffer.ReadLong());
+                BlockedConversations.Add(buffer.ReadInt64());
             }
         }
 
-        public override void WriteMessage(PacketBuffer buffer)
+        protected override void WriteMessage(PacketBuffer buffer)
         {
-            buffer.WriteUShort((ushort)BlockedAccounts.Count);
+            buffer.WriteUInt16((ushort)BlockedAccounts.Count);
             foreach (long id in BlockedAccounts)
             {
-                buffer.WriteLong(id);
+                buffer.WriteInt64(id);
             }
 
-            buffer.WriteUShort((ushort)BlockedConversations.Count);
+            buffer.WriteUInt16((ushort)BlockedConversations.Count);
             foreach (long id in BlockedConversations)
             {
-                buffer.WriteLong(id);
+                buffer.WriteInt64(id);
             }
         }
     }

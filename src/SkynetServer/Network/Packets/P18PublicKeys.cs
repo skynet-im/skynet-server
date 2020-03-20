@@ -1,17 +1,16 @@
 ﻿using SkynetServer.Model;
 using SkynetServer.Network.Attributes;
 using SkynetServer.Network.Model;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Message(0x18, PacketPolicy.Duplex)]
+    [Packet(0x18, PacketPolicies.Duplex)]
     [MessageFlags(MessageFlags.Unencrypted)]
-    internal sealed class P18PublicKeys : P0BChannelMessage
+    internal sealed class P18PublicKeys : ChannelMessage
     {
         public KeyFormat SignatureKeyFormat { get; set; }
         public byte[] SignatureKey { get; set; }
@@ -20,24 +19,20 @@ namespace SkynetServer.Network.Packets
 
         public override Packet Create() => new P18PublicKeys().Init(this);
 
-        public override Task<MessageSendError> HandleMessage(IPacketHandler handler) => handler.Handle(this);
-
-        public override Task PostHandling(IPacketHandler handler, Database.Entities.Message message) => handler.PostHandling(this, message);
-
-        public override void ReadMessage(PacketBuffer buffer)
+        protected override void ReadMessage(PacketBuffer buffer)
         {
             SignatureKeyFormat = (KeyFormat)buffer.ReadByte();
-            SignatureKey = buffer.ReadByteArray();
+            SignatureKey = buffer.ReadByteArray().ToArray();
             DerivationKeyFormat = (KeyFormat)buffer.ReadByte();
-            DerivationKey = buffer.ReadByteArray();
+            DerivationKey = buffer.ReadByteArray().ToArray();
         }
 
-        public override void WriteMessage(PacketBuffer buffer)
+        protected override void WriteMessage(PacketBuffer buffer)
         {
             buffer.WriteByte((byte)SignatureKeyFormat);
-            buffer.WriteByteArray(SignatureKey, true);
+            buffer.WriteByteArray(SignatureKey);
             buffer.WriteByte((byte)DerivationKeyFormat);
-            buffer.WriteByteArray(DerivationKey, true);
+            buffer.WriteByteArray(DerivationKey);
         }
     }
 }

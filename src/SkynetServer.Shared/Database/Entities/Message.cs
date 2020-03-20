@@ -10,9 +10,9 @@ namespace SkynetServer.Database.Entities
         public long MessageId { get; set; }
         public DateTime DispatchTime { get; set; }
         public MessageFlags MessageFlags { get; set; }
-        public byte ContentPacketId { get; set; }
-        public byte ContentPacketVersion { get; set; }
-        public byte[] ContentPacket { get; set; }
+        public byte PacketId { get; set; }
+        public byte PacketVersion { get; set; }
+        public byte[] PacketContent { get; set; }
 
         public long ChannelId { get; set; }
         public Channel Channel { get; set; }

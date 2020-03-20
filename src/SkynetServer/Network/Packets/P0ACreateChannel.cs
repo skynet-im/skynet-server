@@ -1,41 +1,39 @@
 ﻿using SkynetServer.Model;
 using SkynetServer.Network.Attributes;
+using SkynetServer.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
-using VSL;
 
 namespace SkynetServer.Network.Packets
 {
-    [Packet(0x0A, PacketPolicy.Duplex)]
+    [Packet(0x0A, PacketPolicies.Duplex)]
     internal sealed class P0ACreateChannel : Packet
     {
         public long ChannelId { get; set; }
         public ChannelType ChannelType { get; set; }
         public long OwnerId { get; set; }
+        public DateTime CreationTime { get; set; }
         public long CounterpartId { get; set; }
 
         public override Packet Create() => new P0ACreateChannel().Init(this);
 
-        public override Task Handle(IPacketHandler handler) => handler.Handle(this);
-
         public override void ReadPacket(PacketBuffer buffer)
         {
-            ChannelId = buffer.ReadLong();
+            ChannelId = buffer.ReadInt64();
             ChannelType = (ChannelType)buffer.ReadByte();
-            OwnerId = buffer.ReadLong();
             if (ChannelType == ChannelType.Direct)
-                CounterpartId = buffer.ReadLong();
+                CounterpartId = buffer.ReadInt64();
         }
 
         public override void WritePacket(PacketBuffer buffer)
         {
-            buffer.WriteLong(ChannelId);
+            buffer.WriteInt64(ChannelId);
             buffer.WriteByte((byte)ChannelType);
-            buffer.WriteLong(OwnerId);
+            buffer.WriteInt64(OwnerId);
+            buffer.WriteDateTime(CreationTime);
             if (ChannelType == ChannelType.Direct)
-                buffer.WriteLong(CounterpartId);
+                buffer.WriteInt64(CounterpartId);
         }
 
         public override string ToString()
