@@ -24,11 +24,11 @@ namespace SkynetServer.Network.Handlers
 
         public override async ValueTask Handle(P06CreateSession packet)
         {
-            packet.AccountName = MailUtilities.SimplifyAddress(packet.AccountName);
             var response = Packets.New<P07CreateSessionResponse>();
 
+            // As of RFC 5321 the local-part of an email address should not be case-sensitive.
             var confirmation = await Database.MailConfirmations.Include(c => c.Account)
-                .SingleOrDefaultAsync(c => c.MailAddress == packet.AccountName).ConfigureAwait(false);
+                .SingleOrDefaultAsync(c => c.MailAddress == packet.AccountName.ToLowerInvariant()).ConfigureAwait(false);
             if (confirmation == null)
             {
                 response.StatusCode = CreateSessionStatus.InvalidCredentials;

@@ -18,7 +18,7 @@ namespace SkynetServer.Network
 
             if (packet.MessageFlags.HasFlag(MessageFlags.Unencrypted)
                 && await Validate(packet).ConfigureAwait(false) != MessageSendStatus.Success)
-                return; // Not all messages can be saved, some return MessageSendError other than Success
+                return; // Not all messages can be saved, some return MessageSendStatus other than Success
 
             Channel channel = await Database.Channels.SingleOrDefaultAsync(c => c.ChannelId == packet.ChannelId).ConfigureAwait(false);
             if (channel == null)

@@ -1,18 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace SkynetServer.Utilities
 {
     public static class MailUtilities
     {
-        public static string SimplifyAddress(string address)
-        {
-            return address.Replace("@googlemail.com", "@gmail.com", StringComparison.Ordinal);
-        }
-
         public static bool IsValidAddress(string address)
         {
             if (string.IsNullOrWhiteSpace(address))

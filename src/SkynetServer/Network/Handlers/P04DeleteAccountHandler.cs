@@ -45,13 +45,13 @@ namespace SkynetServer.Network.Handlers
             await Database.SaveChangesAsync().ConfigureAwait(false);
 
             // Kick all sessions
-            // TODO: Evaluate better options than waiting here which opens the door for dead locks
+            // TODO: Use a concurrency token on Account.DeletionTime to avoid concurrent account deletions which will lead to dead locks
             var tasks = new List<Task>();
             foreach (Session session in sessions)
             {
                 if (connections.TryGet(session.SessionId, out IClient client) && !ReferenceEquals(client, Client))
                 {
-                    tasks.Add(client.DisposeAsync().AsTask());
+                    tasks.Add(client.DisposeAsync(true, false).AsTask());
                 }
             }
             await Task.WhenAll(tasks).ConfigureAwait(false);

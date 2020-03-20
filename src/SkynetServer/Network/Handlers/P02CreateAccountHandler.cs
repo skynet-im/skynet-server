@@ -30,8 +30,9 @@ namespace SkynetServer.Network.Handlers
                 response.StatusCode = CreateAccountStatus.InvalidAccountName;
             else
             {
-                packet.AccountName = MailUtilities.SimplifyAddress(packet.AccountName);
-                (var newAccount, var confirmation, bool success) = await Database.AddAccount(packet.AccountName, packet.KeyHash).ConfigureAwait(false);
+                // As of RFC 5321 the local-part of an email address should not be case-sensitive.
+                (var newAccount, var confirmation, bool success) = 
+                    await Database.AddAccount(packet.AccountName.ToLowerInvariant(), packet.KeyHash).ConfigureAwait(false);
                 if (!success)
                     response.StatusCode = CreateAccountStatus.AccountNameTaken;
                 else
