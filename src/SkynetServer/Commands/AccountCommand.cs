@@ -32,7 +32,7 @@ namespace SkynetServer.Commands
             [Option("-m|--send-mail", "Send a confirmation mail", CommandOptionType.NoValue)]
             public bool SendMail { get; set; }
 
-            private async Task<int> OnExecute(IConsole console, DatabaseContext database, MailingService mailingService)
+            private async Task<int> OnExecute(IConsole console, DatabaseContext database, ConfirmationMailService mailingService)
             {
                 if (!MailUtilities.IsValidAddress(AccountName))
                 {
@@ -46,7 +46,7 @@ namespace SkynetServer.Commands
                 if (success)
                 {
                     console.Out.WriteLine($"Created account with ID {account.AccountId}");
-                    console.Out.WriteLine($"Visit https://account.skynet.app/confirm/{confirmation.Token} to confirm the mail address");
+                    console.Out.WriteLine($"Visit {mailingService.GetConfirmationUrl(confirmation.Token)} to confirm the mail address");
 
                     if (SendMail)
                     {
@@ -102,7 +102,7 @@ namespace SkynetServer.Commands
             [Argument(0)]
             public string MailAddress { get; set; }
 
-            private async Task<int> OnExecute(IConsole console, DatabaseContext database, MailingService mailingService)
+            private async Task<int> OnExecute(IConsole console, DatabaseContext database, ConfirmationMailService mailingService)
             {
                 MailConfirmation confirmation = await database.MailConfirmations.SingleOrDefaultAsync(c => c.MailAddress == MailAddress).ConfigureAwait(false);
                 if (confirmation != null)

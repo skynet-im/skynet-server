@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SkynetServer.Extensions;
+using SkynetServer.Web.Extensions;
 
 namespace SkynetServer.Web
 {
@@ -60,6 +61,7 @@ namespace SkynetServer.Web
                 app.UseExceptionHandler("/error");
             }
 
+            app.UseProxy();
             app.UseRequestLocalization();
             app.UseStatusCodePagesWithReExecute("/status/{0}");
             app.UseStaticFiles();

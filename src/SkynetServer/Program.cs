@@ -46,7 +46,7 @@ namespace SkynetServer
             builder.ConfigureServices((context, services) =>
             {
                 services.ConfigureSkynet(context.Configuration);
-                services.AddSingleton<MailingService>();
+                services.AddSingleton<ConfirmationMailService>();
                 services.AddSingleton<FirebaseService>();
                 services.AddSingleton<ConnectionsService>();
                 services.AddSingleton<PacketService>();
@@ -69,7 +69,7 @@ namespace SkynetServer
             var services = new ServiceCollection()
                 .AddSingleton(PhysicalConsole.Singleton)
                 .ConfigureSkynet(configuration)
-                .AddSingleton<MailingService>()
+                .AddSingleton<ConfirmationMailService>()
                 .AddDatabaseContext(configuration)
                 .BuildServiceProvider();
 
