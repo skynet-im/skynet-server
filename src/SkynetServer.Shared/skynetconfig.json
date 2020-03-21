@@ -34,5 +34,10 @@
       }
     ],
     "CountMessagesBeforeSync": true
+  },
+  "WebOptions": {
+    "PathBase": null,
+    "AllowProxies": false,
+    "PublicBaseUrl": "https://account.skynet.app/"
   }
 }

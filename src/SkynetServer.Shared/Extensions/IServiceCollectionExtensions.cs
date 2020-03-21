@@ -13,8 +13,6 @@ namespace SkynetServer.Extensions
     {
         public static IServiceCollection ConfigureSkynet(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddOptions<SkynetOptions>()
-                .Bind(configuration);
             services.AddOptions<DatabaseOptions>()
                 .Bind(configuration.GetSection(nameof(DatabaseOptions)))
                 .ValidateDataAnnotations();
@@ -34,6 +32,9 @@ namespace SkynetServer.Extensions
                 }, "Validation of MailOptions failed");
             services.AddOptions<ProtocolOptions>()
                 .Bind(configuration.GetSection(nameof(ProtocolOptions)))
+                .ValidateDataAnnotations();
+            services.AddOptions<WebOptions>()
+                .Bind(configuration.GetSection(nameof(WebOptions)))
                 .ValidateDataAnnotations();
 
             return services;

@@ -12,7 +12,7 @@ namespace SkynetServer.Configuration
         [Required] public string SenderAddress { get; set; }
 
         [Required] public string SmtpUsername { get; set; }
-        [Required] public string SmtpPassword { get; set; }
+        [Required(AllowEmptyStrings = true)] public string SmtpPassword { get; set; }
         public bool UseSsl { get; set; }
         [Required] public string SmtpHost { get; set; }
         [Range(0, 65535)] public ushort SmtpPort { get; set; }

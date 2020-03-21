@@ -1,10 +1,12 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SkynetServer.Configuration;
+using SkynetServer.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace SkynetServer.Tests
 {
@@ -18,14 +20,22 @@ namespace SkynetServer.Tests
                 .AddJsonFile("skynetconfig.json", optional: false, reloadOnChange: true)
                 .Build();
 
-            var options = configuration.Get<SkynetOptions>();
-            Assert.IsNotNull(options);
-            Assert.IsNotNull(options.DatabaseOptions);
-            Assert.IsNotNull(options.ListenerOptions);
-            Assert.IsNotNull(options.MailOptions);
-            Assert.IsNotNull(options.ProtocolOptions);
-            Assert.IsNotNull(options.ProtocolOptions.Platforms);
-            Assert.IsTrue(options.ProtocolOptions.Platforms.Any());
+            var descriptors = new ServiceCollection();
+            descriptors.ConfigureSkynet(configuration);
+            IServiceProvider provider = descriptors.BuildServiceProvider();
+
+            T get<T>() where T : class, new()
+            {
+                return provider.GetService<IOptions<T>>()?.Value;
+            }
+
+            Assert.IsNotNull(get<DatabaseOptions>());
+            Assert.IsNotNull(get<ListenerOptions>());
+            Assert.IsNotNull(get<MailOptions>());
+            Assert.IsNotNull(get<ProtocolOptions>());
+            Assert.IsNotNull(get<ProtocolOptions>().Platforms);
+            Assert.IsTrue(get<ProtocolOptions>().Platforms.Any());
+            Assert.IsNotNull(get<WebOptions>());
         }
     }
 }
