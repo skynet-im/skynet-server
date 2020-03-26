@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SkynetServer.Configuration;
 using SkynetServer.Network;
@@ -17,18 +18,20 @@ namespace SkynetServer.Services
 {
     internal sealed class ListenerService : IHostedService, IDisposable
     {
-        private readonly IOptions<ListenerOptions> listenerOptions;
         private readonly IServiceProvider serviceProvider;
+        private readonly IOptions<ListenerOptions> listenerOptions;
+        private readonly ILogger<ListenerService> logger;
         private readonly CancellationTokenSource cts;
 
         private readonly Socket listener;
         private readonly IPEndPoint endPoint;
         private readonly X509Certificate2 certificate;
 
-        public ListenerService(IOptions<ListenerOptions> listenerOptions, IServiceProvider serviceProvider)
+        public ListenerService(IServiceProvider serviceProvider, IOptions<ListenerOptions> listenerOptions, ILogger<ListenerService> logger)
         {
-            this.listenerOptions = listenerOptions;
             this.serviceProvider = serviceProvider;
+            this.listenerOptions = listenerOptions;
+            this.logger = logger;
 
             certificate = new X509Certificate2(listenerOptions.Value.CertificatePath);
             endPoint = new IPEndPoint(IPAddress.IPv6Any, listenerOptions.Value.Port);
@@ -46,6 +49,7 @@ namespace SkynetServer.Services
             listener.Bind(endPoint);
             listener.Listen(listenerOptions.Value.Backlog);
             Loop();
+            logger.LogInformation("Listening on {0}", endPoint);
 
             return Task.CompletedTask;
         }
@@ -78,6 +82,12 @@ namespace SkynetServer.Services
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)
             {
                 // Server is shutting down
+                logger.LogInformation(ex, "Listener exited");
+            }
+            catch (Exception ex)
+            {
+                logger.LogCritical(ex, "Unexpected exception occurred while listening");
+                throw;
             }
         }
 
@@ -87,10 +97,11 @@ namespace SkynetServer.Services
             SslStream sslStream = new SslStream(networkStream, leaveInnerStreamOpen: false);
             try
             {
-                await sslStream.AuthenticateAsServerAsync(certificate, false, SslProtocols.Tls13, false).ConfigureAwait(false);
+                await sslStream.AuthenticateAsServerAsync(certificate, false, SslProtocols.Tls12 | SslProtocols.Tls13, false).ConfigureAwait(false);
             }
-            catch (AuthenticationException)
+            catch (AuthenticationException ex)
             {
+                logger.LogInformation(ex, "TLS authentication failed");
                 // TODO: Write failed authentication to logs
                 await sslStream.DisposeAsync().ConfigureAwait(false);
                 return;
