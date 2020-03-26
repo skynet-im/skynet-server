@@ -1,18 +1,18 @@
 {
-  "DatabaseOptions": {
+  "Database": {
     "ConnectionString": "Server=localhost;Port=3306;Database=Skynet;User=root;Password=root;"
   },
-  "FcmOptions": {
+  "Fcm": {
     "NotifyAllDevices": false,
     "DeleteSessionOnError": false,
     "PriorityMessageAckTimeout": 60000
   },
-  "ListenerOptions": {
+  "Listener": {
     "Backlog": 64,
     "Port": 32761,
     "CertificatePath": "devcert.pfx"
   },
-  "MailOptions": {
+  "Mail": {
     "EnableMailing": true,
     "SenderName": "Skynet Team",
     "SenderAddress": "noreply@skynet.app",
@@ -22,7 +22,7 @@
     "SmtpHost": "smtp.udag.de",
     "SmtpPort": 465
   },
-  "ProtocolOptions": {
+  "Protocol": {
     "ProtocolVersion": 2,
     "Platforms": [
       {
@@ -35,7 +35,7 @@
     ],
     "CountMessagesBeforeSync": true
   },
-  "WebOptions": {
+  "Web": {
     "PathBase": null,
     "AllowProxies": false,
     "PublicBaseUrl": "https://account.skynet.app/"

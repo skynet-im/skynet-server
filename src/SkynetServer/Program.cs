@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using SkynetServer.Commands;
 using SkynetServer.Extensions;
 using SkynetServer.Services;
@@ -37,12 +38,22 @@ namespace SkynetServer
         private static IHostBuilder CreateHostBuilder()
         {
             HostBuilder builder = new HostBuilder();
-            builder.ConfigureAppConfiguration(config =>
+
+            builder.ConfigureAppConfiguration((context, config) =>
             {
+                config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+                config.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: true);
+
                 // The appsettings.json file contained in this repository lacks some secrets that are necessary for production usage.
-                // Our debug keypair "<Modulus>jKoWxmIf..." should be used in all client applications to connect to development servers.
                 config.AddJsonFile("skynetconfig.json", optional: false, reloadOnChange: true);
             });
+
+            builder.ConfigureLogging((context, logging) =>
+            {
+                logging.AddConfiguration(context.Configuration.GetSection("Logging"));
+                logging.AddConsole();
+            });
+
             builder.ConfigureServices((context, services) =>
             {
                 services.ConfigureSkynet(context.Configuration);
@@ -57,6 +68,7 @@ namespace SkynetServer
                 services.AddScoped<ClientStateService>();
                 services.AddHostedService<ListenerService>();
             });
+
             return builder;
         }
 
