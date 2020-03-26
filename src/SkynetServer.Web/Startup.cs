@@ -30,9 +30,16 @@ namespace SkynetServer.Web
 
             services.AddLocalization(options => options.ResourcesPath = "Resources");
             services.AddRouting();
+#if DEBUG
+            services.AddMvc()
+                .AddViewLocalization()
+                .SetCompatibilityVersion(CompatibilityVersion.Version_3_0)
+                .AddRazorRuntimeCompilation();
+#else
             services.AddMvc()
                 .AddViewLocalization()
                 .SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
+#endif
 
             services.AddDatabaseContext(Configuration);
 
