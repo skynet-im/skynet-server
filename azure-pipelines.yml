@@ -39,7 +39,7 @@ steps:
 - task: CmdLine@2
   displayName: Start MySQL
   inputs:
-    script: 'systemctl start mysql.service'
+    script: 'sudo systemctl start mysql.service'
 - task: DotNetCoreCLI@2
   displayName: Prepare
   inputs:
