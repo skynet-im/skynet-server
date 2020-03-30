@@ -1,0 +1,15 @@
+﻿@using Microsoft.AspNetCore.Mvc.Localization
+@using Skynet.Server.Web.Controllers
+
+@inject IHtmlLocalizer<MailConfirmationController> localizer
+
+@model MailConfirmationViewModel
+@{
+    ViewData["Title"] = localizer["SuccessTitle"];
+}
+
+<h2 class="main-header">@localizer["SuccessHeader"]</h2>
+
+<div class="content">
+    <p>@localizer["SuccessContent", Model.MailAddress]</p>
+</div>
