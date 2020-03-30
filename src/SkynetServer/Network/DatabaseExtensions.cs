@@ -1,8 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Skynet.Model;
+using Skynet.Protocol;
+using Skynet.Protocol.Model;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
-using SkynetServer.Model;
-using SkynetServer.Network.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;

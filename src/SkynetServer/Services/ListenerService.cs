@@ -2,9 +2,9 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Skynet.Network;
 using SkynetServer.Configuration;
 using SkynetServer.Network;
-using SkynetServer.Sockets;
 using System;
 using System.Net;
 using System.Net.Security;

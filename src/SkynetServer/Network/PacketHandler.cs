@@ -1,4 +1,5 @@
-﻿using SkynetServer.Database;
+﻿using Skynet.Protocol;
+using SkynetServer.Database;
 using SkynetServer.Services;
 using System;
 using System.Collections.Generic;

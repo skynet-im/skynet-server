@@ -1,9 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Skynet.Network;
+using Skynet.Protocol;
+using Skynet.Protocol.Model;
 using SkynetServer.Database;
-using SkynetServer.Network.Model;
 using SkynetServer.Services;
-using SkynetServer.Sockets;
 using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;
@@ -35,7 +36,12 @@ namespace SkynetServer.Network
 
             this.stream = stream;
             this.ct = ct;
-            sendQueue = new JobQueue<Packet>(packet => stream.WriteAsync(packet));
+            sendQueue = new JobQueue<Packet>(packet =>
+            {
+                var buffer = new PacketBuffer();
+                packet.WritePacket(buffer, PacketRole.Server);
+                return stream.WriteAsync(packet.Id, buffer.GetBuffer());
+            });
             handler = Listen();
         }
 
@@ -127,7 +133,7 @@ namespace SkynetServer.Network
                 throw new ProtocolException($"Invalid packet ID {id}");
 
             Packet prototype = this.packets.Packets[id];
-            if (prototype == null || !prototype.Policies.HasFlag(PacketPolicies.Receive))
+            if (prototype == null || !prototype.Policies.HasFlag(PacketPolicies.ClientToServer))
                 throw new ProtocolException($"Cannot receive packet {id}");
 
             if (VersionCode == default && !prototype.Policies.HasFlag(PacketPolicies.Uninitialized))
@@ -142,7 +148,7 @@ namespace SkynetServer.Network
             Packet instance = prototype.Create();
 
             var buffer = new PacketBuffer(content);
-            instance.ReadPacket(buffer);
+            instance.ReadPacket(buffer, PacketRole.Server);
 
             Console.WriteLine($"Starting to handle packet {instance}");
             PacketReceived?.Invoke(this, instance);
@@ -174,7 +180,7 @@ namespace SkynetServer.Network
                 if (SessionId != default)
                     connections.TryRemove(SessionId, out _);
 
-                if (waitForHandling) 
+                if (waitForHandling)
                     await handler.ConfigureAwait(false);
 
                 if (updateState && SessionId != default)

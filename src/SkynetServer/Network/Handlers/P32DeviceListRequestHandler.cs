@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SkynetServer.Network.Model;
-using SkynetServer.Network.Packets;
+using Skynet.Protocol.Model;
+using Skynet.Protocol.Packets;
 using System;
 using System.Collections.Generic;
 using System.Linq;

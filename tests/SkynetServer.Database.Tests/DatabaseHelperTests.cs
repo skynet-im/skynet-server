@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Skynet.Model;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
 using SkynetServer.Extensions;
-using SkynetServer.Model;
 using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;

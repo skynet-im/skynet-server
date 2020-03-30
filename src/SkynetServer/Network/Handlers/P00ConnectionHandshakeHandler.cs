@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
+using Skynet.Protocol.Model;
+using Skynet.Protocol.Packets;
 using SkynetServer.Configuration;
-using SkynetServer.Network.Model;
-using SkynetServer.Network.Packets;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -1,6 +1,7 @@
-﻿using SkynetServer.Extensions;
+﻿using Skynet.Protocol;
+using Skynet.Protocol.Attributes;
+using SkynetServer.Extensions;
 using SkynetServer.Network;
-using SkynetServer.Network.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,7 +42,7 @@ namespace SkynetServer.Services
             List<Packet> packets = new List<Packet>(capacity: byte.MaxValue);
             int max = 0;
 
-            foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
+            foreach (Type type in Assembly.GetAssembly(typeof(Packet)).GetTypes())
             {
                 if (!type.IsSubclassOf(typeof(Packet))) continue;
                 if (type == typeof(Packet) || type == typeof(ChannelMessage)) continue;
@@ -98,7 +99,7 @@ namespace SkynetServer.Services
             for (int i = 0; i < packets.Length; i++)
             {
                 Packet packet = packets[i];
-                if (packet == null || !packet.Policies.HasFlag(PacketPolicies.Receive))
+                if (packet == null || !packet.Policies.HasFlag(PacketPolicies.ClientToServer))
                     continue;
 
                 if (handlers.TryGetValue(packet.GetType(), out Type handler))

@@ -1,5 +1,5 @@
-﻿using SkynetServer.Network.Model;
-using SkynetServer.Network.Packets;
+﻿using Skynet.Protocol.Model;
+using Skynet.Protocol.Packets;
 using SkynetServer.Services;
 using System;
 using System.Collections.Generic;

@@ -1,12 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Skynet.Model;
+using Skynet.Protocol;
+using Skynet.Protocol.Packets;
 using SkynetServer.Configuration;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
-using SkynetServer.Model;
 using SkynetServer.Network;
-using SkynetServer.Network.Packets;
 using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;

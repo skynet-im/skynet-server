@@ -1,4 +1,4 @@
-﻿using SkynetServer.Network.Packets;
+﻿using Skynet.Protocol.Packets;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;

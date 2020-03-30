@@ -1,4 +1,5 @@
-﻿using SkynetServer.Network.Model;
+﻿using Skynet.Protocol;
+using Skynet.Protocol.Model;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;

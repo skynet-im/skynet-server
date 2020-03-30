@@ -1,10 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Skynet.Model;
+using Skynet.Protocol.Packets;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
-using SkynetServer.Model;
-using SkynetServer.Network.Packets;
 using SkynetServer.Services;
 using SkynetServer.Utilities;
 using System;

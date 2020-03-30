@@ -1,10 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Skynet.Model;
+using Skynet.Protocol;
+using Skynet.Protocol.Model;
+using Skynet.Protocol.Packets;
 using SkynetServer.Database;
 using SkynetServer.Database.Entities;
-using SkynetServer.Model;
 using SkynetServer.Network;
-using SkynetServer.Network.Model;
-using SkynetServer.Network.Packets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,7 +38,7 @@ namespace SkynetServer.Services
                 // TODO: Implement FileId
                 PacketId = packet.Id,
                 PacketVersion = packet.PacketVersion,
-                PacketContent = packet.PacketContent.IsEmpty ? null : packet.PacketContent.ToArray(),
+                PacketContent = packet.PacketContent?.ToArray(),
                 Dependencies = packet.Dependencies.ToDatabase()
             };
 

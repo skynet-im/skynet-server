@@ -1,8 +1,9 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Skynet.Model;
+using Skynet.Protocol;
+using Skynet.Protocol.Packets;
 using SkynetServer.Extensions;
-using SkynetServer.Model;
 using SkynetServer.Network;
-using SkynetServer.Network.Packets;
 using SkynetServer.Services;
 using System;
 
@@ -23,11 +24,16 @@ namespace SkynetServer.Tests.Services
         public void TestPackets()
         {
             ReadOnlySpan<Packet> packets = this.packets.Packets;
+            bool empty = true;
             for (int i = 0; i < packets.Length; i++)
             {
                 if (packets[i] != null)
+                {
                     Assert.AreEqual(i, packets[i].Id);
+                    empty = false;
+                }
             }
+            Assert.IsFalse(empty, "No packets found");
         }
 
         [TestMethod]
@@ -48,7 +54,7 @@ namespace SkynetServer.Tests.Services
             ReadOnlySpan<Packet> packets = this.packets.Packets;
             for (int i = 0; i < packets.Length; i++)
             {
-                if (packets[i] != null && packets[i].Policies.HasFlag(PacketPolicies.Receive))
+                if (packets[i] != null && packets[i].Policies.HasFlag(PacketPolicies.ClientToServer))
                 {
                     Type handler = this.packets.Handlers[i];
                     Assert.IsNotNull(handler, $"Could not find a handler for {packets[i].GetType().Name}");
