@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SkynetServer.Database;
 using SkynetServer.Network.Model;
 using SkynetServer.Services;
@@ -17,16 +18,21 @@ namespace SkynetServer.Network
         private readonly IServiceProvider serviceProvider;
         private readonly ConnectionsService connections;
         private readonly PacketService packets;
+        private readonly ILogger<Client> logger;
+
         private readonly PacketStream stream;
         private readonly CancellationToken ct;
         private readonly JobQueue<Packet> sendQueue;
         private readonly Task handler;
 
-        public Client(IServiceProvider serviceProvider, ConnectionsService connections, PacketService packets, PacketStream stream, CancellationToken ct)
+        public Client(IServiceProvider serviceProvider, ConnectionsService connections, PacketService packets, ILogger<Client> logger,
+            PacketStream stream, CancellationToken ct)
         {
             this.serviceProvider = serviceProvider;
             this.connections = connections;
             this.packets = packets;
+            this.logger = logger;
+
             this.stream = stream;
             this.ct = ct;
             sendQueue = new JobQueue<Packet>(packet => stream.WriteAsync(packet));
@@ -81,16 +87,37 @@ namespace SkynetServer.Network
                     if (!success)
                     {
                         await DisposeAsync(false, true).ConfigureAwait(false);
+                        logger.LogInformation("Session {0} disconnected", SessionId.ToString("x8"));
                         return;
                     }
                 }
-                catch (IOException)
+                catch (IOException ex)
                 {
                     await DisposeAsync(false, true).ConfigureAwait(false);
+                    logger.LogInformation(ex, "Session {0} lost connection", SessionId.ToString("x8"));
                     return;
                 }
+                catch (Exception ex)
+                {
+                    logger.LogCritical(ex, "Unexpected exception occurred while receiving a packet from session {0}", SessionId.ToString("x8"));
+                    throw;
+                }
 
-                await HandlePacket(id, content).ConfigureAwait(false);
+                try
+                {
+                    await HandlePacket(id, content).ConfigureAwait(false);
+                }
+                catch (ProtocolException ex)
+                {
+                    logger.LogInformation(ex, "Invalid operation of session {0}", SessionId.ToString("x8"));
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogCritical(ex, "Unexpected exception occurred while handling packet {0} of session {0}",
+                        id.ToString("x2"), SessionId.ToString("x8"));
+                    throw;
+                }
             }
         }
 

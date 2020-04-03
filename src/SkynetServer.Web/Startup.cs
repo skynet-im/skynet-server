@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SkynetServer.Extensions;
+using SkynetServer.Web.Extensions;
 
 namespace SkynetServer.Web
 {
@@ -29,9 +30,16 @@ namespace SkynetServer.Web
 
             services.AddLocalization(options => options.ResourcesPath = "Resources");
             services.AddRouting();
+#if DEBUG
+            services.AddMvc()
+                .AddViewLocalization()
+                .SetCompatibilityVersion(CompatibilityVersion.Version_3_0)
+                .AddRazorRuntimeCompilation();
+#else
             services.AddMvc()
                 .AddViewLocalization()
                 .SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
+#endif
 
             services.AddDatabaseContext(Configuration);
 
@@ -60,6 +68,7 @@ namespace SkynetServer.Web
                 app.UseExceptionHandler("/error");
             }
 
+            app.UseProxy();
             app.UseRequestLocalization();
             app.UseStatusCodePagesWithReExecute("/status/{0}");
             app.UseStaticFiles();

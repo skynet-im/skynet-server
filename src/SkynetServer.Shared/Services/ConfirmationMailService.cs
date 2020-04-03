@@ -10,15 +10,22 @@ using System.Threading.Tasks;
 
 namespace SkynetServer.Services
 {
-    public class MailingService
+    public class ConfirmationMailService
     {
         private readonly IOptions<MailOptions> mailOptions;
+        private readonly IOptions<WebOptions> webOptions;
 
-        public MailingService(IOptions<MailOptions> mailOptions)
+        public ConfirmationMailService(IOptions<MailOptions> mailOptions, IOptions<WebOptions> webOptions)
         {
             this.mailOptions = mailOptions;
+            this.webOptions = webOptions;
         }
 
+        public Uri GetConfirmationUrl(string token)
+        {
+            return new Uri(webOptions.Value.PublicBaseUrl, "confirm/" + token);
+        }
+        
         public async Task SendMailAsync(string address, string token)
         {
             MailOptions config = mailOptions.Value;
@@ -29,6 +36,8 @@ namespace SkynetServer.Services
                 return;
             }
 
+            string url = GetConfirmationUrl(token).AbsoluteUri;
+
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(config.SenderName, config.SenderAddress));
             message.To.Add(new MailboxAddress(address));
@@ -37,10 +46,10 @@ namespace SkynetServer.Services
             {
                 TextBody = GetMailText()
                     .Replace("$ADDRESS", address, StringComparison.Ordinal)
-                    .Replace("$TOKEN", token, StringComparison.Ordinal),
+                    .Replace("$URL", url, StringComparison.Ordinal),
                 HtmlBody = GetMailHtml()
                     .Replace("$ADDRESS", address, StringComparison.Ordinal)
-                    .Replace("$TOKEN", token, StringComparison.Ordinal)
+                    .Replace("$URL", url, StringComparison.Ordinal)
             };
             message.Body = builder.ToMessageBody();
 

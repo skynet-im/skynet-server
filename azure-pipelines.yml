@@ -3,12 +3,12 @@
 trigger:
   batch: false
   branches:
-    include: ['master']
+    include: ['master','dev']
 
 pr:
   autoCancel: true
   branches:
-    include: ['*']
+    include: ['master','dev']
 
 pool:
   vmImage: 'ubuntu-18.04'
@@ -17,12 +17,12 @@ variables:
   buildConfiguration: 'Release'
 
 steps:
-- task: UseDotNet@2
-  displayName: "Use .NET Core 3.1 SDK"
-  inputs:
-    packageType: sdk
-    version: 3.1.x
-    installationPath: $(Agent.ToolsDirectory)/dotnet
+#- task: UseDotNet@2
+#  displayName: "Use .NET Core 3.1 SDK"
+#  inputs:
+#    packageType: sdk
+#    version: 3.1.x
+#    installationPath: $(Agent.ToolsDirectory)/dotnet
 - task: DotNetCoreCLI@2
   displayName: Restore
   inputs:
@@ -36,6 +36,10 @@ steps:
     command: build
     projects: '**/*.csproj'
     arguments: '--configuration $(buildConfiguration)'
+- task: CmdLine@2
+  displayName: Start MySQL
+  inputs:
+    script: 'sudo systemctl start mysql.service'
 - task: DotNetCoreCLI@2
   displayName: Prepare
   inputs:

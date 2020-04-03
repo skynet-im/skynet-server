@@ -15,9 +15,9 @@ namespace SkynetServer.Network.Handlers
     internal class P02CreateAccountHandler : PacketHandler<P02CreateAccount>
     {
         private readonly MessageInjectionService injector;
-        private readonly MailingService mailing;
+        private readonly ConfirmationMailService mailing;
 
-        public P02CreateAccountHandler(MessageInjectionService injector, MailingService mailing)
+        public P02CreateAccountHandler(MessageInjectionService injector, ConfirmationMailService mailing)
         {
             this.injector = injector;
             this.mailing = mailing;

@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using SkynetServer.Configuration;
 using SkynetServer.Database;
 using System;
@@ -13,30 +14,31 @@ namespace SkynetServer.Extensions
     {
         public static IServiceCollection ConfigureSkynet(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddOptions<SkynetOptions>()
-                .Bind(configuration);
-            services.AddOptions<DatabaseOptions>()
-                .Bind(configuration.GetSection(nameof(DatabaseOptions)))
+            services.AddAndBindOptions<DatabaseOptions>(configuration)
                 .ValidateDataAnnotations();
-            services.AddOptions<FcmOptions>()
-                .Bind(configuration.GetSection(nameof(FcmOptions)))
+            services.AddAndBindOptions<FcmOptions>(configuration)
                 .ValidateDataAnnotations();
-            services.AddOptions<ListenerOptions>()
-                .Bind(configuration.GetSection(nameof(ListenerOptions)))
+            services.AddAndBindOptions<ListenerOptions>(configuration)
                 .ValidateDataAnnotations();
-            services.AddOptions<MailOptions>()
-                .Bind(configuration.GetSection(nameof(MailOptions)))
+            services.AddAndBindOptions<MailOptions>(configuration)
                 .Validate(mailOptions =>
                 {
                     if (!mailOptions.EnableMailing) return true;
                     ValidationContext context = new ValidationContext(mailOptions);
                     return Validator.TryValidateObject(mailOptions, context, null);
                 }, "Validation of MailOptions failed");
-            services.AddOptions<ProtocolOptions>()
-                .Bind(configuration.GetSection(nameof(ProtocolOptions)))
+            services.AddAndBindOptions<ProtocolOptions>(configuration)
+                .ValidateDataAnnotations();
+            services.AddAndBindOptions<WebOptions>(configuration)
                 .ValidateDataAnnotations();
 
             return services;
+        }
+
+        private static OptionsBuilder<T> AddAndBindOptions<T>(this IServiceCollection services, IConfiguration configuration) where T:class 
+        {
+            return services.AddOptions<T>()
+                .Bind(configuration.GetSection(typeof(T).Name.Replace("Options", null, StringComparison.Ordinal)));
         }
 
         public static IServiceCollection AddDatabaseContext(this IServiceCollection services, IConfiguration configuration)
@@ -44,7 +46,7 @@ namespace SkynetServer.Extensions
             services.AddDbContextPool<DatabaseContext>(options =>
             {
                 options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
-                options.UseMySql(configuration.GetValue<string>("DatabaseOptions:ConnectionString"), options => options.EnableRetryOnFailure());
+                options.UseMySql(configuration.GetValue<string>("Database:ConnectionString"), options => options.EnableRetryOnFailure());
             });
 
             return services;
