@@ -36,11 +36,11 @@ namespace Skynet.Server.Network
 
             this.stream = stream;
             this.ct = ct;
-            sendQueue = new JobQueue<Packet>(packet =>
+            sendQueue = new JobQueue<Packet>(async packet =>
             {
-                var buffer = new PacketBuffer();
+                using var buffer = new PacketBuffer();
                 packet.WritePacket(buffer, PacketRole.Server);
-                return stream.WriteAsync(packet.Id, buffer.GetBuffer());
+                await stream.WriteAsync(packet.Id, buffer.GetBuffer()).ConfigureAwait(false);
             });
             handler = Listen();
         }
@@ -76,6 +76,10 @@ namespace Skynet.Server.Network
 
         public Task Send(Packet packet) => sendQueue.Insert(packet);
         public Task Enqueue(Packet packet) => sendQueue.Enqueue(packet);
+        public Task Enqueue(ChannelMessage message) => sendQueue.Enqueue(message)
+            .ContinueWith((_, message) => ((ChannelMessage)message).Dispose(), message, TaskScheduler.Default);
+
+        // TODO: Dispose messages retrieved from a stream after sending
         public Task Enqueue(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages);
 
         private async Task Listen()
@@ -83,7 +87,7 @@ namespace Skynet.Server.Network
             while (!ct.IsCancellationRequested)
             {
                 byte id;
-                ReadOnlyMemory<byte> content;
+                PoolableMemory content;
 
                 try
                 {
@@ -124,44 +128,55 @@ namespace Skynet.Server.Network
                         id.ToString("x2"), SessionId.ToString("x8"));
                     throw;
                 }
+                finally
+                {
+                    content.Return(false);
+                }
             }
         }
 
-        private async ValueTask HandlePacket(byte id, ReadOnlyMemory<byte> content)
+        private async ValueTask HandlePacket(byte id, PoolableMemory content)
         {
-            if (id >= this.packets.Packets.Length)
-                throw new ProtocolException($"Invalid packet ID {id}");
+            if (id >= packets.Packets.Length)
+                throw new ProtocolException($"Invalid packet ID {id:x2}");
 
-            Packet prototype = this.packets.Packets[id];
+            Packet prototype = packets.Packets[id];
             if (prototype == null || !prototype.Policies.HasFlag(PacketPolicies.ClientToServer))
-                throw new ProtocolException($"Cannot receive packet {id}");
+                throw new ProtocolException($"Cannot receive packet {id:x2}");
 
             if (VersionCode == default && !prototype.Policies.HasFlag(PacketPolicies.Uninitialized))
-                throw new ProtocolException($"Uninitialized client sent packet {id}");
+                throw new ProtocolException($"Uninitialized client sent packet {id:x2}");
 
             if (SessionId == default && !prototype.Policies.HasFlag(PacketPolicies.Unauthenticated))
-                throw new ProtocolException($"Unauthorized packet {id}");
+                throw new ProtocolException($"Unauthorized packet {id:x2}");
 
             if (SessionId != default && prototype.Policies.HasFlag(PacketPolicies.Unauthenticated))
-                throw new ProtocolException($"Authorized clients cannot send packet {id}");
+                throw new ProtocolException($"Authorized clients cannot send packet {id:x2}");
 
             Packet instance = prototype.Create();
 
-            var buffer = new PacketBuffer(content);
-            instance.ReadPacket(buffer, PacketRole.Server);
+            try
+            {
+                using (var buffer = new PacketBuffer(content.Memory))
+                    instance.ReadPacket(buffer, PacketRole.Server);
 
-            Console.WriteLine($"Starting to handle packet {instance}");
-            PacketReceived?.Invoke(this, instance);
+                Console.WriteLine($"Starting to handle packet {instance}");
+                PacketReceived?.Invoke(this, instance);
 
-            using IServiceScope scope = serviceProvider.CreateScope();
+                using IServiceScope scope = serviceProvider.CreateScope();
 
-            var handler = (IPacketHandler)ActivatorUtilities.CreateInstance(serviceProvider, this.packets.Handlers[id]);
-            DatabaseContext database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-            PacketService packets = scope.ServiceProvider.GetRequiredService<PacketService>();
-            DeliveryService delivery = scope.ServiceProvider.GetRequiredService<DeliveryService>();
-            handler.Init(this, database, packets, delivery);
+                var handler = (IPacketHandler)ActivatorUtilities.CreateInstance(serviceProvider, this.packets.Handlers[id]);
+                DatabaseContext database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+                PacketService packets = scope.ServiceProvider.GetRequiredService<PacketService>();
+                DeliveryService delivery = scope.ServiceProvider.GetRequiredService<DeliveryService>();
+                handler.Init(this, database, packets, delivery);
 
-            await handler.Handle(instance).ConfigureAwait(false);
+                await handler.Handle(instance).ConfigureAwait(false);
+            }
+            finally
+            {
+                (instance as IDisposable)?.Dispose();
+            }
         }
 
         #region IAsyncDisposable Support

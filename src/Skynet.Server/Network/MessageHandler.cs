@@ -52,7 +52,7 @@ namespace Skynet.Server.Network
                 // TODO: Implement FileId
                 PacketId = packet.Id,
                 PacketVersion = packet.PacketVersion,
-                PacketContent = packet.PacketContent?.ToArray(),
+                PacketContent = packet.PacketContent,
                 Dependencies = packet.Dependencies.ToDatabase()
             };
             Database.Messages.Add(entity);

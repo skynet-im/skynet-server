@@ -23,6 +23,7 @@ namespace Skynet.Server.Network
         void Authenticate(long accountId, long sessionId);
         Task Send(Packet packet);
         Task Enqueue(Packet packet);
+        Task Enqueue(ChannelMessage message);
         Task Enqueue(IAsyncEnumerable<ChannelMessage> messages);
         ValueTask DisposeAsync(bool waitForHandling, bool updateState);
     }
