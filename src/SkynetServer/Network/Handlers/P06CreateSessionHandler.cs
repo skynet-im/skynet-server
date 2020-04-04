@@ -67,6 +67,8 @@ namespace SkynetServer.Network.Handlers
             Client.Authenticate(confirmation.Account.AccountId, session.SessionId);
 
             response.StatusCode = CreateSessionStatus.Success;
+            response.AccountId = session.AccountId;
+            response.SessionId = session.SessionId;
             response.SessionToken = session.SessionToken;
             response.WebToken = session.WebToken;
             await Client.Send(response).ConfigureAwait(false);

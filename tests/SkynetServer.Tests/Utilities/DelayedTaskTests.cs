@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace SkynetServer.Tests
+namespace SkynetServer.Tests.Utilities
 {
     [TestClass]
     public class DelayedTaskTests

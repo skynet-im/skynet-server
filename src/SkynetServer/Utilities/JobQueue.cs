@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,13 +10,13 @@ namespace SkynetServer.Utilities
     /// Provides a self executing job queue with two priority levels.
     /// Enqueuing of async streams is implemented through <see cref="StreamQueue{TItem, TState}"/>.
     /// </summary>
-    /// <typeparam name="T"></typeparam>
+    [SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable", Justification = "JobQueue<T> implements IAsyncDisposable")]
     internal class JobQueue<T> : IAsyncDisposable
     {
         private readonly Func<T, ValueTask> executor;
         private readonly StreamQueue<T, TaskCompletionSource<bool>> queue;
         private readonly StreamQueue<T, TaskCompletionSource<bool>> insert;
-        private readonly object executeLock;
+        private readonly SemaphoreSlim semaphore;
         private bool executing;
 
         public JobQueue(Func<T, ValueTask> executor)
@@ -23,7 +24,7 @@ namespace SkynetServer.Utilities
             this.executor = executor;
             queue = new StreamQueue<T, TaskCompletionSource<bool>>();
             insert = new StreamQueue<T, TaskCompletionSource<bool>>();
-            executeLock = new object();
+            semaphore = new SemaphoreSlim(1);
         }
 
         /// <summary>
@@ -85,12 +86,12 @@ namespace SkynetServer.Utilities
             return default;
         }
 
-        private void EnsureExecuting()
+        private async void EnsureExecuting()
         {
-            Monitor.Enter(executeLock);
+            await semaphore.WaitAsync().ConfigureAwait(false);
             if (executing)
             {
-                Monitor.Exit(executeLock);
+                semaphore.Release();
             }
             else
             {
@@ -101,13 +102,13 @@ namespace SkynetServer.Utilities
         private async void StartExecution(bool locked)
         {
             if (!locked)
-                Monitor.Enter(executeLock);
+                await semaphore.WaitAsync().ConfigureAwait(false);
 
             var (success, item, state, last) = await TryDequeue().ConfigureAwait(false);
             if (success)
             {
                 executing = true;
-                Monitor.Exit(executeLock);
+                semaphore.Release();
                 await executor(item).ConfigureAwait(false);
                 if (last)
                     state.SetResult(true);
@@ -116,7 +117,7 @@ namespace SkynetServer.Utilities
             else
             {
                 executing = false;
-                Monitor.Exit(executeLock);
+                semaphore.Release();
             }
         }
 
@@ -129,6 +130,7 @@ namespace SkynetServer.Utilities
             {
                 await queue.DisposeAsync().ConfigureAwait(false);
                 await insert.DisposeAsync().ConfigureAwait(false);
+                semaphore.Dispose();
 
                 disposedValue = true;
             }
