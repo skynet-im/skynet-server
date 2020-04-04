@@ -43,6 +43,7 @@ namespace Skynet.Server.Network
                     using var buffer = new PacketBuffer();
                     packet.WritePacket(buffer, PacketRole.Server);
                     await stream.WriteAsync(packet.Id, buffer.GetBuffer()).ConfigureAwait(false);
+                    logger.LogInformation("Successfully sent packet {0} to session {1}", packet, SessionId.ToString("x8"));
                 }
                 catch (IOException ex)
                 {
@@ -175,7 +176,7 @@ namespace Skynet.Server.Network
                 using (var buffer = new PacketBuffer(content.Memory))
                     instance.ReadPacket(buffer, PacketRole.Server);
 
-                Console.WriteLine($"Starting to handle packet {instance}");
+                logger.LogInformation("Starting to handle packet {0} from session {1}", instance, SessionId.ToString("x8"));
                 PacketReceived?.Invoke(this, instance);
 
                 using IServiceScope scope = serviceProvider.CreateScope();

@@ -1,5 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using FirebaseMessagingException = FirebaseAdmin.Messaging.FirebaseMessagingException;
+using MessagingErrorCode = FirebaseAdmin.Messaging.MessagingErrorCode;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Skynet.Server.Configuration;
 using Skynet.Server.Database;
@@ -47,6 +50,7 @@ namespace Skynet.Server.Services
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
                 var injector = scope.ServiceProvider.GetRequiredService<MessageInjectionService>();
                 var delivery = scope.ServiceProvider.GetRequiredService<DeliveryService>();
+                var logger = scope.ServiceProvider.GetRequiredService<ILogger<NotificationService>>();
 
                 try
                 {
@@ -55,11 +59,11 @@ namespace Skynet.Server.Services
                     session.LastFcmMessage = DateTime.Now;
                     database.Entry(session).Property(s => s.LastFcmMessage).IsModified = true;
                     await database.SaveChangesAsync().ConfigureAwait(false);
-                    Console.WriteLine($"Successfully sent FCM message to {session.FcmToken.Remove(16)} last connected {session.LastConnected}");
+                    logger.LogInformation($"Successfully sent Firebase message to {session.FcmToken.Remove(16)}... last connected {session.LastConnected}");
                 }
-                catch (FirebaseAdmin.FirebaseException ex)
+                catch (FirebaseMessagingException ex) when (ex.MessagingErrorCode == MessagingErrorCode.Unregistered)
                 {
-                    Console.WriteLine($"Failed to send FCM message to {session.FcmToken.Remove(16)}... {ex.Message}");
+                    logger.LogWarning($"Failed to send Firebase message to {session.FcmToken.Remove(16)}... {ex.Message}");
                     if (options.Value.DeleteSessionOnError)
                     {
                         // Prevent quick re-login after kick

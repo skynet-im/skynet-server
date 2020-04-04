@@ -1,4 +1,5 @@
 ﻿using MailKit.Net.Smtp;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using Skynet.Server.Configuration;
@@ -14,11 +15,13 @@ namespace Skynet.Server.Services
     {
         private readonly IOptions<MailOptions> mailOptions;
         private readonly IOptions<WebOptions> webOptions;
+        private readonly ILogger<ConfirmationMailService> logger;
 
-        public ConfirmationMailService(IOptions<MailOptions> mailOptions, IOptions<WebOptions> webOptions)
+        public ConfirmationMailService(IOptions<MailOptions> mailOptions, IOptions<WebOptions> webOptions, ILogger<ConfirmationMailService> logger)
         {
             this.mailOptions = mailOptions;
             this.webOptions = webOptions;
+            this.logger = logger;
         }
 
         public Uri GetConfirmationUrl(string token)
@@ -32,7 +35,7 @@ namespace Skynet.Server.Services
 
             if (!config.EnableMailing)
             {
-                Console.WriteLine($"Mailing is disabled. \"{address}\" will not receive the token \"{token}\".");
+                logger.LogWarning("Mailing is disabled. \"{0}\" will not receive the token \"{1}\".", address, token);
                 return;
             }
 
