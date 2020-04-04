@@ -4,7 +4,6 @@ using SkynetServer.Extensions;
 using SkynetServer.Network.Model;
 using SkynetServer.Network.Packets;
 using SkynetServer.Services;
-using SkynetServer.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -32,18 +31,24 @@ namespace SkynetServer.Network.Handlers
             if (confirmation == null)
             {
                 response.StatusCode = CreateSessionStatus.InvalidCredentials;
+                response.SessionToken = new byte[32];
+                response.WebToken = string.Empty;
                 await Client.Send(response).ConfigureAwait(false);
                 return;
             }
             if (confirmation.ConfirmationTime == default)
             {
                 response.StatusCode = CreateSessionStatus.UnconfirmedAccount;
+                response.SessionToken = new byte[32];
+                response.WebToken = string.Empty;
                 await Client.Send(response).ConfigureAwait(false);
                 return;
             }
             if (!packet.KeyHash.SequenceEqual(confirmation.Account.KeyHash))
             {
                 response.StatusCode = CreateSessionStatus.InvalidCredentials;
+                response.SessionToken = new byte[32];
+                response.WebToken = string.Empty;
                 await Client.Send(response).ConfigureAwait(false);
                 return;
             }
@@ -62,6 +67,8 @@ namespace SkynetServer.Network.Handlers
             Client.Authenticate(confirmation.Account.AccountId, session.SessionId);
 
             response.StatusCode = CreateSessionStatus.Success;
+            response.SessionToken = session.SessionToken;
+            response.WebToken = session.WebToken;
             await Client.Send(response).ConfigureAwait(false);
 
             _ = await Delivery.SyncChannels(Client, new List<long>(), lastMessageId: default).ConfigureAwait(false);
