@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Skynet.Server.Configuration;
 using Skynet.Server.Services;
@@ -15,24 +15,17 @@ namespace Skynet.Server.Tests.Services
         {
             const string baseUrl = "https://account.skynet.app/indev/";
 
-            var webOptions = new FakeOptions<WebOptions>(new WebOptions
-            {
-                PublicBaseUrl = new Uri(baseUrl)
-            });
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddOptions<WebOptions>()
+                .Configure(options => options.PublicBaseUrl = new Uri(baseUrl));
+            services.AddSingleton<ConfirmationMailService>();
+            
+            IServiceProvider serviceProvider = services.BuildServiceProvider();
 
-            var confirmationMailer = new ConfirmationMailService(null, webOptions);
+            var confirmationMailer = serviceProvider.GetRequiredService<ConfirmationMailService>();
             string confirmationUrl = confirmationMailer.GetConfirmationUrl("token").AbsoluteUri;
             Assert.AreEqual("https://account.skynet.app/indev/confirm/token", confirmationUrl);
-        }
-
-        private class FakeOptions<T> : IOptions<T> where T : class, new()
-        {
-            public FakeOptions(T value)
-            {
-                Value = value;
-            }
-
-            public T Value { get; }
         }
     }
 }

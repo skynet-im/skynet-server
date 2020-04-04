@@ -2,7 +2,6 @@
 using Skynet.Protocol.Model;
 using Skynet.Protocol.Packets;
 using Skynet.Server.Database.Entities;
-using Skynet.Server.Extensions;
 using Skynet.Server.Services;
 using System;
 using System.Collections.Generic;
@@ -24,7 +23,7 @@ namespace Skynet.Server.Network.Handlers
             Session session = await Database.Sessions.AsTracking().Include(s => s.Account)
                 .SingleOrDefaultAsync(s => s.SessionId == packet.SessionId).ConfigureAwait(false);
             var response = Packets.New<P09RestoreSessionResponse>();
-            if (session == null || !packet.SessionToken.SequenceEqual(session.Account.KeyHash))
+            if (session == null || !new Span<byte>(packet.SessionToken).SequenceEqual(session.Account.KeyHash))
             {
                 response.StatusCode = RestoreSessionStatus.InvalidSession;
                 await Client.Send(response).ConfigureAwait(false);

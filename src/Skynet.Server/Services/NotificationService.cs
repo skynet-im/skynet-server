@@ -18,11 +18,11 @@ namespace Skynet.Server.Services
     internal sealed class NotificationService
     {
         private readonly IServiceProvider serviceProvider;
-        private readonly FirebaseService firebase;
+        private readonly IFirebaseService firebase;
         private readonly ConnectionsService connections;
         private readonly IOptions<FcmOptions> options;
 
-        public NotificationService(IServiceProvider serviceProvider, FirebaseService firebase, ConnectionsService connections, IOptions<FcmOptions> options)
+        public NotificationService(IServiceProvider serviceProvider, IFirebaseService firebase, ConnectionsService connections, IOptions<FcmOptions> options)
         {
             this.serviceProvider = serviceProvider;
             this.firebase = firebase;

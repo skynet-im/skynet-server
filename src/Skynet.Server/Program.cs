@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Skynet.Server.Commands;
 using Skynet.Server.Extensions;
 using Skynet.Server.Services;
+using Skynet.Server.Services.Implementations;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -58,7 +59,7 @@ namespace Skynet.Server
             {
                 services.ConfigureSkynet(context.Configuration);
                 services.AddSingleton<ConfirmationMailService>();
-                services.AddSingleton<FirebaseService>();
+                services.AddSingleton<IFirebaseService, FirebaseService>();
                 services.AddSingleton<ConnectionsService>();
                 services.AddSingleton<PacketService>();
                 services.AddSingleton<NotificationService>();

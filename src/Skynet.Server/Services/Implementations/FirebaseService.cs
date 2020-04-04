@@ -5,9 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Skynet.Server.Services
+namespace Skynet.Server.Services.Implementations
 {
-    internal sealed class FirebaseService
+    internal sealed class FirebaseService : IFirebaseService
     {
         private readonly FirebaseMessaging messaging;
 

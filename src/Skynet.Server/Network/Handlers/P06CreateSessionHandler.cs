@@ -2,7 +2,6 @@
 using Skynet.Protocol.Model;
 using Skynet.Protocol.Packets;
 using Skynet.Server.Database.Entities;
-using Skynet.Server.Extensions;
 using Skynet.Server.Services;
 using System;
 using System.Collections.Generic;
@@ -40,7 +39,7 @@ namespace Skynet.Server.Network.Handlers
                 await Client.Send(response).ConfigureAwait(false);
                 return;
             }
-            if (!packet.KeyHash.SequenceEqual(confirmation.Account.KeyHash))
+            if (!new Span<byte>(packet.KeyHash).SequenceEqual(confirmation.Account.KeyHash))
             {
                 response.StatusCode = CreateSessionStatus.InvalidCredentials;
                 await Client.Send(response).ConfigureAwait(false);
