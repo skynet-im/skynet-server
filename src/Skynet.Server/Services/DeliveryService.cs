@@ -97,7 +97,7 @@ namespace Skynet.Server.Services
             {
                 if (connections.TryGet(sessionId, out IClient client) && !ReferenceEquals(client, exclude))
                 {
-                    operations.Add(client.Enqueue(message.ToPacket(client.AccountId)));
+                    operations.Add(client.Enqueue(message.ToPacket(packets, client.AccountId)));
                 }
             }
 
@@ -147,7 +147,7 @@ namespace Skynet.Server.Services
                 if (connections.TryGet(session.SessionId, out IClient client) && !ReferenceEquals(client, exclude))
                 {
                     client.PacketReceived += callback;
-                    operations.Add(client.Enqueue(message.ToPacket(client.AccountId)));
+                    operations.Add(client.Enqueue(message.ToPacket(packets, client.AccountId)));
                 }
             }
 
@@ -247,13 +247,14 @@ namespace Skynet.Server.Services
             async Task executeScoped()
             {
                 using IServiceScope scope = serviceProvider.CreateScope();
+                var packets = scope.ServiceProvider.GetRequiredService<PacketService>();
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
 
                 IQueryable<Message> query = queryBuilder(database).Include(m => m.Dependencies).OrderBy(m => m.MessageId);
                 if (maxCount != default)
                     query = query.Take(maxCount);
 
-                Task send = client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(client.AccountId)));
+                Task send = client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(packets, client.AccountId)));
                 _ = client.Enqueue(packets.New<P0FSyncFinished>());
                 await send.ConfigureAwait(false);
 

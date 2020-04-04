@@ -4,6 +4,7 @@ using Skynet.Protocol;
 using Skynet.Protocol.Model;
 using Skynet.Server.Database;
 using Skynet.Server.Database.Entities;
+using Skynet.Server.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,21 +28,28 @@ namespace Skynet.Server.Network
             return result;
         }
 
-        public static ChannelMessage ToPacket(this Message message, long accountId)
+        public static ChannelMessage ToPacket(this Message message, PacketService packets, long accountId)
         {
-            var packet = new ChannelMessage
-            {
-                Id = message.PacketId,
-                PacketVersion = message.PacketVersion,
-                ChannelId = message.ChannelId,
-                SenderId = message.SenderId ?? 0,
-                MessageId = message.MessageId,
-                SkipCount = 0, // TODO: Implement flags and skip count
-                DispatchTime = DateTime.SpecifyKind(message.DispatchTime, DateTimeKind.Local),
-                MessageFlags = message.MessageFlags,
-                FileId = 0, // Files are not implemented yet
-                PacketContent = message.PacketContent
-            };
+            Packet prototype = packets.Packets[message.PacketId];
+            if (prototype == null) throw new ArgumentException($"Could not find packet {message.PacketId:x2}", nameof(message));
+
+            if (!(prototype is ChannelMessage protoMessage)) 
+                throw new ArgumentException($"Packet {message.PacketId:x2} is not a channel message", nameof(message));
+
+            if (!message.MessageFlags.AreValid(protoMessage.RequiredFlags, protoMessage.AllowedFlags))
+                throw new ArgumentException($"Message flags {message.MessageFlags} are invalid for packet {message.PacketId:x2}");
+
+            ChannelMessage packet = (ChannelMessage)prototype.Create();
+            packet.Id = message.PacketId;
+            packet.PacketVersion = message.PacketVersion;
+            packet.ChannelId = message.ChannelId;
+            packet.SenderId = message.SenderId ?? 0;
+            packet.MessageId = message.MessageId;
+            packet.SkipCount = 0; // TODO: Implement flags and skip count
+            packet.DispatchTime = DateTime.SpecifyKind(message.DispatchTime, DateTimeKind.Local);
+            packet.MessageFlags = message.MessageFlags;
+            packet.FileId = 0; // Files are not implemented yet
+            packet.PacketContent = message.PacketContent;
 
             packet.Dependencies.AddRange(message.Dependencies
                 .Where(d => d.AccountId == null || d.AccountId == accountId)

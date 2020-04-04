@@ -23,7 +23,7 @@
     "SmtpPort": 465
   },
   "Protocol": {
-    "ProtocolVersion": 2,
+    "ProtocolVersion": 3,
     "Platforms": [
       {
         "Name": "android/de.vectordata.skynet",
