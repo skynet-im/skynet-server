@@ -28,8 +28,8 @@ steps:
   inputs:
     command: restore
     projects: '**/*.csproj'
-    feedsToUse: select
-    includeNuGetOrg: true
+    feedsToUse: config
+    nugetConfigPath: nuget.config
 - task: DotNetCoreCLI@2
   displayName: Build
   inputs:
