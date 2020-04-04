@@ -62,7 +62,7 @@ namespace SkynetServer.Network.Handlers
                 FcmToken = packet.FcmRegistrationToken
             }).ConfigureAwait(false);
 
-            Message deviceList = await injector.CreateDeviceList(Client.AccountId).ConfigureAwait(false);
+            Message deviceList = await injector.CreateDeviceList(confirmation.Account.AccountId).ConfigureAwait(false);
 
             Client.Authenticate(confirmation.Account.AccountId, session.SessionId);
 
