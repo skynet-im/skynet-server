@@ -9,30 +9,29 @@ namespace Skynet.Server.Utilities
     /// Provides a self executing job queue with two priority levels.
     /// Enqueuing of async streams is implemented through <see cref="StreamQueue{TItem, TState}"/>.
     /// </summary>
-    /// <typeparam name="T"></typeparam>
-    internal class JobQueue<T> : IAsyncDisposable
+    internal class JobQueue<TItem, TState> : IAsyncDisposable
     {
-        private readonly Func<T, ValueTask> executor;
-        private readonly StreamQueue<T, TaskCompletionSource<bool>> queue;
-        private readonly StreamQueue<T, TaskCompletionSource<bool>> insert;
+        private readonly Func<TItem, TState, ValueTask> executor;
+        private readonly StreamQueue<TItem, (TaskCompletionSource<bool> tcs, TState state)> queue;
+        private readonly StreamQueue<TItem, (TaskCompletionSource<bool> tcs, TState state)> insert;
         private readonly object executeLock;
         private bool executing;
 
-        public JobQueue(Func<T, ValueTask> executor)
+        public JobQueue(Func<TItem, TState, ValueTask> executor)
         {
             this.executor = executor;
-            queue = new StreamQueue<T, TaskCompletionSource<bool>>();
-            insert = new StreamQueue<T, TaskCompletionSource<bool>>();
+            queue = new StreamQueue<TItem, (TaskCompletionSource<bool>, TState)>();
+            insert = new StreamQueue<TItem, (TaskCompletionSource<bool>, TState)>();
             executeLock = new object();
         }
 
         /// <summary>
         /// Enqueues a single item to be executed in the background.
         /// </summary>
-        public Task Enqueue(T item)
+        public Task Enqueue(TItem item, TState state)
         {
             var completionSource = new TaskCompletionSource<bool>();
-            queue.Enqueue(item, completionSource);
+            queue.Enqueue(item, (completionSource, state));
             EnsureExecuting();
             return completionSource.Task;
         }
@@ -40,10 +39,10 @@ namespace Skynet.Server.Utilities
         /// <summary>
         /// Enqueues a collection of items to be executed in the background.
         /// </summary>
-        public Task Enqueue(IAsyncEnumerable<T> items)
+        public Task Enqueue(IAsyncEnumerable<TItem> items, TState state)
         {
             var completionSource = new TaskCompletionSource<bool>();
-            queue.Enqueue(items, completionSource);
+            queue.Enqueue(items, (completionSource, state));
             EnsureExecuting();
             return completionSource.Task;
         }
@@ -51,10 +50,10 @@ namespace Skynet.Server.Utilities
         /// <summary>
         /// Schedules a single priority item to be executed as soon as possible.
         /// </summary>
-        public Task Insert(T item)
+        public Task Insert(TItem item, TState state)
         {
             var completionSource = new TaskCompletionSource<bool>();
-            insert.Enqueue(item, completionSource);
+            insert.Enqueue(item, (completionSource, state));
             EnsureExecuting();
             return completionSource.Task;
         }
@@ -64,15 +63,15 @@ namespace Skynet.Server.Utilities
         /// </summary>
         /// <param name="items"></param>
         /// <returns></returns>
-        public Task Insert(IAsyncEnumerable<T> items)
+        public Task Insert(IAsyncEnumerable<TItem> items, TState state)
         {
             var completionSource = new TaskCompletionSource<bool>();
-            insert.Enqueue(items, completionSource);
+            insert.Enqueue(items, (completionSource, state));
             EnsureExecuting();
             return completionSource.Task;
         }
 
-        private async ValueTask<(bool success, T item, TaskCompletionSource<bool> state, bool last)> TryDequeue()
+        private async ValueTask<(bool success, TItem item, (TaskCompletionSource<bool> tcs, TState state) state, bool last)> TryDequeue()
         {
             var result = await insert.TryDequeue().ConfigureAwait(false);
             if (result.success)
@@ -108,9 +107,9 @@ namespace Skynet.Server.Utilities
             {
                 executing = true;
                 Monitor.Exit(executeLock);
-                await executor(item).ConfigureAwait(false);
+                await executor(item, state.state).ConfigureAwait(false);
                 if (last)
-                    state.SetResult(true);
+                    state.tcs.SetResult(true);
                 StartExecution(false);
             }
             else

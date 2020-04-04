@@ -23,7 +23,7 @@ namespace Skynet.Server.Network
 
         private readonly PacketStream stream;
         private readonly CancellationToken ct;
-        private readonly JobQueue<Packet> sendQueue;
+        private readonly JobQueue<Packet, bool> sendQueue;
         private readonly Task handler;
 
         public Client(IServiceProvider serviceProvider, ConnectionsService connections, PacketService packets, ILogger<Client> logger,
@@ -36,11 +36,29 @@ namespace Skynet.Server.Network
 
             this.stream = stream;
             this.ct = ct;
-            sendQueue = new JobQueue<Packet>(async packet =>
+            sendQueue = new JobQueue<Packet, bool>(async (packet, dispose) =>
             {
-                using var buffer = new PacketBuffer();
-                packet.WritePacket(buffer, PacketRole.Server);
-                await stream.WriteAsync(packet.Id, buffer.GetBuffer()).ConfigureAwait(false);
+                try
+                {
+                    using var buffer = new PacketBuffer();
+                    packet.WritePacket(buffer, PacketRole.Server);
+                    await stream.WriteAsync(packet.Id, buffer.GetBuffer()).ConfigureAwait(false);
+                }
+                catch (IOException ex)
+                {
+                    await DisposeAsync(false, true).ConfigureAwait(false);
+                    logger.LogInformation(ex, "Session {0} lost connection", SessionId.ToString("x8"));
+                }
+                catch (Exception ex)
+                {
+                    logger.LogCritical(ex, "Unexpected exception occurred while sending packet {0} to session {1}",
+                        packet.Id.ToString("x2"), SessionId.ToString("x8"));
+                    throw;
+                }
+                finally
+                {
+                    if (dispose) (packet as IDisposable)?.Dispose();
+                }
             });
             handler = Listen();
         }
@@ -74,13 +92,10 @@ namespace Skynet.Server.Network
             SessionId = sessionId;
         }
 
-        public Task Send(Packet packet) => sendQueue.Insert(packet);
-        public Task Enqueue(Packet packet) => sendQueue.Enqueue(packet);
-        public Task Enqueue(ChannelMessage message) => sendQueue.Enqueue(message)
-            .ContinueWith((_, message) => ((ChannelMessage)message).Dispose(), message, TaskScheduler.Default);
-
-        // TODO: Dispose messages retrieved from a stream after sending
-        public Task Enqueue(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages);
+        public Task Send(Packet packet) => sendQueue.Insert(packet, false);
+        public Task Enqueue(Packet packet) => sendQueue.Enqueue(packet, false);
+        public Task Enqueue(ChannelMessage message) => sendQueue.Enqueue(message, true);
+        public Task Enqueue(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages, true);
 
         private async Task Listen()
         {
