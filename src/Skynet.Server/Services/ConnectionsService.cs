@@ -19,6 +19,10 @@ namespace Skynet.Server.Services
             return connections.TryGetValue(sessionId, out client);
         }
 
+        /// <summary>
+        /// Adds a client to the list of connections and returns the client that has been kicked instead.
+        /// </summary>
+        /// <param name="client">An authenticated client to add.</param>
         public IClient Add(IClient client)
         {
             if (client.SessionId == default) throw new InvalidOperationException();

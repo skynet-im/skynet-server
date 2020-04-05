@@ -59,11 +59,11 @@ namespace Skynet.Server.Services
                     session.LastFcmMessage = DateTime.Now;
                     database.Entry(session).Property(s => s.LastFcmMessage).IsModified = true;
                     await database.SaveChangesAsync().ConfigureAwait(false);
-                    logger.LogInformation($"Successfully sent Firebase message to {session.FcmToken.Remove(16)}... last connected {session.LastConnected}");
+                    logger.LogInformation($"Successfully sent FCM message to {session.FcmToken.Remove(16)}... last connected {session.LastConnected}");
                 }
                 catch (FirebaseMessagingException ex) when (ex.MessagingErrorCode == MessagingErrorCode.Unregistered)
                 {
-                    logger.LogWarning($"Failed to send Firebase message to {session.FcmToken.Remove(16)}... {ex.Message}");
+                    logger.LogWarning($"Failed to send FCM message to {session.FcmToken.Remove(16)}... {ex.Message}");
                     if (options.Value.DeleteSessionOnError)
                     {
                         // Prevent quick re-login after kick

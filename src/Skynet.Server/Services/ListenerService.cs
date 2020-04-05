@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Skynet.Network;
 using Skynet.Server.Configuration;
+using Skynet.Server.Extensions;
 using Skynet.Server.Network;
 using System;
 using System.Net;
@@ -48,7 +49,7 @@ namespace Skynet.Server.Services
         {
             listener.Bind(endPoint);
             listener.Listen(listenerOptions.Value.Backlog);
-            Loop();
+            LoopAsync().CatchExceptions(logger);
             logger.LogInformation("Listening on {0}", endPoint);
 
             return Task.CompletedTask;
@@ -61,7 +62,7 @@ namespace Skynet.Server.Services
             return Task.CompletedTask;
         }
 
-        private async void Loop()
+        private async Task LoopAsync()
         {
             try
             {
@@ -75,7 +76,7 @@ namespace Skynet.Server.Services
                     }
                     else
                     {
-                        Authenticate(client);
+                        AuthenticateAsync(client).CatchExceptions(logger);
                     }
                 }
             }
@@ -84,14 +85,9 @@ namespace Skynet.Server.Services
                 // Server is shutting down
                 logger.LogInformation(ex, "Listener exited");
             }
-            catch (Exception ex)
-            {
-                logger.LogCritical(ex, "Unexpected exception occurred while listening");
-                throw;
-            }
         }
 
-        private async void Authenticate(Socket socket)
+        private async Task AuthenticateAsync(Socket socket)
         {
             NetworkStream networkStream = new NetworkStream(socket, ownsSocket: true);
             SslStream sslStream = new SslStream(networkStream, leaveInnerStreamOpen: false);
@@ -102,7 +98,6 @@ namespace Skynet.Server.Services
             catch (AuthenticationException ex)
             {
                 logger.LogInformation(ex, "TLS authentication failed");
-                // TODO: Write failed authentication to logs
                 await sslStream.DisposeAsync().ConfigureAwait(false);
                 return;
             }
