@@ -12,16 +12,18 @@ namespace Skynet.Server.Utilities
     internal class JobQueue<TItem, TState> : IAsyncDisposable
     {
         private readonly Func<TItem, TState, ValueTask> executor;
-        private readonly StreamQueue<TItem, (TaskCompletionSource<bool> tcs, TState state)> queue;
-        private readonly StreamQueue<TItem, (TaskCompletionSource<bool> tcs, TState state)> insert;
+        private readonly StreamQueue<TItem, QueueState> queue;
+        private readonly StreamQueue<TItem, QueueState> insert;
         private readonly object executeLock;
         private bool executing;
+
+        private static void DisposeItem(QueueState state) => state.Tcs.SetResult(false);
 
         public JobQueue(Func<TItem, TState, ValueTask> executor)
         {
             this.executor = executor;
-            queue = new StreamQueue<TItem, (TaskCompletionSource<bool>, TState)>();
-            insert = new StreamQueue<TItem, (TaskCompletionSource<bool>, TState)>();
+            queue = new StreamQueue<TItem, QueueState>(DisposeItem);
+            insert = new StreamQueue<TItem, QueueState>(DisposeItem);
             executeLock = new object();
         }
 
@@ -31,7 +33,7 @@ namespace Skynet.Server.Utilities
         public Task Enqueue(TItem item, TState state)
         {
             var completionSource = new TaskCompletionSource<bool>();
-            queue.Enqueue(item, (completionSource, state));
+            queue.Enqueue(item, new QueueState(completionSource, state));
             EnsureExecuting();
             return completionSource.Task;
         }
@@ -42,7 +44,7 @@ namespace Skynet.Server.Utilities
         public Task Enqueue(IAsyncEnumerable<TItem> items, TState state)
         {
             var completionSource = new TaskCompletionSource<bool>();
-            queue.Enqueue(items, (completionSource, state));
+            queue.Enqueue(items, new QueueState(completionSource, state));
             EnsureExecuting();
             return completionSource.Task;
         }
@@ -53,7 +55,7 @@ namespace Skynet.Server.Utilities
         public Task Insert(TItem item, TState state)
         {
             var completionSource = new TaskCompletionSource<bool>();
-            insert.Enqueue(item, (completionSource, state));
+            insert.Enqueue(item, new QueueState(completionSource, state));
             EnsureExecuting();
             return completionSource.Task;
         }
@@ -66,12 +68,12 @@ namespace Skynet.Server.Utilities
         public Task Insert(IAsyncEnumerable<TItem> items, TState state)
         {
             var completionSource = new TaskCompletionSource<bool>();
-            insert.Enqueue(items, (completionSource, state));
+            insert.Enqueue(items, new QueueState(completionSource, state));
             EnsureExecuting();
             return completionSource.Task;
         }
 
-        private async ValueTask<(bool success, TItem item, (TaskCompletionSource<bool> tcs, TState state) state, bool last)> TryDequeue()
+        private async ValueTask<(bool success, TItem item, QueueState state, bool last)> TryDequeue()
         {
             var result = await insert.TryDequeue().ConfigureAwait(false);
             if (result.success)
@@ -107,9 +109,9 @@ namespace Skynet.Server.Utilities
             {
                 executing = true;
                 Monitor.Exit(executeLock);
-                await executor(item, state.state).ConfigureAwait(false);
+                await executor(item, state.State).ConfigureAwait(false);
                 if (last)
-                    state.tcs.SetResult(true);
+                    state.Tcs.SetResult(true);
                 StartExecution(false);
             }
             else
@@ -122,6 +124,9 @@ namespace Skynet.Server.Utilities
         #region IAsyncDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 
+        /// <summary>
+        /// Clears all pending operations from their respective queues and marks them as completed.
+        /// </summary>
         public async ValueTask DisposeAsync()
         {
             if (!disposedValue)
@@ -133,5 +138,18 @@ namespace Skynet.Server.Utilities
             }
         }
         #endregion
+
+
+        private readonly struct QueueState
+        {
+            public QueueState(TaskCompletionSource<bool> tcs, TState state)
+            {
+                Tcs = tcs;
+                State = state;
+            }
+
+            public TaskCompletionSource<bool> Tcs { get; }
+            public TState State { get; }
+        }
     }
 }

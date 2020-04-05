@@ -13,12 +13,14 @@ namespace Skynet.Server.Utilities
     /// <typeparam name="TState"></typeparam>
     internal class StreamQueue<TItem, TState> : IAsyncDisposable
     {
+        private readonly Action<TState> disposeCallback;
         private readonly ConcurrentQueue<QueueItem> queue;
         private IAsyncEnumerator<TItem> currentEnumerator;
         private TState currentState;
 
-        public StreamQueue()
+        public StreamQueue(Action<TState> disposeCallback)
         {
+            this.disposeCallback = disposeCallback;
             queue = new ConcurrentQueue<QueueItem>();
         }
 
@@ -100,7 +102,17 @@ namespace Skynet.Server.Utilities
             {
                 if (currentEnumerator != null)
                     await currentEnumerator.DisposeAsync().ConfigureAwait(false);
-                
+
+                // currentState might be a value type so check currentEnumerator instead
+                if (currentEnumerator != null) 
+                    disposeCallback(currentState);
+
+                // Remove all items from the queue and provide a way to dispose them
+                while (queue.TryDequeue(out QueueItem item))
+                {
+                    disposeCallback(item.State);
+                }
+
                 disposedValue = true;
             }
         }
