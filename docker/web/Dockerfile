@@ -9,7 +9,7 @@ COPY Skynet.Server.sln nuget.config .editorconfig ./
 COPY src/Skynet.Server.Shared/Skynet.Server.Shared.csproj src/Skynet.Server.Shared/
 COPY src/Skynet.Server.Web/Skynet.Server.Web.csproj src/Skynet.Server.Web/
 
-RUN dotnet restore src/SkynetServer.Web/SkynetServer.Web.csproj
+RUN dotnet restore src/Skynet.Server.Web/Skynet.Server.Web.csproj
 
 # Copy everything else and build
 COPY src/ src/
