@@ -1,0 +1,16 @@
+﻿@using Microsoft.AspNetCore.Mvc.Localization
+@using Skynet.Server.Web.Controllers
+
+@inject IHtmlLocalizer<StatusController> localizer
+
+@model StatusViewModel
+@{
+    ViewData["Title"] = $"{Model.StatusCode} {Model.StatusDescription}";
+}
+
+<h2>Error @Model.StatusCode - @Model.StatusDescription</h2>
+
+@if (Model.StatusCode == 404)
+{
+    <p>@localizer["404"]</p>
+}
