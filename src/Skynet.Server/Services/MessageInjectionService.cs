@@ -26,6 +26,9 @@ namespace Skynet.Server.Services
 
         public async Task<Message> CreateMessage(ChannelMessage packet, long channelId, long? senderId)
         {
+            if (!packet.MessageFlags.AreValid(packet.RequiredFlags, packet.AllowedFlags))
+                throw new ArgumentException($"Message flags {packet.MessageFlags} are invalid for packet {packet.Id:x2}");
+
             packet.ChannelId = channelId;
             packet.MessageFlags |= MessageFlags.Unencrypted;
 

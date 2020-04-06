@@ -65,14 +65,14 @@ namespace Skynet.Server.Services
 
         private static string GetMailText()
         {
-            Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("SkynetServer.Resources.email.txt");
+            Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Skynet.Server.Resources.email.txt");
             using StreamReader reader = new StreamReader(stream);
             return reader.ReadToEnd();
         }
 
         private static string GetMailHtml()
         {
-            Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("SkynetServer.Resources.email.xhtml");
+            Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Skynet.Server.Resources.email.xhtml");
             using StreamReader reader = new StreamReader(stream);
             return reader.ReadToEnd();
         }
