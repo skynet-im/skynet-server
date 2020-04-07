@@ -36,9 +36,6 @@ namespace Skynet.Server.Network
             if (!(prototype is ChannelMessage protoMessage)) 
                 throw new ArgumentException($"Packet {message.PacketId:x2} is not a channel message", nameof(message));
 
-            if (!message.MessageFlags.AreValid(protoMessage.RequiredFlags, protoMessage.AllowedFlags))
-                throw new ArgumentException($"Message flags {message.MessageFlags} are invalid for packet {message.PacketId:x2}");
-
             ChannelMessage packet = (ChannelMessage)prototype.Create();
             packet.Id = message.PacketId;
             packet.PacketVersion = message.PacketVersion;

@@ -81,6 +81,7 @@ namespace Skynet.Server
 
             var services = new ServiceCollection()
                 .AddSingleton(PhysicalConsole.Singleton)
+                .AddLogging(logging => logging.AddConsole())
                 .ConfigureSkynet(configuration)
                 .AddSingleton<ConfirmationMailService>()
                 .AddDatabaseContext(configuration)
