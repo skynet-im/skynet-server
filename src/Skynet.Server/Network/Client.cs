@@ -125,8 +125,9 @@ namespace Skynet.Server.Network
                 }
                 catch (Exception ex)
                 {
+                    await DisposeAsync(false, true);
                     logger.LogCritical(ex, "Unexpected exception occurred while receiving a packet from session {0}", SessionId.ToString("x8"));
-                    throw;
+                    return;
                 }
 
                 try
@@ -135,14 +136,16 @@ namespace Skynet.Server.Network
                 }
                 catch (ProtocolException ex)
                 {
+                    await DisposeAsync(false, true);
                     logger.LogInformation(ex, "Invalid operation of session {0}", SessionId.ToString("x8"));
                     return;
                 }
                 catch (Exception ex)
                 {
+                    await DisposeAsync(false, true);
                     logger.LogCritical(ex, "Unexpected exception occurred while handling packet {0} of session {0}",
                         id.ToString("x2"), SessionId.ToString("x8"));
-                    throw;
+                    return;
                 }
                 finally
                 {

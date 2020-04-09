@@ -30,24 +30,18 @@ namespace Skynet.Server.Network.Handlers
             if (confirmation == null)
             {
                 response.StatusCode = CreateSessionStatus.InvalidCredentials;
-                response.SessionToken = new byte[32];
-                response.WebToken = string.Empty;
                 await Client.Send(response).ConfigureAwait(false);
                 return;
             }
             if (confirmation.ConfirmationTime == default)
             {
                 response.StatusCode = CreateSessionStatus.UnconfirmedAccount;
-                response.SessionToken = new byte[32];
-                response.WebToken = string.Empty;
                 await Client.Send(response).ConfigureAwait(false);
                 return;
             }
             if (!new Span<byte>(packet.KeyHash).SequenceEqual(confirmation.Account.KeyHash))
             {
                 response.StatusCode = CreateSessionStatus.InvalidCredentials;
-                response.SessionToken = new byte[32];
-                response.WebToken = string.Empty;
                 await Client.Send(response).ConfigureAwait(false);
                 return;
             }
