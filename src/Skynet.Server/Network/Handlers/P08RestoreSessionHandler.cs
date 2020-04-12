@@ -20,10 +20,10 @@ namespace Skynet.Server.Network.Handlers
 
         public override async ValueTask Handle(P08RestoreSession packet)
         {
-            Session session = await Database.Sessions.AsTracking().Include(s => s.Account)
+            Session session = await Database.Sessions.AsTracking()
                 .SingleOrDefaultAsync(s => s.SessionId == packet.SessionId).ConfigureAwait(false);
             var response = Packets.New<P09RestoreSessionResponse>();
-            if (session == null || !new Span<byte>(packet.SessionToken).SequenceEqual(session.Account.KeyHash))
+            if (session == null || !new Span<byte>(packet.SessionToken).SequenceEqual(session.SessionToken))
             {
                 response.StatusCode = RestoreSessionStatus.InvalidSession;
                 await Client.Send(response).ConfigureAwait(false);
@@ -34,7 +34,7 @@ namespace Skynet.Server.Network.Handlers
             session.LastVersionCode = Client.VersionCode;
             await Database.SaveChangesAsync().ConfigureAwait(false);
 
-            Client.Authenticate(session.Account.AccountId, session.SessionId);
+            Client.Authenticate(session.AccountId, session.SessionId);
 
             response.StatusCode = RestoreSessionStatus.Success;
             await Client.Send(response).ConfigureAwait(false);
