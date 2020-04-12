@@ -63,11 +63,15 @@ namespace Skynet.Server.Commands
         {
             private async Task OnExecute(IConsole console, IServiceProvider serviceProvider, DatabaseContext database)
             {
+                bool empty = true;
+
                 await foreach (Account account in database.Accounts
                     .Include(a => a.MailConfirmations)
                     .Include(a => a.OwnedChannels)
                     .AsAsyncEnumerable())
                 {
+                    empty = false;
+
                     MailConfirmation confirmation = account.MailConfirmations.OrderByDescending(c => c.ConfirmationTime).FirstOrDefault();
                     if (confirmation == null)
                     {
@@ -108,19 +112,30 @@ namespace Skynet.Server.Commands
                     using (IServiceScope scope = serviceProvider.CreateScope())
                     {
                         var database2 = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-                        if (!await database2.Messages.AsQueryable()
-                            .Where(m => m.ChannelId == accountData.ChannelId 
-                                && m.SenderId == account.AccountId 
+
+                        bool privateKey = await database2.Messages.AsQueryable()
+                            .Where(m => m.ChannelId == loopback.ChannelId
+                                && m.SenderId == account.AccountId
+                                && m.PacketId == 0x17).AnyAsync()
+                            .ConfigureAwait(false);
+
+                        if (!privateKey) console.Out.WriteLine($"Account {confirmation.MailAddress} is missing a private key");
+
+                        bool publicKey = await database2.Messages.AsQueryable()
+                            .Where(m => m.ChannelId == accountData.ChannelId
+                                && m.SenderId == account.AccountId
                                 && m.PacketId == 0x18).AnyAsync()
-                            .ConfigureAwait(false))
-                        {
-                            console.Out.WriteLine($"Account {confirmation.MailAddress} is missing a keypair");
-                            continue;
-                        }
+                            .ConfigureAwait(false);
+
+                        if (!publicKey) console.Out.WriteLine($"Account {confirmation.MailAddress} is missing a public key");
+
+                        if (!privateKey || !publicKey) continue;
                     }
 
                     console.Out.WriteLine($"Account {confirmation.MailAddress} is healthy");
                 }
+
+                if (empty) console.Out.WriteLine("No accounts found to audit");
             }
         }
 
