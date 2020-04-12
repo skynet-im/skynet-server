@@ -90,6 +90,7 @@ namespace Skynet.Server
             var application = new CommandLineApplication<SkynetCommand>();
             application.Conventions.UseDefaultConventions();
             application.Conventions.UseConstructorInjection(services);
+            application.MakeSuggestionsInErrorMessage = true;
             return application;
         }
     }
