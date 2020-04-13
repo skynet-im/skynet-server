@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Skynet.Server.Database
 {
-    public partial class DatabaseContext : DbContext
+    public sealed class DatabaseContext : DbContext
     {
         public DatabaseContext(DbContextOptions<DatabaseContext> options) : base(options) { }
 

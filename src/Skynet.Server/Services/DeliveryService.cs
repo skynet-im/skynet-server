@@ -300,6 +300,17 @@ namespace Skynet.Server.Services
                     _ = client.Send(packet);
                 }
             }
+
+            foreach (long channelId in currentState)
+            {
+                if (!channels.Any(c => c.ChannelId == channelId))
+                {
+                    // Notify client about deleted channels
+                    var packet = packets.New<P0DDeleteChannel>();
+                    packet.ChannelId = channelId;
+                    _ = client.Send(packet);
+                }
+            }
         }
         #endregion
     }
