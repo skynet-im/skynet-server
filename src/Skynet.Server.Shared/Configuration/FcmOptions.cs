@@ -7,6 +7,8 @@ namespace Skynet.Server.Configuration
 {
     public class FcmOptions
     {
+        public string ServiceAccountFilePath { get; set; }
+        
         public bool NotifyForEveryMessage { get; set; }
 
         public bool DeleteSessionOnError { get; set; }
