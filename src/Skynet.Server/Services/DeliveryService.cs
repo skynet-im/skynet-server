@@ -86,8 +86,8 @@ namespace Skynet.Server.Services
 
             long[] sessions = await database.ChannelMembers.AsQueryable()
                 .Where(m => m.ChannelId == message.ChannelId
-                    && !isLoopback || m.AccountId == message.SenderId
-                    && !isNoSenderSync || m.AccountId != message.SenderId)
+                    && (!isLoopback || m.AccountId == message.SenderId)
+                    && (!isNoSenderSync || m.AccountId != message.SenderId))
                 .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s.SessionId)
                 .ToArrayAsync().ConfigureAwait(false);
 
