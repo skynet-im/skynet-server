@@ -9,6 +9,7 @@ namespace Skynet.Server.Utilities
     /// <summary>
     /// Provides a self executing job queue with two priority levels.
     /// Enqueuing of async streams is implemented through <see cref="StreamQueue{TItem, TState}"/>.
+    /// Jobs are considered to be tentative. This class does not throw <see cref="ObjectDisposedException"/>s.
     /// </summary>
     [SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable", Justification = "JobQueue<T> implements IAsyncDisposable")]
     internal class JobQueue<TItem, TState> : IAsyncDisposable
@@ -16,8 +17,11 @@ namespace Skynet.Server.Utilities
         private readonly Func<TItem, TState, ValueTask> executor;
         private readonly StreamQueue<TItem, QueueState> queue;
         private readonly StreamQueue<TItem, QueueState> insert;
+        private readonly CancellationTokenSource cts;
         private readonly SemaphoreSlim semaphore;
+        private readonly object disposeLock;
         private bool executing;
+        private bool disposed;
 
         private static void DisposeItem(QueueState state) => state.Tcs.SetResult(false);
 
@@ -26,53 +30,86 @@ namespace Skynet.Server.Utilities
             this.executor = executor;
             queue = new StreamQueue<TItem, QueueState>(DisposeItem);
             insert = new StreamQueue<TItem, QueueState>(DisposeItem);
+            cts = new CancellationTokenSource();
             semaphore = new SemaphoreSlim(1);
+            disposeLock = new object();
         }
 
         /// <summary>
-        /// Enqueues a single item to be executed in the background.
+        /// Enqueues a single item to be executed.
         /// </summary>
-        public Task Enqueue(TItem item, TState state)
+        public Task Enqueue(TItem item, TState state, bool priority)
         {
-            var completionSource = new TaskCompletionSource<bool>();
-            queue.Enqueue(item, new QueueState(completionSource, state));
-            EnsureExecuting();
-            return completionSource.Task;
+            lock (disposeLock)
+            {
+                if (!disposed)
+                {
+                    var completionSource = new TaskCompletionSource<bool>();
+                    var queueState = new QueueState(completionSource, state);
+                    if (priority)
+                        insert.Enqueue(item, queueState);
+                    else
+                        queue.Enqueue(item, queueState);
+                    EnsureExecuting();
+                    return completionSource.Task;
+                }
+                else
+                {
+                    return Task.CompletedTask;
+                }
+            }
         }
 
         /// <summary>
         /// Enqueues a collection of items to be executed in the background.
         /// </summary>
-        public Task Enqueue(IAsyncEnumerable<TItem> items, TState state)
+        public Task Enqueue(IAsyncEnumerable<TItem> items, TState state, bool priority)
         {
-            var completionSource = new TaskCompletionSource<bool>();
-            queue.Enqueue(items, new QueueState(completionSource, state));
-            EnsureExecuting();
-            return completionSource.Task;
+            lock (disposeLock)
+            {
+                if (!disposed)
+                {
+                    var completionSource = new TaskCompletionSource<bool>();
+                    var queueState = new QueueState(completionSource, state);
+                    if (priority)
+                        insert.Enqueue(items, queueState);
+                    else
+                        queue.Enqueue(items, queueState);
+                    EnsureExecuting();
+                    return completionSource.Task;
+                }
+                else
+                {
+                    return Task.CompletedTask;
+                }
+            }
         }
 
         /// <summary>
-        /// Schedules a single priority item to be executed as soon as possible.
+        /// Clears all pending operations from their respective queues and marks them as completed.
         /// </summary>
-        public Task Insert(TItem item, TState state)
+        public async ValueTask DisposeAsync()
         {
-            var completionSource = new TaskCompletionSource<bool>();
-            insert.Enqueue(item, new QueueState(completionSource, state));
-            EnsureExecuting();
-            return completionSource.Task;
-        }
+            bool disposing = false;
 
-        /// <summary>
-        /// Schedules a collection of priority items to be executed as soon as possible.
-        /// </summary>
-        /// <param name="items"></param>
-        /// <returns></returns>
-        public Task Insert(IAsyncEnumerable<TItem> items, TState state)
-        {
-            var completionSource = new TaskCompletionSource<bool>();
-            insert.Enqueue(items, new QueueState(completionSource, state));
-            EnsureExecuting();
-            return completionSource.Task;
+            lock (disposeLock)
+            {
+                if (!disposed)
+                {
+                    cts.Cancel();
+                    disposing = true;
+                    disposed = true;
+                }
+            }
+
+            if (disposing)
+            {
+                // Acquire lock to prevent further dequeue operations
+                await semaphore.WaitAsync().ConfigureAwait(false);
+                await queue.DisposeAsync().ConfigureAwait(false);
+                await insert.DisposeAsync().ConfigureAwait(false);
+                semaphore.Dispose();
+            }
         }
 
         private async ValueTask<(bool success, TItem item, QueueState state, bool last)> TryDequeue()
@@ -90,31 +127,54 @@ namespace Skynet.Server.Utilities
 
         private async void EnsureExecuting()
         {
-            await semaphore.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                await semaphore.WaitAsync(cts.Token).ConfigureAwait(false);
+            }
+            catch (TaskCanceledException)
+            {
+                return; // JobQueue is disposing
+            }
+            catch (ObjectDisposedException)
+            {
+                return; // JobQueue has been disposed
+            }
+
             if (executing)
             {
                 semaphore.Release();
             }
             else
             {
-                StartExecution(true);
+                StartExecution();
             }
         }
 
-        private async void StartExecution(bool locked)
+        private async void StartExecution()
         {
-            if (!locked)
-                await semaphore.WaitAsync().ConfigureAwait(false);
-
             var (success, item, state, last) = await TryDequeue().ConfigureAwait(false);
             if (success)
             {
                 executing = true;
                 semaphore.Release();
+
                 await executor(item, state.State).ConfigureAwait(false);
-                if (last)
-                    state.Tcs.SetResult(true);
-                StartExecution(false);
+
+                if (last) state.Tcs.SetResult(true);
+
+                try
+                {
+                    await semaphore.WaitAsync(cts.Token).ConfigureAwait(false);
+                    StartExecution();
+                }
+                catch (TaskCanceledException)
+                {
+                    return; // JobQueue is disposing
+                }
+                catch (ObjectDisposedException)
+                {
+                    return; // JobQueue has been disposed
+                }
             }
             else
             {
@@ -122,25 +182,6 @@ namespace Skynet.Server.Utilities
                 semaphore.Release();
             }
         }
-
-        #region IAsyncDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        /// <summary>
-        /// Clears all pending operations from their respective queues and marks them as completed.
-        /// </summary>
-        public async ValueTask DisposeAsync()
-        {
-            if (!disposedValue)
-            {
-                await queue.DisposeAsync().ConfigureAwait(false);
-                await insert.DisposeAsync().ConfigureAwait(false);
-                semaphore.Dispose();
-
-                disposedValue = true;
-            }
-        }
-        #endregion
 
 
         private readonly struct QueueState

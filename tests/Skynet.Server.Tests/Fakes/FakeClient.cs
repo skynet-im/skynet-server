@@ -10,6 +10,10 @@ namespace Skynet.Server.Tests.Fakes
     internal class FakeClient : IClient
     {
         public Func<Packet, Task> OnSendPacket { get; set; }
+        public void OnPacketReceived(IClient client, Packet packet)
+        {
+            PacketReceived?.Invoke(client, packet);
+        }
 
         public string ApplicationIdentifier { get; set; }
         public int VersionCode { get; set; }

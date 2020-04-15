@@ -93,10 +93,10 @@ namespace Skynet.Server.Network
             SessionId = sessionId;
         }
 
-        public Task Send(Packet packet) => sendQueue.Insert(packet, false);
-        public Task Enqueue(Packet packet) => sendQueue.Enqueue(packet, false);
-        public Task Enqueue(ChannelMessage message) => sendQueue.Enqueue(message, true);
-        public Task Enqueue(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages, true);
+        public Task Send(Packet packet) => sendQueue.Enqueue(packet, false, priority: true);
+        public Task Enqueue(Packet packet) => sendQueue.Enqueue(packet, false, priority: false);
+        public Task Enqueue(ChannelMessage message) => sendQueue.Enqueue(message, true, priority: false);
+        public Task Enqueue(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages, true, priority: false);
 
         private async Task Listen()
         {
