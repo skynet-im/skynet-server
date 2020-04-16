@@ -44,7 +44,7 @@ namespace Skynet.Server.Network.Handlers
             IClient old = connections.Add(Client);
             if (old != null)
             {
-                _ = old.DisposeAsync(true, false);
+                _ = old.DisposeAsync(unregister: false, true, false);
             }
         }
     }

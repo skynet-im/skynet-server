@@ -109,6 +109,7 @@ namespace Skynet.Server.Utilities
                 await queue.DisposeAsync().ConfigureAwait(false);
                 await insert.DisposeAsync().ConfigureAwait(false);
                 semaphore.Dispose();
+                cts.Dispose();
             }
         }
 

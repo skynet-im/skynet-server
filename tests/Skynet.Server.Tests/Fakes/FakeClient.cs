@@ -57,7 +57,7 @@ namespace Skynet.Server.Tests.Fakes
             return Task.CompletedTask;
         }
 
-        public ValueTask DisposeAsync(bool waitForHandling, bool updateState)
+        public ValueTask DisposeAsync(bool unregister, bool waitForHandling, bool updateState)
         {
             return default;
         }

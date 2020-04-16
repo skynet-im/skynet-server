@@ -21,6 +21,7 @@ namespace Skynet.Server.Network.Handlers
             if (packet.ChannelId == default && packet.Action != ChannelAction.None)
                 throw new ProtocolException("A ChannelAction other than None requires a ChannelId.");
 
+            // TODO: Make sure that all clients have received their P0ACreateChannel before sending this packet
             _ = await clientState.SetChannelAction(Client, packet.ChannelId, packet.Action).ConfigureAwait(false);
             _ = await clientState.SetActive(Client, packet.OnlineState == OnlineState.Active).ConfigureAwait(false);
         }

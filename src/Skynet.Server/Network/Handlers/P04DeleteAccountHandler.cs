@@ -51,7 +51,7 @@ namespace Skynet.Server.Network.Handlers
             {
                 if (connections.TryGet(session.SessionId, out IClient client) && !ReferenceEquals(client, Client))
                 {
-                    tasks.Add(client.DisposeAsync(true, false).AsTask());
+                    tasks.Add(client.DisposeAsync(true, true, false).AsTask());
                 }
             }
             await Task.WhenAll(tasks).ConfigureAwait(false);
@@ -59,7 +59,7 @@ namespace Skynet.Server.Network.Handlers
             // Finish handling and close last connection
             response.StatusCode = DeleteAccountStatus.Success;
             await Client.Send(response).ConfigureAwait(false);
-            await Client.DisposeAsync(false, true).ConfigureAwait(false);
+            await Client.DisposeAsync(true, false, true).ConfigureAwait(false);
 
             ChannelMember[] memberships = await Database.ChannelMembers.AsQueryable()
                 .Where(m => m.AccountId == Client.AccountId)
