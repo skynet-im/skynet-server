@@ -5,6 +5,8 @@ namespace Skynet.Server.Database.Entities
 {
     public class MessageDependency
     {
+        public long AutoId { get; set; }
+
         public long OwningMessageId { get; set; }
         public Message OwningMessage { get; set; }
 
@@ -13,7 +15,5 @@ namespace Skynet.Server.Database.Entities
 
         public long? AccountId { get; set; }
         public Account Account { get; set; }
-
-        public int AutoId { get; set; }
     }
 }
