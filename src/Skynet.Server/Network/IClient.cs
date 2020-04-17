@@ -25,6 +25,6 @@ namespace Skynet.Server.Network
         Task Enqueue(Packet packet);
         Task Enqueue(ChannelMessage message);
         Task Enqueue(IAsyncEnumerable<ChannelMessage> messages);
-        ValueTask DisposeAsync(bool waitForHandling, bool updateState);
+        ValueTask DisposeAsync(bool unregister, bool waitForHandling, bool updateState);
     }
 }

@@ -8,7 +8,6 @@ namespace Skynet.Server.Extensions
 {
     public static class TaskExtensions
     {
-        [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "This method logs general exceptions to prevent crashes")]
         public static async void CatchExceptions(this Task task, ILogger logger)
         {
             try

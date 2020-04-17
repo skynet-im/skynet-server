@@ -55,11 +55,15 @@ namespace Skynet.Server.Network.Handlers
                 FcmToken = packet.FcmRegistrationToken
             }).ConfigureAwait(false);
 
-            Message deviceList = await injector.CreateDeviceList(Client.AccountId).ConfigureAwait(false);
+            Message deviceList = await injector.CreateDeviceList(confirmation.Account.AccountId).ConfigureAwait(false);
 
             Client.Authenticate(confirmation.Account.AccountId, session.SessionId);
 
             response.StatusCode = CreateSessionStatus.Success;
+            response.AccountId = session.AccountId;
+            response.SessionId = session.SessionId;
+            response.SessionToken = session.SessionToken;
+            response.WebToken = session.WebToken;
             await Client.Send(response).ConfigureAwait(false);
 
             _ = await Delivery.SyncChannels(Client, new List<long>(), lastMessageId: default).ConfigureAwait(false);
@@ -68,7 +72,7 @@ namespace Skynet.Server.Network.Handlers
             IClient old = connections.Add(Client);
             if (old != null)
             {
-                _ = old.DisposeAsync(true, false);
+                _ = old.DisposeAsync(unregister: false, true, false);
             }
         }
     }

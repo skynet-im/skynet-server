@@ -4,11 +4,3 @@
 // Write your Javascript code.
 
 "use strict";
-
-(function () {
-    $.post("/api" + window.location.pathname).done(function (data) {
-        document.title = data.title + " - Skynet";
-        $("h2.main-header").text(data.header);
-        $("div.content").html("<p>" + data.content + "</p>");
-    });
-})();

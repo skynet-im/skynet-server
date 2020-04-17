@@ -47,7 +47,7 @@ namespace Skynet.Server.Network
                 }
                 catch (IOException ex)
                 {
-                    await DisposeAsync(false, true).ConfigureAwait(false);
+                    await DisposeAsync(true, false, true).ConfigureAwait(false);
                     logger.LogInformation(ex, "Session {0} lost connection", SessionId.ToString("x8"));
                 }
                 catch (Exception ex)
@@ -93,10 +93,10 @@ namespace Skynet.Server.Network
             SessionId = sessionId;
         }
 
-        public Task Send(Packet packet) => sendQueue.Insert(packet, false);
-        public Task Enqueue(Packet packet) => sendQueue.Enqueue(packet, false);
-        public Task Enqueue(ChannelMessage message) => sendQueue.Enqueue(message, true);
-        public Task Enqueue(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages, true);
+        public Task Send(Packet packet) => sendQueue.Enqueue(packet, false, priority: true);
+        public Task Enqueue(Packet packet) => sendQueue.Enqueue(packet, false, priority: false);
+        public Task Enqueue(ChannelMessage message) => sendQueue.Enqueue(message, true, priority: false);
+        public Task Enqueue(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages, true, priority: false);
 
         private async Task Listen()
         {
@@ -112,21 +112,22 @@ namespace Skynet.Server.Network
 
                     if (!success)
                     {
-                        await DisposeAsync(false, true).ConfigureAwait(false);
+                        await DisposeAsync(true, false, true).ConfigureAwait(false);
                         logger.LogInformation("Session {0} disconnected", SessionId.ToString("x8"));
                         return;
                     }
                 }
                 catch (IOException ex)
                 {
-                    await DisposeAsync(false, true).ConfigureAwait(false);
+                    await DisposeAsync(true, false, true).ConfigureAwait(false);
                     logger.LogInformation(ex, "Session {0} lost connection", SessionId.ToString("x8"));
                     return;
                 }
                 catch (Exception ex)
                 {
+                    await DisposeAsync(true, false, true);
                     logger.LogCritical(ex, "Unexpected exception occurred while receiving a packet from session {0}", SessionId.ToString("x8"));
-                    throw;
+                    return;
                 }
 
                 try
@@ -135,14 +136,16 @@ namespace Skynet.Server.Network
                 }
                 catch (ProtocolException ex)
                 {
+                    await DisposeAsync(true, false, true);
                     logger.LogInformation(ex, "Invalid operation of session {0}", SessionId.ToString("x8"));
                     return;
                 }
                 catch (Exception ex)
                 {
+                    await DisposeAsync(true, false, true);
                     logger.LogCritical(ex, "Unexpected exception occurred while handling packet {0} of session {0}",
                         id.ToString("x2"), SessionId.ToString("x8"));
-                    throw;
+                    return;
                 }
                 finally
                 {
@@ -202,13 +205,13 @@ namespace Skynet.Server.Network
         /// Gracefully shuts down this client's operations, updates its state and releases all unmanaged resources.
         /// This method waits for all handling operations to finish which can lead to dead locks.
         /// </summary>
-        public ValueTask DisposeAsync() => DisposeAsync(true, true);
+        public ValueTask DisposeAsync() => DisposeAsync(true, true, true);
 
-        public async ValueTask DisposeAsync(bool waitForHandling, bool updateState)
+        public async ValueTask DisposeAsync(bool unregister, bool waitForHandling, bool updateState)
         {
             if (!disposedValue)
             {
-                if (SessionId != default)
+                if (unregister && SessionId != default)
                     connections.TryRemove(SessionId, out _);
 
                 if (waitForHandling)

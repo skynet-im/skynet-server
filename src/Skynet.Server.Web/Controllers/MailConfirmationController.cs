@@ -27,9 +27,9 @@ namespace Skynet.Server.Web.Controllers
             if (confirmation == null)
                 return View("Invalid");
             if (confirmation.ConfirmationTime == default)
-                return View("Pending", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
+                return View("Pending", new MailConfirmationViewModel(confirmation.MailAddress, token));
             else
-                return View("Confirmed", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
+                return View("Confirmed", new MailConfirmationViewModel(confirmation.MailAddress, token));
         }
 
         [HttpPost("{token}")]
@@ -48,10 +48,10 @@ namespace Skynet.Server.Web.Controllers
 
                 confirmation.ConfirmationTime = DateTime.Now;
                 await ctx.SaveChangesAsync().ConfigureAwait(false);
-                return View("Success", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
+                return View("Success", new MailConfirmationViewModel(confirmation.MailAddress, token));
             }
             else
-                return View("Confirmed", new MailConfirmationViewModel() { MailAddress = confirmation.MailAddress });
+                return View("Confirmed", new MailConfirmationViewModel(confirmation.MailAddress, token));
         }
     }
 }

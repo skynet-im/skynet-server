@@ -60,7 +60,7 @@ namespace Skynet.Server.Network.Handlers
                     // Create password update packet
                     var passwordUpdate = Packets.New<P15PasswordUpdate>();
                     passwordUpdate.KeyHash = packet.KeyHash;
-                    passwordUpdate.MessageFlags = MessageFlags.Unencrypted;
+                    passwordUpdate.MessageFlags = MessageFlags.Loopback | MessageFlags.Unencrypted;
                     _ = await injector.CreateMessage(passwordUpdate, loopback.ChannelId, newAccount.AccountId).ConfigureAwait(false);
 
                     // Create email address

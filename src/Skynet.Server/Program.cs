@@ -1,5 +1,4 @@
-﻿using McMaster.Extensions.CommandLineUtils;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,12 +9,13 @@ using Skynet.Server.Services.Implementations;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace Skynet.Server
 {
     internal static class Program
     {
-        public static void Main(string[] args)
+        public static async Task<int> Main(string[] args)
         {
 #if DEBUG
             if (Debugger.IsAttached)
@@ -28,11 +28,18 @@ namespace Skynet.Server
 
             if (args.Length == 0)
             {
-                CreateHostBuilder().Build().Run();
+                await CreateHostBuilder()
+                    .ConfigureServices(services => services.AddHostedService<ListenerService>())
+                    .Build()
+                    .RunAsync()
+                    .ConfigureAwait(false);
+                return Environment.ExitCode;
             }
             else
             {
-                CreateCommandLineApplication().Execute(args);
+                return await CreateHostBuilder()
+                    .RunCommandLineApplicationAsync<SkynetCommand>(args)
+                    .ConfigureAwait(false);
             }
         }
 
@@ -67,29 +74,9 @@ namespace Skynet.Server
                 services.AddScoped<DeliveryService>();
                 services.AddScoped<MessageInjectionService>();
                 services.AddScoped<ClientStateService>();
-                services.AddHostedService<ListenerService>();
             });
 
             return builder;
-        }
-
-        private static CommandLineApplication CreateCommandLineApplication()
-        {
-            var configuration = new ConfigurationBuilder()
-                .AddJsonFile("skynetconfig.json", optional: false, reloadOnChange: true)
-                .Build();
-
-            var services = new ServiceCollection()
-                .AddSingleton(PhysicalConsole.Singleton)
-                .ConfigureSkynet(configuration)
-                .AddSingleton<ConfirmationMailService>()
-                .AddDatabaseContext(configuration)
-                .BuildServiceProvider();
-
-            var application = new CommandLineApplication<SkynetCommand>();
-            application.Conventions.UseDefaultConventions();
-            application.Conventions.UseConstructorInjection(services);
-            return application;
         }
     }
 }

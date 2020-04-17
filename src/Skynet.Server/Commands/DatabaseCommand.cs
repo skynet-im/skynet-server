@@ -1,10 +1,14 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Skynet.Model;
 using Skynet.Server.Database;
 using Skynet.Server.Database.Entities;
 using Skynet.Server.Utilities;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 
 #pragma warning disable IDE0051 // Remove unused private members
@@ -12,7 +16,7 @@ using System.Threading.Tasks;
 namespace Skynet.Server.Commands
 {
     [Command("database")]
-    [Subcommand(typeof(Create), typeof(Delete), typeof(Benchmark))]
+    [Subcommand(typeof(Create), typeof(Delete), typeof(Audit), typeof(Benchmark))]
     [HelpOption]
     public class DatabaseCommand
     {
@@ -50,6 +54,88 @@ namespace Skynet.Server.Commands
                 {
                     database.Database.EnsureDeleted();
                 }
+            }
+        }
+
+        [Command("audit")]
+        [HelpOption(Description = "Searches for anomalies to find corrupted accounts")]
+        public class Audit
+        {
+            private async Task OnExecute(IConsole console, IServiceProvider serviceProvider, DatabaseContext database)
+            {
+                bool empty = true;
+
+                await foreach (Account account in database.Accounts
+                    .Include(a => a.MailConfirmations)
+                    .Include(a => a.OwnedChannels)
+                    .AsAsyncEnumerable())
+                {
+                    empty = false;
+
+                    MailConfirmation confirmation = account.MailConfirmations.OrderByDescending(c => c.ConfirmationTime).FirstOrDefault();
+                    if (confirmation == null)
+                    {
+                        console.Out.WriteLine($"Account {account.AccountId:x8} is missing a MailConfirmation");
+                        continue;
+                    }
+
+                    if (confirmation.ConfirmationTime == default)
+                    {
+                        console.Out.WriteLine($"Account {account.AccountId:x8} has not yet confirmed the address {confirmation.MailAddress}");
+                        continue;
+                    }
+
+                    Channel SingeOrDefault(IEnumerable<Channel> channels, ChannelType type)
+                    {
+                        Channel[] value = channels.Where(c => c.ChannelType == type).ToArray();
+                        if (value.Length == 0)
+                        {
+                            console.Out.WriteLine($"Account {confirmation.MailAddress} has no channel of type {type}");
+                            return null;
+                        }
+                        else if (value.Length == 1)
+                        {
+                            return value[0];
+                        }
+                        else
+                        {
+                            console.Out.WriteLine($"Account {confirmation.MailAddress} has mutiple channels of type {type}");
+                            return null;
+                        }
+                    }
+
+                    Channel loopback = SingeOrDefault(account.OwnedChannels, ChannelType.Loopback);
+                    Channel accountData = SingeOrDefault(account.OwnedChannels, ChannelType.AccountData);
+
+                    if (loopback == null || accountData == null) continue;
+
+                    using (IServiceScope scope = serviceProvider.CreateScope())
+                    {
+                        var database2 = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+
+                        bool privateKey = await database2.Messages.AsQueryable()
+                            .Where(m => m.ChannelId == loopback.ChannelId
+                                && m.SenderId == account.AccountId
+                                && m.PacketId == 0x17).AnyAsync()
+                            .ConfigureAwait(false);
+
+                        if (!privateKey) console.Out.WriteLine($"Account {confirmation.MailAddress} is missing a private key");
+
+                        bool publicKey = await database2.Messages.AsQueryable()
+                            .Where(m => m.ChannelId == accountData.ChannelId
+                                && m.SenderId == account.AccountId
+                                && m.PacketId == 0x18).AnyAsync()
+                            .ConfigureAwait(false);
+
+                        if (!publicKey) console.Out.WriteLine($"Account {confirmation.MailAddress} is missing a public key");
+
+                        if (!privateKey || !publicKey) continue;
+                    }
+
+                    console.Out.WriteLine($"Account {confirmation.MailAddress} is healthy");
+                }
+
+                if (empty) console.Out.WriteLine("No accounts found to audit");
             }
         }
 

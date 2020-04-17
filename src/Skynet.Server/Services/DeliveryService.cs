@@ -86,8 +86,8 @@ namespace Skynet.Server.Services
 
             long[] sessions = await database.ChannelMembers.AsQueryable()
                 .Where(m => m.ChannelId == message.ChannelId
-                    && !isLoopback || m.AccountId == message.SenderId
-                    && !isNoSenderSync || m.AccountId != message.SenderId)
+                    && (!isLoopback || m.AccountId == message.SenderId)
+                    && (!isNoSenderSync || m.AccountId != message.SenderId))
                 .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s.SessionId)
                 .ToArrayAsync().ConfigureAwait(false);
 
@@ -297,6 +297,17 @@ namespace Skynet.Server.Services
                     packet.CreationTime = channel.CreationTime;
                     if (packet.ChannelType == ChannelType.Direct)
                         packet.CounterpartId = channel.AccountId;
+                    _ = client.Send(packet);
+                }
+            }
+
+            foreach (long channelId in currentState)
+            {
+                if (!channels.Any(c => c.ChannelId == channelId))
+                {
+                    // Notify client about deleted channels
+                    var packet = packets.New<P0DDeleteChannel>();
+                    packet.ChannelId = channelId;
                     _ = client.Send(packet);
                 }
             }

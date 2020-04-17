@@ -38,7 +38,7 @@ namespace Skynet.Server.Services
                 // TODO: Implement FileId
                 PacketId = packet.Id,
                 PacketVersion = packet.PacketVersion,
-                PacketContent = packet.PacketContent?.ToArray(),
+                PacketContent = packet.PacketContent,
                 Dependencies = packet.Dependencies.ToDatabase()
             };
 
@@ -69,6 +69,9 @@ namespace Skynet.Server.Services
 
         public async Task<Message> CreateDeviceList(long accountId)
         {
+            if (accountId == default) 
+                throw new ArgumentOutOfRangeException(nameof(accountId), accountId, $"{nameof(accountId)} must not be zero.");
+
             long loopbackId = await database.Channels.AsQueryable()
                 .Where(c => c.OwnerId == accountId && c.ChannelType == ChannelType.Loopback)
                 .Select(c => c.ChannelId).SingleAsync().ConfigureAwait(false);
