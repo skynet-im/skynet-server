@@ -1,0 +1,38 @@
+﻿@using Microsoft.AspNetCore.Mvc.Localization
+@using Skynet.Server.Web.Controllers
+
+@inject IHtmlLocalizer<MailConfirmationController> localizer
+
+@model MailConfirmationViewModel
+@{
+    ViewData["Title"] = localizer["PendingTitle"];
+}
+
+<h2 class="main-header">@localizer["PendingTitle"]</h2>
+
+<div class="content">
+    <p>@localizer["PendingContent", Model.MailAddress]</p>
+    <noscript>
+        <div class="alert alert-warning" role="alert">
+            <p>@localizer["PendingJSWarning"]</p>
+        </div>
+    </noscript>
+
+    <form class="auto-submit" method="post">
+        <input type="submit" class="btn btn-primary" value="@localizer["PendingButton"]" />
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        "use strict";
+
+        (function () {
+            $.post("@Url.Content("~/api/confirm/" + Model.Token)").done(function (data) {
+                document.title = data.title + " - Skynet";
+                $("h2.main-header").text(data.header);
+                $("div.content").html("<p>" + data.content + "</p>");
+            });
+        })();
+    </script>
+}

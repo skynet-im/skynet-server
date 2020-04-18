@@ -9,7 +9,8 @@ services:
     ports:
     - '32761:32761'
     volumes:
-    - data/appsettings.json:/appsettings.json
+    - data/skynetconfig.json:/skynetconfig.json
+    - data/firebase-service-account.json:/app/firebase-service-account.json
   web:
     image: skynet/web:latest
     restart: unless-stopped
@@ -17,6 +18,8 @@ services:
     - db
     ports:
     - '8080:80'
+    volumes:
+    - data/skynetconfig.json:/skynetconfig.json
   db:
     image: mariadb:latest
     restart: unless-stopped

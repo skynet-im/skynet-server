@@ -1,0 +1,44 @@
+{
+  "Database": {
+    "ConnectionString": "Server=localhost;Port=3306;Database=Skynet;User=root;Password=root;"
+  },
+  "Fcm": {
+    "ServiceAccountFilePath": null,
+    "NotifyAllDevices": false,
+    "DeleteSessionOnError": false,
+    "PriorityMessageAckTimeout": 60000
+  },
+  "Listener": {
+    "Backlog": 64,
+    "Port": 32761,
+    "CertificatePath": "devcert.pfx"
+  },
+  "Mail": {
+    "EnableMailing": false,
+    "SenderName": "Skynet Team",
+    "SenderAddress": "noreply@skynet.app",
+    "SmtpUsername": "noreply@skynet.app",
+    "SmtpPassword": "",
+    "UseSsl": true,
+    "SmtpHost": "smtp.udag.de",
+    "SmtpPort": 465
+  },
+  "Protocol": {
+    "ProtocolVersion": 3,
+    "Platforms": [
+      {
+        "Name": "android/de.vectordata.skynet",
+        "VersionCode": 59,
+        "VersionName": "0.9.0",
+        "RecommendUpdateThreshold": 59,
+        "ForceUpdateThreshold": 59
+      }
+    ],
+    "CountMessagesBeforeSync": true
+  },
+  "Web": {
+    "PathBase": null,
+    "AllowProxies": false,
+    "PublicBaseUrl": "https://account.skynet.app/"
+  }
+}

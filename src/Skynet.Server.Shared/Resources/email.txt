@@ -1,0 +1,9 @@
+﻿Welcome to Skynet Messenger!
+
+To confirm your email address $ADDRESS please click the link below:
+$URL
+
+Have fun!
+Your Skynet Team
+
+P.S. If you didn't sign up for Skynet, simply ignore this message.
