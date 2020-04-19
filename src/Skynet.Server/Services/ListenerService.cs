@@ -7,6 +7,7 @@ using Skynet.Server.Configuration;
 using Skynet.Server.Extensions;
 using Skynet.Server.Network;
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -98,6 +99,12 @@ namespace Skynet.Server.Services
             catch (AuthenticationException ex)
             {
                 logger.LogInformation(ex, "TLS authentication failed");
+                await sslStream.DisposeAsync().ConfigureAwait(false);
+                return;
+            }
+            catch (IOException ex)
+            {
+                logger.LogInformation(ex, "TLS authentication aborted");
                 await sslStream.DisposeAsync().ConfigureAwait(false);
                 return;
             }

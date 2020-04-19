@@ -9,6 +9,7 @@ using Skynet.Server.Utilities;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -45,10 +46,13 @@ namespace Skynet.Server.Network
                     await stream.WriteAsync(packet.Id, buffer.GetBuffer()).ConfigureAwait(false);
                     logger.LogInformation("Successfully sent packet {0} to session {1}", packet, SessionId.ToString("x8"));
                 }
-                catch (IOException ex)
+                catch (IOException ex) when (ex.InnerException is SocketException socketEx)
                 {
                     await DisposeAsync(true, false, true).ConfigureAwait(false);
-                    logger.LogInformation(ex, "Session {0} lost connection", SessionId.ToString("x8"));
+                    if (socketEx.SocketErrorCode == SocketError.TimedOut)
+                        logger.LogInformation("Session {0} timed out", SessionId.ToString("x8"));
+                    else
+                        logger.LogInformation("Session {0} lost connection", SessionId.ToString("x8"));
                 }
                 catch (Exception ex)
                 {
@@ -117,10 +121,13 @@ namespace Skynet.Server.Network
                         return;
                     }
                 }
-                catch (IOException ex)
+                catch (IOException ex) when (ex.InnerException is SocketException socketEx)
                 {
                     await DisposeAsync(true, false, true).ConfigureAwait(false);
-                    logger.LogInformation(ex, "Session {0} lost connection", SessionId.ToString("x8"));
+                    if (socketEx.SocketErrorCode == SocketError.TimedOut)
+                        logger.LogInformation("Session {0} timed out", SessionId.ToString("x8"));
+                    else
+                        logger.LogInformation("Session {0} lost connection", SessionId.ToString("x8"));
                     return;
                 }
                 catch (Exception ex)
