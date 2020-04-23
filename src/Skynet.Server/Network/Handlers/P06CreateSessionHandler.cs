@@ -66,8 +66,8 @@ namespace Skynet.Server.Network.Handlers
             response.WebToken = session.WebToken;
             await Client.Send(response).ConfigureAwait(false);
 
-            _ = await Delivery.SyncChannels(Client, new List<long>(), lastMessageId: default).ConfigureAwait(false);
-            _ = await Delivery.SendMessage(deviceList, null).ConfigureAwait(false);
+            await Delivery.StartSyncChannels(Client, new List<long>(), lastMessageId: default).ConfigureAwait(false);
+            await Delivery.StartSendMessage(deviceList, null).ConfigureAwait(false);
 
             IClient old = connections.Add(Client);
             if (old != null)

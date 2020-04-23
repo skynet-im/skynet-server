@@ -80,9 +80,9 @@ namespace Skynet.Server.Network
             packet.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
 
             if (packet.Id == 0x20)
-                _ = await Delivery.SendPriorityMessage(entity, exclude: Client, excludeFcmAccountId: Client.AccountId).ConfigureAwait(false);
+                await Delivery.StartSendPriorityMessage(entity, exclude: Client, excludeFcmAccountId: Client.AccountId).ConfigureAwait(false);
             else
-                _ = await Delivery.SendMessage(entity, exclude: Client).ConfigureAwait(false);
+                await Delivery.StartSendMessage(entity, exclude: Client).ConfigureAwait(false);
 
             await PostHandling(packet, entity).ConfigureAwait(false);
         }

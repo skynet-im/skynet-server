@@ -120,8 +120,8 @@ namespace Skynet.Server.Network
                 {
                     using IServiceScope scope = serviceProvider.CreateScope();
                     var clientState = scope.ServiceProvider.GetRequiredService<ClientStateService>();
-                    _ = await clientState.SetChannelAction(this, default, ChannelAction.None).ConfigureAwait(false);
-                    _ = await clientState.SetActive(this, false).ConfigureAwait(false);
+                    await clientState.StartSetChannelAction(this, default, ChannelAction.None).ConfigureAwait(false);
+                    if (Active != false) await clientState.StartSetActive(this, false).ConfigureAwait(false);
                 }
 
                 await sendQueue.DisposeAsync().ConfigureAwait(false);

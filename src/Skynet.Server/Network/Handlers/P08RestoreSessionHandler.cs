@@ -39,7 +39,7 @@ namespace Skynet.Server.Network.Handlers
             response.StatusCode = RestoreSessionStatus.Success;
             await Client.Send(response).ConfigureAwait(false);
 
-            _ = await Delivery.SyncChannels(Client, packet.Channels, packet.LastMessageId).ConfigureAwait(false);
+            await Delivery.StartSyncChannels(Client, packet.Channels, packet.LastMessageId).ConfigureAwait(false);
 
             IClient old = connections.Add(Client);
             if (old != null)

@@ -59,7 +59,7 @@ namespace Skynet.Server.Network.Handlers
 
                 var directChannelUpdate = await injector
                     .CreateDirectChannelUpdate(channel.ChannelId, Client.AccountId, message.MessageId, bobId, bobPublicId).ConfigureAwait(false);
-                _ = await Delivery.SendMessage(directChannelUpdate, null).ConfigureAwait(false);
+                await Delivery.StartSendMessage(directChannelUpdate, null).ConfigureAwait(false);
             }
         }
     }

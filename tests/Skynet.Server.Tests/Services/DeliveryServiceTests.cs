@@ -67,7 +67,7 @@ namespace Skynet.Server.Tests.Services
             var packet = packets.New<P0ACreateChannel>();
 
             Assert.IsTrue(connections.TryGet(1, out IClient exclude), "Client disappeared from ConnectionsService");
-            await delivery.SendToAccount(packet, alice, exclude).ConfigureAwait(false);
+            await delivery.StartSendToAccount(packet, alice, exclude).ConfigureAwait(false);
 
             Assert.IsFalse(sent[1]);
             Assert.IsFalse(sent[2]);
@@ -92,7 +92,7 @@ namespace Skynet.Server.Tests.Services
             var packet = packets.New<P0ACreateChannel>();
 
             Assert.IsTrue(connections.TryGet(1, out IClient exclude), "Client disappeared from ConnectionsService");
-            await delivery.SendToChannel(packet, 1, exclude).ConfigureAwait(false);
+            await delivery.StartSendToChannel(packet, 1, exclude).ConfigureAwait(false);
 
             Assert.IsFalse(sent[1]);
             Assert.IsFalse(sent[2]);
