@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Skynet.Server.Network
 {
-    internal interface IClient : IAsyncDisposable
+    internal interface IClient
     {
         string ApplicationIdentifier { get; }
         int VersionCode { get; }
@@ -25,6 +25,6 @@ namespace Skynet.Server.Network
         Task Enqueue(Packet packet);
         Task Enqueue(ChannelMessage message);
         Task Enqueue(IAsyncEnumerable<ChannelMessage> messages);
-        ValueTask DisposeAsync(bool unregister, bool waitForHandling, bool updateState);
+        ValueTask DisposeAsync(bool unregister = true, bool waitForHandling = true, bool updateState = true);
     }
 }
