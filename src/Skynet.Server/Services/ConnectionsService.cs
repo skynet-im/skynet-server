@@ -2,16 +2,21 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Skynet.Server.Services
 {
     internal sealed class ConnectionsService
     {
         private readonly ConcurrentDictionary<long, IClient> connections;
+        private readonly TaskCompletionSource<int> completionSource;
+        private int counter;
 
         public ConnectionsService()
         {
             connections = new ConcurrentDictionary<long, IClient>();
+            completionSource = new TaskCompletionSource<int>();
         }
 
         public bool TryGet(long sessionId, out IClient client)
@@ -41,6 +46,25 @@ namespace Skynet.Server.Services
         public bool TryRemove(long sessionId, out IClient client)
         {
             return connections.TryRemove(sessionId, out client);
+        }
+
+        public void IncrementCounter()
+        {
+            Interlocked.Increment(ref counter);
+        }
+
+        public void DecrementCounter()
+        {
+            if (Interlocked.Decrement(ref counter) == 0)
+                completionSource.SetResult(0);
+        }
+
+        public Task WaitAll()
+        {
+            if (counter == 0)
+                return Task.CompletedTask;
+            else
+                return completionSource.Task;
         }
     }
 }

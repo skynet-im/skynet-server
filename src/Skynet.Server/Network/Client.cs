@@ -131,7 +131,9 @@ namespace Skynet.Server.Network
 
         private async Task Listen()
         {
-            while (!ct.IsCancellationRequested)
+            connections.IncrementCounter();
+
+            while (true)
             {
                 byte id;
                 PoolableMemory content;
@@ -145,7 +147,7 @@ namespace Skynet.Server.Network
                     {
                         await DisposeAsync(waitForHandling: false).ConfigureAwait(false);
                         logger.LogInformation("Session {0} disconnected", SessionId.ToString("x8"));
-                        return;
+                        break;
                     }
                 }
                 catch (IOException ex) when (ex.InnerException is SocketException socketEx)
@@ -155,13 +157,13 @@ namespace Skynet.Server.Network
                         logger.LogInformation("Session {0} timed out", SessionId.ToString("x8"));
                     else
                         logger.LogInformation("Session {0} lost connection", SessionId.ToString("x8"));
-                    return;
+                    break;
                 }
                 catch (Exception ex)
                 {
                     await DisposeAsync(waitForHandling: false);
                     logger.LogCritical(ex, "Unexpected exception occurred while receiving a packet from session {0}", SessionId.ToString("x8"));
-                    return;
+                    break;
                 }
 
                 try
@@ -172,20 +174,28 @@ namespace Skynet.Server.Network
                 {
                     await DisposeAsync(waitForHandling: false);
                     logger.LogInformation(ex, "Invalid operation of session {0}", SessionId.ToString("x8"));
-                    return;
+                    break;
                 }
                 catch (Exception ex)
                 {
                     await DisposeAsync(waitForHandling: false);
                     logger.LogCritical(ex, "Unexpected exception occurred while handling packet {0} of session {0}",
                         id.ToString("x2"), SessionId.ToString("x8"));
-                    return;
+                    break;
                 }
                 finally
                 {
                     content.Return(false);
                 }
+
+                if (ct.IsCancellationRequested)
+                {
+                    await DisposeAsync(waitForHandling: false);
+                    break;
+                }
             }
+
+            connections.DecrementCounter();
         }
 
         private async ValueTask HandlePacket(byte id, PoolableMemory content)
