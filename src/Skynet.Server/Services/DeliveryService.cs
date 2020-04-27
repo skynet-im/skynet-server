@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Skynet.Model;
 using Skynet.Protocol;
@@ -39,47 +40,39 @@ namespace Skynet.Server.Services
         }
 
         #region packet and message broadcast
-        public async Task<IReadOnlyList<Task>> SendToAccount(Packet packet, long accountId, IClient exclude)
+        public async Task StartSendToAccount(Packet packet, long accountId, IClient exclude)
         {
             long[] sessions = await database.Sessions.AsQueryable()
                 .Where(s => s.AccountId == accountId)
                 .Select(s => s.SessionId)
                 .ToArrayAsync().ConfigureAwait(false);
 
-            var operations = new List<Task>();
-
             foreach (long sessionId in sessions)
             {
                 if (connections.TryGet(sessionId, out IClient client) && !ReferenceEquals(client, exclude))
                 {
-                    operations.Add(client.Send(packet));
+                    _ = client.Send(packet);
                 }
             }
-
-            return operations;
         }
 
-        public async Task<IReadOnlyList<Task>> SendToChannel(Packet packet, long channelId, IClient exclude)
+        public async Task StartSendToChannel(Packet packet, long channelId, IClient exclude)
         {
             long[] sessions = await database.ChannelMembers.AsQueryable()
                 .Where(m => m.ChannelId == channelId)
                 .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s.SessionId)
                 .ToArrayAsync().ConfigureAwait(false);
 
-            var operations = new List<Task>();
-
             foreach (long sessionId in sessions)
             {
                 if (connections.TryGet(sessionId, out IClient client) && !ReferenceEquals(client, exclude))
                 {
-                    operations.Add(client.Send(packet));
+                    _ = client.Send(packet);
                 }
             }
-
-            return operations;
         }
 
-        public async Task<IReadOnlyList<Task>> SendMessage(Message message, IClient exclude)
+        public async Task StartSendMessage(Message message, IClient exclude)
         {
             bool isLoopback = message.MessageFlags.HasFlag(MessageFlags.Loopback);
             bool isNoSenderSync = message.MessageFlags.HasFlag(MessageFlags.NoSenderSync);
@@ -91,28 +84,22 @@ namespace Skynet.Server.Services
                 .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => s.SessionId)
                 .ToArrayAsync().ConfigureAwait(false);
 
-            var operations = new List<Task>();
-
             foreach (long sessionId in sessions)
             {
                 if (connections.TryGet(sessionId, out IClient client) && !ReferenceEquals(client, exclude))
                 {
-                    operations.Add(client.Enqueue(message.ToPacket(packets, client.AccountId)));
+                    _ = client.Enqueue(message.ToPacket(packets, client.AccountId));
                 }
             }
-
-            return operations;
         }
 
-        public async Task<IReadOnlyList<Task>> SendPriorityMessage(Message message, IClient exclude, long excludeFcmAccountId)
+        public async Task StartSendPriorityMessage(Message message, IClient exclude, long excludeFcmAccountId)
         {
             var sessions = await database.ChannelMembers.AsQueryable()
                 .Where(m => m.ChannelId == message.ChannelId)
                 .Join(database.Sessions, m => m.AccountId, s => s.AccountId, (m, s) => new { s.AccountId, s.SessionId })
                 .OrderBy(s => s.AccountId)
                 .ToArrayAsync().ConfigureAwait(false);
-
-            var operations = new List<Task>();
 
             long lastAccountId = default;
             DelayedTask lastTimer = null;
@@ -129,7 +116,6 @@ namespace Skynet.Server.Services
                         else
                             return Task.CompletedTask;
                     }, fcmOptions.Value.PriorityMessageAckTimeout);
-                    operations.Add(lastTimer.Task);
                 }
 
                 // Declare a separate variable that can be safely captured and is not changed with the next iteration
@@ -147,18 +133,16 @@ namespace Skynet.Server.Services
                 if (connections.TryGet(session.SessionId, out IClient client) && !ReferenceEquals(client, exclude))
                 {
                     client.PacketReceived += callback;
-                    operations.Add(client.Enqueue(message.ToPacket(packets, client.AccountId)));
+                    _ = client.Enqueue(message.ToPacket(packets, client.AccountId));
                 }
             }
-
-            return operations;
         }
         #endregion
 
         #region channel and message restore
-        public async Task<Task> SyncChannels(IClient client, List<long> channelState, long lastMessageId)
+        public Task StartSyncChannels(IClient client, List<long> channelState, long lastMessageId)
         {
-            return await ExecuteSync(
+            return ExecuteSync(
                 client,
                 database => database.ChannelMembers.AsQueryable()
                 .Where(member => member.AccountId == client.AccountId)
@@ -167,14 +151,14 @@ namespace Skynet.Server.Services
                     && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == client.AccountId)
                     && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != client.AccountId)),
                 channelState: channelState
-            ).ConfigureAwait(false);
+            );
         }
 
-        public async Task<Task> SyncMessages(IClient client, long channelId, long after, long before, ushort maxCount)
+        public Task StartSyncMessages(IClient client, long channelId, long after, long before, ushort maxCount)
         {
             // The JOIN with ChannelMembers prevents unauthorized access
 
-            return await ExecuteSync(
+            return ExecuteSync(
                 client,
                 database => database.ChannelMembers.AsQueryable()
                     .Where(member => member.AccountId == client.AccountId)
@@ -185,17 +169,17 @@ namespace Skynet.Server.Services
                         && (!m.MessageFlags.HasFlag(MessageFlags.Loopback) || m.SenderId == client.AccountId)
                         && (!m.MessageFlags.HasFlag(MessageFlags.NoSenderSync) || m.SenderId != client.AccountId)),
                 maxCount: maxCount
-            ).ConfigureAwait(false);
+            );
         }
 
-        public async Task<IReadOnlyList<Task>> SyncMessages(long accountId, long channelId)
+        public async Task StartSyncMessages(long accountId, long channelId)
         {
             long[] sessions = await database.Sessions.AsQueryable()
                 .Where(s => s.AccountId == accountId)
                 .Select(s => s.SessionId)
                 .ToArrayAsync().ConfigureAwait(false);
 
-            var operations = new List<Task<Task>>();
+            var operations = new List<Task>();
 
             foreach (long sessionId in sessions)
             {
@@ -215,10 +199,10 @@ namespace Skynet.Server.Services
                 }
             }
 
-            return await Task.WhenAll(operations).ConfigureAwait(false);
+            await Task.WhenAll(operations).ConfigureAwait(false);
         }
 
-        private async Task<Task> ExecuteSync(
+        private async Task ExecuteSync(
             IClient client,
             Func<DatabaseContext, IQueryable<Message>> queryBuilder,
             List<long> channelState = null,
@@ -244,24 +228,32 @@ namespace Skynet.Server.Services
             if (channelState != null)
                 await StartSyncChannels(client, channelState).ConfigureAwait(false);
 
-            async Task executeScoped()
+            async void executeScoped()
             {
                 using IServiceScope scope = serviceProvider.CreateScope();
                 var packets = scope.ServiceProvider.GetRequiredService<PacketService>();
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+                var logger = scope.ServiceProvider.GetRequiredService<ILogger<DeliveryService>>();
 
-                IQueryable<Message> query = queryBuilder(database).Include(m => m.Dependencies).OrderBy(m => m.MessageId);
-                if (maxCount != default)
-                    query = query.Take(maxCount);
+                try
+                {
+                    IQueryable<Message> query = queryBuilder(database).Include(m => m.Dependencies).OrderBy(m => m.MessageId);
+                    if (maxCount != default)
+                        query = query.Take(maxCount);
 
-                Task send = client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(packets, client.AccountId)));
-                _ = client.Enqueue(packets.New<P0FSyncFinished>());
-                await send.ConfigureAwait(false);
+                    Task send = client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(packets, client.AccountId)));
+                    _ = client.Enqueue(packets.New<P0FSyncFinished>());
+                    await send.ConfigureAwait(false);
 
-                // Independent service scope is disposed after await returns
+                    // Independent service scope is disposed after await returns
+                }
+                catch (Exception ex)
+                {
+                    logger.LogCritical(ex, "An unexpected exception occurred while delivering messages to client {0}", client.SessionId.ToString("x8"));
+                }
             }
 
-            return executeScoped();
+            executeScoped();
         }
 
         private async Task StartSyncChannels(IClient client, IReadOnlyList<long> currentState)

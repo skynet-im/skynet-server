@@ -29,6 +29,7 @@ namespace Skynet.Server.Database
             account.Property(a => a.AccountId).ValueGeneratedNever();
             account.Property(a => a.KeyHash).IsRequired();
             account.Property(a => a.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            account.Property(a => a.DeletionTime).IsConcurrencyToken();
 
             var session = modelBuilder.Entity<Session>();
             session.HasKey(s => s.SessionId);

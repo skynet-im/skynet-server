@@ -9,6 +9,7 @@ using Skynet.Server.Utilities;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,6 +26,7 @@ namespace Skynet.Server.Network
         private readonly CancellationToken ct;
         private readonly JobQueue<Packet, bool> sendQueue;
         private readonly Task handler;
+        private int disposing;
 
         public Client(IServiceProvider serviceProvider, ConnectionsService connections, PacketService packets, ILogger<Client> logger,
             PacketStream stream, CancellationToken ct)
@@ -45,16 +47,19 @@ namespace Skynet.Server.Network
                     await stream.WriteAsync(packet.Id, buffer.GetBuffer()).ConfigureAwait(false);
                     logger.LogInformation("Successfully sent packet {0} to session {1}", packet, SessionId.ToString("x8"));
                 }
-                catch (IOException ex)
+                catch (IOException ex) when (ex.InnerException is SocketException socketEx)
                 {
-                    await DisposeAsync(true, false, true).ConfigureAwait(false);
-                    logger.LogInformation(ex, "Session {0} lost connection", SessionId.ToString("x8"));
+                    await DisposeAsync(waitForHandling: false).ConfigureAwait(false);
+                    if (socketEx.SocketErrorCode == SocketError.TimedOut)
+                        logger.LogInformation("Session {0} timed out", SessionId.ToString("x8"));
+                    else
+                        logger.LogInformation("Session {0} lost connection", SessionId.ToString("x8"));
                 }
                 catch (Exception ex)
                 {
+                    await DisposeAsync(waitForHandling: false).ConfigureAwait(false);
                     logger.LogCritical(ex, "Unexpected exception occurred while sending packet {0} to session {1}",
                         packet.Id.ToString("x2"), SessionId.ToString("x8"));
-                    throw;
                 }
                 finally
                 {
@@ -98,9 +103,37 @@ namespace Skynet.Server.Network
         public Task Enqueue(ChannelMessage message) => sendQueue.Enqueue(message, true, priority: false);
         public Task Enqueue(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages, true, priority: false);
 
+        /// <summary>
+        /// Gracefully shuts down this client's operations and releases all unmanaged resources. This method is thread safe.
+        /// </summary>
+        public async ValueTask DisposeAsync(bool unregister = true, bool waitForHandling = true, bool updateState = true)
+        {
+            if (Interlocked.Exchange(ref disposing, 1) == 0)
+            {
+                if (unregister && SessionId != default)
+                    connections.TryRemove(SessionId, out _);
+
+                if (waitForHandling)
+                    await handler.ConfigureAwait(false);
+
+                if (updateState && SessionId != default)
+                {
+                    using IServiceScope scope = serviceProvider.CreateScope();
+                    var clientState = scope.ServiceProvider.GetRequiredService<ClientStateService>();
+                    await clientState.StartSetChannelAction(this, default, ChannelAction.None).ConfigureAwait(false);
+                    if (Active != false) await clientState.StartSetActive(this, false).ConfigureAwait(false);
+                }
+
+                await sendQueue.DisposeAsync().ConfigureAwait(false);
+                await stream.DisposeAsync().ConfigureAwait(false);
+            }
+        }
+
         private async Task Listen()
         {
-            while (!ct.IsCancellationRequested)
+            connections.ClientConnected();
+
+            while (true)
             {
                 byte id;
                 PoolableMemory content;
@@ -112,22 +145,25 @@ namespace Skynet.Server.Network
 
                     if (!success)
                     {
-                        await DisposeAsync(true, false, true).ConfigureAwait(false);
+                        await DisposeAsync(waitForHandling: false).ConfigureAwait(false);
                         logger.LogInformation("Session {0} disconnected", SessionId.ToString("x8"));
-                        return;
+                        break;
                     }
                 }
-                catch (IOException ex)
+                catch (IOException ex) when (ex.InnerException is SocketException socketEx)
                 {
-                    await DisposeAsync(true, false, true).ConfigureAwait(false);
-                    logger.LogInformation(ex, "Session {0} lost connection", SessionId.ToString("x8"));
-                    return;
+                    await DisposeAsync(waitForHandling: false).ConfigureAwait(false);
+                    if (socketEx.SocketErrorCode == SocketError.TimedOut)
+                        logger.LogInformation("Session {0} timed out", SessionId.ToString("x8"));
+                    else
+                        logger.LogInformation("Session {0} lost connection", SessionId.ToString("x8"));
+                    break;
                 }
                 catch (Exception ex)
                 {
-                    await DisposeAsync(true, false, true);
+                    await DisposeAsync(waitForHandling: false);
                     logger.LogCritical(ex, "Unexpected exception occurred while receiving a packet from session {0}", SessionId.ToString("x8"));
-                    return;
+                    break;
                 }
 
                 try
@@ -136,22 +172,30 @@ namespace Skynet.Server.Network
                 }
                 catch (ProtocolException ex)
                 {
-                    await DisposeAsync(true, false, true);
+                    await DisposeAsync(waitForHandling: false);
                     logger.LogInformation(ex, "Invalid operation of session {0}", SessionId.ToString("x8"));
-                    return;
+                    break;
                 }
                 catch (Exception ex)
                 {
-                    await DisposeAsync(true, false, true);
+                    await DisposeAsync(waitForHandling: false);
                     logger.LogCritical(ex, "Unexpected exception occurred while handling packet {0} of session {0}",
                         id.ToString("x2"), SessionId.ToString("x8"));
-                    return;
+                    break;
                 }
                 finally
                 {
                     content.Return(false);
                 }
+
+                if (ct.IsCancellationRequested)
+                {
+                    await DisposeAsync(waitForHandling: false);
+                    break;
+                }
             }
+
+            connections.ClientDisconnected();
         }
 
         private async ValueTask HandlePacket(byte id, PoolableMemory content)
@@ -197,40 +241,5 @@ namespace Skynet.Server.Network
                 (instance as IDisposable)?.Dispose();
             }
         }
-
-        #region IAsyncDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        /// <summary>
-        /// Gracefully shuts down this client's operations, updates its state and releases all unmanaged resources.
-        /// This method waits for all handling operations to finish which can lead to dead locks.
-        /// </summary>
-        public ValueTask DisposeAsync() => DisposeAsync(true, true, true);
-
-        public async ValueTask DisposeAsync(bool unregister, bool waitForHandling, bool updateState)
-        {
-            if (!disposedValue)
-            {
-                if (unregister && SessionId != default)
-                    connections.TryRemove(SessionId, out _);
-
-                if (waitForHandling)
-                    await handler.ConfigureAwait(false);
-
-                if (updateState && SessionId != default)
-                {
-                    using IServiceScope scope = serviceProvider.CreateScope();
-                    var clientState = scope.ServiceProvider.GetRequiredService<ClientStateService>();
-                    _ = await clientState.SetChannelAction(this, default, ChannelAction.None).ConfigureAwait(false);
-                    _ = await clientState.SetActive(this, false).ConfigureAwait(false);
-                }
-
-                await sendQueue.DisposeAsync().ConfigureAwait(false);
-                await stream.DisposeAsync().ConfigureAwait(false);
-
-                disposedValue = true;
-            }
-        }
-        #endregion
     }
 }

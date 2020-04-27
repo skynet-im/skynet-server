@@ -30,17 +30,15 @@ namespace Skynet.Server.Services
             this.database = database;
         }
 
-        public async Task<IReadOnlyList<Task>> SetChannelAction(IClient client, long channelId, ChannelAction action)
+        public async Task StartSetChannelAction(IClient client, long channelId, ChannelAction action)
         {
-            var operations = new List<Task>();
-
             if (client.FocusedChannelId != default && client.FocusedChannelId != channelId)
             {
                 var packet = packets.New<P2CChannelAction>();
                 packet.ChannelId = client.FocusedChannelId;
                 packet.AccountId = client.AccountId;
                 packet.Action = ChannelAction.None;
-                operations.AddRange(await delivery.SendToChannel(packet, client.FocusedChannelId, client).ConfigureAwait(false));
+                await delivery.StartSendToChannel(packet, client.FocusedChannelId, client).ConfigureAwait(false);
             }
 
             if (channelId != default && (channelId != client.FocusedChannelId || action != client.ChannelAction))
@@ -49,20 +47,15 @@ namespace Skynet.Server.Services
                 packet.ChannelId = channelId;
                 packet.AccountId = client.AccountId;
                 packet.Action = action;
-                operations.AddRange(await delivery.SendToChannel(packet, channelId, client).ConfigureAwait(false));
+                await delivery.StartSendToChannel(packet, channelId, client).ConfigureAwait(false);
             }
 
             client.FocusedChannelId = channelId;
             client.ChannelAction = action;
-
-            return operations;
         }
 
-        public async Task<IReadOnlyList<Task>> SetActive(IClient client, bool active)
+        public async Task StartSetActive(IClient client, bool active)
         {
-            if (client.Active == active)
-                return new List<Task>(capacity: 0);
-
             long[] sessions = await database.Sessions.AsQueryable()
                 .Where(s => s.AccountId == client.AccountId)
                 .Select(s => s.SessionId)
@@ -86,7 +79,7 @@ namespace Skynet.Server.Services
 
             client.Active = active;
 
-            if (!notify) return new List<Task>(capacity: 0);
+            if (!notify) return;
 
             long accountChannelId = await database.Channels.AsQueryable()
                 .Where(c => c.OwnerId == client.AccountId && c.ChannelType == ChannelType.AccountData)
@@ -99,7 +92,7 @@ namespace Skynet.Server.Services
             packet.MessageFlags = MessageFlags.Unencrypted | MessageFlags.NoSenderSync;
 
             Message message = await injector.CreateMessage(packet, accountChannelId, client.AccountId).ConfigureAwait(false);
-            return await delivery.SendMessage(message, client).ConfigureAwait(false);
+            await delivery.StartSendMessage(message, client).ConfigureAwait(false);
         }
     }
 }

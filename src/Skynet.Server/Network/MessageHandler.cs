@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using MySql.Data.MySqlClient;
 using Skynet.Model;
 using Skynet.Protocol;
 using Skynet.Protocol.Model;
@@ -56,7 +57,14 @@ namespace Skynet.Server.Network
                 Dependencies = packet.Dependencies.ToDatabase()
             };
             Database.Messages.Add(entity);
-            await Database.SaveChangesAsync().ConfigureAwait(false);
+            try
+            {
+                await Database.SaveChangesAsync().ConfigureAwait(false);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is MySqlException mex && mex.Number == 1452)
+            {
+                throw new ProtocolException("Message dependencies could not be resolved", ex);
+            }
 
             var response = Packets.New<P0CChannelMessageResponse>();
             response.ChannelId = packet.ChannelId;
@@ -72,9 +80,9 @@ namespace Skynet.Server.Network
             packet.DispatchTime = DateTime.SpecifyKind(entity.DispatchTime, DateTimeKind.Local);
 
             if (packet.Id == 0x20)
-                _ = await Delivery.SendPriorityMessage(entity, exclude: Client, excludeFcmAccountId: Client.AccountId).ConfigureAwait(false);
+                await Delivery.StartSendPriorityMessage(entity, exclude: Client, excludeFcmAccountId: Client.AccountId).ConfigureAwait(false);
             else
-                _ = await Delivery.SendMessage(entity, exclude: Client).ConfigureAwait(false);
+                await Delivery.StartSendMessage(entity, exclude: Client).ConfigureAwait(false);
 
             await PostHandling(packet, entity).ConfigureAwait(false);
         }

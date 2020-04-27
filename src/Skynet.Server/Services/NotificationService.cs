@@ -80,7 +80,7 @@ namespace Skynet.Server.Services
                         await database.SaveChangesAsync().ConfigureAwait(false);
 
                         Message deviceList = await injector.CreateDeviceList(session.AccountId).ConfigureAwait(false);
-                        _ = await delivery.SendMessage(deviceList, null).ConfigureAwait(false);
+                        await delivery.StartSendMessage(deviceList, null).ConfigureAwait(false);
                     }
                 }
             }
