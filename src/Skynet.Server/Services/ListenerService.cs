@@ -73,7 +73,7 @@ namespace Skynet.Server.Services
             listener.Dispose();
 
             Stopwatch stopwatch = Stopwatch.StartNew();
-            await connections.WaitAll().ConfigureAwait(false);
+            await connections.WaitDisconnectAll().ConfigureAwait(false);
             stopwatch.Stop();
 
             logger.LogInformation("All clients disconnected after {0}ms", stopwatch.ElapsedMilliseconds);

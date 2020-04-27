@@ -131,7 +131,7 @@ namespace Skynet.Server.Network
 
         private async Task Listen()
         {
-            connections.IncrementCounter();
+            connections.ClientConnected();
 
             while (true)
             {
@@ -195,7 +195,7 @@ namespace Skynet.Server.Network
                 }
             }
 
-            connections.DecrementCounter();
+            connections.ClientDisconnected();
         }
 
         private async ValueTask HandlePacket(byte id, PoolableMemory content)
