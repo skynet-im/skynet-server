@@ -159,9 +159,15 @@ namespace Skynet.Server.Network
                         logger.LogInformation("Session {0} lost connection", SessionId.ToString("x8"));
                     break;
                 }
+                catch (OperationCanceledException)
+                {
+                    await DisposeAsync(waitForHandling: false).ConfigureAwait(false);
+                    logger.LogInformation("Session {0} kicked by server", SessionId.ToString("x8"));
+                    break;
+                }
                 catch (Exception ex)
                 {
-                    await DisposeAsync(waitForHandling: false);
+                    await DisposeAsync(waitForHandling: false).ConfigureAwait(false);
                     logger.LogCritical(ex, "Unexpected exception occurred while receiving a packet from session {0}", SessionId.ToString("x8"));
                     break;
                 }
@@ -186,12 +192,6 @@ namespace Skynet.Server.Network
                 finally
                 {
                     content.Return(false);
-                }
-
-                if (ct.IsCancellationRequested)
-                {
-                    await DisposeAsync(waitForHandling: false);
-                    break;
                 }
             }
 
