@@ -6,7 +6,7 @@ namespace Skynet.Server.Database.Entities
     public class Account
     {
         public long AccountId { get; set; }
-        public byte[] KeyHash { get; set; }
+        public byte[] PasswordHash { get; set; }
         public DateTime CreationTime { get; set; }
         public DateTime DeletionTime { get; set; }
 

@@ -6,6 +6,7 @@ using Skynet.Server.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace Skynet.Server.Network.Handlers
@@ -23,8 +24,13 @@ namespace Skynet.Server.Network.Handlers
         {
             var response = Packets.New<P05DeleteAccountResponse>();
 
+            byte[] passwordHash;
+            using (var csp = SHA256.Create())
+                passwordHash = csp.ComputeHash(packet.KeyHash);
+
+            // EF Core converts the C# == operator to = in SQL which compares the contents of byte arrays
             Account account = await Database.Accounts.AsTracking()
-                .SingleOrDefaultAsync(a => a.AccountId == Client.AccountId && a.KeyHash == packet.KeyHash).ConfigureAwait(false);
+                .SingleOrDefaultAsync(a => a.AccountId == Client.AccountId && a.PasswordHash == packet.KeyHash).ConfigureAwait(false);
             if (account == null)
             {
                 response.StatusCode = DeleteAccountStatus.InvalidCredentials;

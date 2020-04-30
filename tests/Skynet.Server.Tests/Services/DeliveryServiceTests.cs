@@ -136,7 +136,7 @@ namespace Skynet.Server.Tests.Services
                 }
             };
 
-            await StartSyncChannels(delivery, client, existing).ConfigureAwait(false);
+            await StartSyncChannels(delivery, client, existing, database).ConfigureAwait(false);
 
             Assert.AreEqual(2, create.Count);
             Assert.AreEqual((2, 0), create[0]);
@@ -154,7 +154,13 @@ namespace Skynet.Server.Tests.Services
 
             foreach (var (accountId, sessionId, connected) in sessions)
             {
-                database.Sessions.Add(new Session { AccountId = accountId, SessionId = sessionId, WebToken = SkynetRandom.String(30) });
+                database.Sessions.Add(new Session
+                {
+                    AccountId = accountId,
+                    SessionId = sessionId,
+                    SessionTokenHash = SkynetRandom.Bytes(32),
+                    WebTokenHash = SkynetRandom.Bytes(32)
+                });
                 sent.Add(sessionId, false);
 
                 if (connected)
@@ -177,10 +183,10 @@ namespace Skynet.Server.Tests.Services
             return sent;
         }
 
-        internal static Task StartSyncChannels(DeliveryService instance, IClient client, IReadOnlyList<long> currentState)
+        internal static Task StartSyncChannels(DeliveryService instance, IClient client, IReadOnlyList<long> currentState, DatabaseContext database)
         {
             MethodInfo method = instance.GetType().GetMethod("StartSyncChannels", BindingFlags.Instance | BindingFlags.NonPublic);
-            return method.Invoke(instance, new object[] { client, currentState }) as Task;
+            return method.Invoke(instance, new object[] { client, currentState, database }) as Task;
         }
     }
 }

@@ -5,6 +5,7 @@ using Skynet.Server.Database.Entities;
 using Skynet.Server.Services;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace Skynet.Server.Network.Handlers
@@ -20,10 +21,15 @@ namespace Skynet.Server.Network.Handlers
 
         public override async ValueTask Handle(P08RestoreSession packet)
         {
+            byte[] sessionTokenHash;
+            using (var csp = SHA256.Create())
+                sessionTokenHash = csp.ComputeHash(packet.SessionToken);
+
+            // EF Core converts the C# == operator to = in SQL which compares the contents of byte arrays
             Session session = await Database.Sessions.AsTracking()
-                .SingleOrDefaultAsync(s => s.SessionId == packet.SessionId).ConfigureAwait(false);
+                .SingleOrDefaultAsync(s => s.SessionId == packet.SessionId && s.SessionTokenHash == sessionTokenHash).ConfigureAwait(false);
             var response = Packets.New<P09RestoreSessionResponse>();
-            if (session == null || !new Span<byte>(packet.SessionToken).SequenceEqual(session.SessionToken))
+            if (session == null)
             {
                 response.StatusCode = RestoreSessionStatus.InvalidSession;
                 await Client.Send(response).ConfigureAwait(false);
