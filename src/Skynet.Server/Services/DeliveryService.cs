@@ -56,6 +56,22 @@ namespace Skynet.Server.Services
             }
         }
 
+        public async Task StartSendToAccount(IAsyncEnumerable<Packet> packets, long accountId, IClient exclude)
+        {
+            long[] sessions = await database.Sessions.AsQueryable()
+                .Where(s => s.AccountId == accountId)
+                .Select(s => s.SessionId)
+                .ToArrayAsync().ConfigureAwait(false);
+
+            foreach (long sessionId in sessions)
+            {
+                if (connections.TryGet(sessionId, out IClient client) && !ReferenceEquals(client, exclude))
+                {
+                    _ = client.Send(packets);
+                }
+            }
+        }
+
         public async Task StartSendToChannel(Packet packet, long channelId, IClient exclude)
         {
             long[] sessions = await database.ChannelMembers.AsQueryable()

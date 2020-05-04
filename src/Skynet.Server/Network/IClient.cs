@@ -22,6 +22,7 @@ namespace Skynet.Server.Network
         void Initialize(string applicationIdentifier, int versionCode);
         void Authenticate(long accountId, long sessionId);
         Task Send(Packet packet);
+        Task Send(IAsyncEnumerable<Packet> packets);
         Task Enqueue(Packet packet);
         Task Enqueue(ChannelMessage message);
         Task Enqueue(IAsyncEnumerable<ChannelMessage> messages);

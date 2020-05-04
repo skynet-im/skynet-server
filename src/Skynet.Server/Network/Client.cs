@@ -99,6 +99,7 @@ namespace Skynet.Server.Network
         }
 
         public Task Send(Packet packet) => sendQueue.Enqueue(packet, false, priority: true);
+        public Task Send(IAsyncEnumerable<Packet> packets) => sendQueue.Enqueue(packets, false, priority: true);
         public Task Enqueue(Packet packet) => sendQueue.Enqueue(packet, false, priority: false);
         public Task Enqueue(ChannelMessage message) => sendQueue.Enqueue(message, true, priority: false);
         public Task Enqueue(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages, true, priority: false);
