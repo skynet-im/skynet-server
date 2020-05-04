@@ -46,6 +46,7 @@ namespace Skynet.Server.Database
             channel.Property(c => c.ChannelType).HasConversion<byte>();
             channel.Property(c => c.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             channel.HasOne(c => c.Owner).WithMany(a => a.OwnedChannels).HasForeignKey(c => c.OwnerId);
+            channel.HasOne(c => c.Counterpart).WithMany().HasForeignKey(c => c.CounterpartId);
 
             var channelMember = modelBuilder.Entity<ChannelMember>();
             channelMember.HasKey(m => new { m.ChannelId, m.AccountId });
@@ -64,8 +65,8 @@ namespace Skynet.Server.Database
 
             var message = modelBuilder.Entity<Message>();
             message.HasKey(m => m.MessageId);
-            message.HasOne(m => m.Channel).WithMany(c => c.Messages).HasForeignKey(m => m.ChannelId);
-            message.HasOne(m => m.Sender).WithMany(a => a.SentMessages).HasForeignKey(m => m.SenderId).IsRequired(false);
+            message.HasOne(m => m.Channel).WithMany().HasForeignKey(m => m.ChannelId);
+            message.HasOne(m => m.Sender).WithMany().HasForeignKey(m => m.SenderId).IsRequired(false);
             message.Property(m => m.MessageId).ValueGeneratedOnAdd();
             message.Property(m => m.DispatchTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             message.Property(m => m.MessageFlags).HasConversion<byte>();

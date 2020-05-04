@@ -58,13 +58,10 @@ namespace Skynet.Server.Network.Handlers
                 response.StatusCode = CreateChannelStatus.Blocked;
                 await Client.Send(response).ConfigureAwait(false);
             }
-            else if (await Database.ChannelMembers.AsQueryable()
-                .Where(m => m.AccountId == counterpartId)
-                .Join(Database.ChannelMembers.AsQueryable()
-                    .Where(m => m.AccountId == Client.AccountId)
-                    .Join(Database.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
-                    .Where(c => c.ChannelType == ChannelType.Direct),
-                    m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+            else if (await Database.Channels.AsQueryable()
+                .Where(c => c.ChannelType == ChannelType.Direct
+                    && ((c.OwnerId == Client.AccountId && c.CounterpartId == counterpartId) 
+                    || (c.OwnerId == counterpartId && c.CounterpartId == Client.AccountId)))
                 .AnyAsync().ConfigureAwait(false))
             {
                 response.StatusCode = CreateChannelStatus.AlreadyExists;
@@ -77,7 +74,8 @@ namespace Skynet.Server.Network.Handlers
                     new Channel
                     {
                         OwnerId = Client.AccountId,
-                        ChannelType = ChannelType.Direct
+                        ChannelType = ChannelType.Direct,
+                        CounterpartId = counterpartId
                     },
                     new ChannelMember { AccountId = Client.AccountId },
                     new ChannelMember { AccountId = counterpartId })

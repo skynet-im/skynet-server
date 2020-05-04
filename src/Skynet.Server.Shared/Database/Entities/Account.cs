@@ -16,7 +16,6 @@ namespace Skynet.Server.Database.Entities
         public IEnumerable<BlockedAccount> Blockers { get; set; }
         public IEnumerable<Channel> OwnedChannels { get; set; }
         public IEnumerable<ChannelMember> ChannelMemberships { get; set; }
-        public IEnumerable<Message> SentMessages { get; set; }
         public IEnumerable<MailConfirmation> MailConfirmations { get; set; }
     }
 }

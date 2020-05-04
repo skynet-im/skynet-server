@@ -108,13 +108,13 @@ namespace Skynet.Server.Tests.Services
         [TestMethod]
         public async Task TestStartSyncChannels()
         {
-            database.Channels.Add(new Channel { ChannelId = 1, ChannelType = ChannelType.Loopback });
+            database.Channels.Add(new Channel { ChannelId = 1, ChannelType = ChannelType.Loopback, OwnerId = alice });
             database.ChannelMembers.Add(new ChannelMember { ChannelId = 1, AccountId = alice });
-            database.Channels.Add(new Channel { ChannelId = 2, ChannelType = ChannelType.AccountData });
+            database.Channels.Add(new Channel { ChannelId = 2, ChannelType = ChannelType.AccountData, OwnerId = alice });
             database.ChannelMembers.Add(new ChannelMember { ChannelId = 2, AccountId = alice });
             database.ChannelMembers.Add(new ChannelMember { ChannelId = 2, AccountId = bob });
             database.ChannelMembers.Add(new ChannelMember { ChannelId = 2, AccountId = charlie });
-            database.Channels.Add(new Channel { ChannelId = 3, ChannelType = ChannelType.Direct });
+            database.Channels.Add(new Channel { ChannelId = 3, ChannelType = ChannelType.Direct, OwnerId = alice, CounterpartId = bob });
             database.ChannelMembers.Add(new ChannelMember { ChannelId = 3, AccountId = alice });
             database.ChannelMembers.Add(new ChannelMember { ChannelId = 3, AccountId = bob });
             await database.SaveChangesAsync().ConfigureAwait(false);
