@@ -24,5 +24,5 @@ Functions:
 Several steps need to be taken to generate a new certificate for Skynet:
 1. `openssl ecparam -name prime256v1 -out prime256v1.pem`
 2. `openssl genpkey -paramfile prime256v1.pem -out key.pem`
-3. `openssl req -nodes -new -x509 -key key.pem -out cert.cer -days 365`
+3. `openssl req -nodes -x509 -key key.pem -out cert.cer -subj "/C=DE/ST=Hessen/CN=Skynet Messenger" -addext "subjectAltName = DNS:skynet.lerchen.net" -days 365`
 4. `openssl pkcs12 -export -out cert.pfx -inkey key.pem -in cert.cer`
