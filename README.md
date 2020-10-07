@@ -12,13 +12,7 @@ The Skynet server solution contains three projects:
 
 Enums, packets, etc. are implemented in the [Skynet libraries](https://github.com/skynet-im/skynet-dotnet) and referenced as NuGet packages.
 
-### Tools ###
-- `database.ps1` - Allows the installation of a local MySQL or MariaDB server for development purposes.
-Functions:
-  - `Install-DbServer [-MySQL] [-MariaDB]`
-  - `Start-DbServer [-MySQL] [-MariaDB]`
-  - `Start-DbCli`
-  - `Stop-DbServer`
+Tools for setting up a database server on Windows have been moved to the [https://github.com/daniel-lerch/psmodules](PSModules) repository.
 
 ### Certificate ###
 Several steps need to be taken to generate a new certificate for Skynet:
