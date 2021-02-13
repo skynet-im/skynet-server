@@ -1,12 +1,10 @@
 ﻿# Skynet server #
 
-[![Build Status](https://dev.azure.com/vectordata/skynet/_apis/build/status/skynet-im.skynet-server?branchName=master)](https://dev.azure.com/vectordata/skynet/_build/latest?definitionId=4&branchName=master)
-
 > General project documentation such as the protocol specification can be found in our [home repository](https://github.com/skynet-im/skynet).
 
 ### ⚠ Archive Notice ⚠ ###
 This project is not actively developed anymore. It is still kept as reference for other projects.
-Developing a messaging application from scratch with an own protocol is simply too much work for two students in their freetime.+
+Developing a messaging application from scratch with an own protocol is simply too much work for two students in their freetime.
 Information about our plans for the future of Skynet will be published in the [home repository](https://github.com/skynet-im/skynet).
 
 ### Projects ###

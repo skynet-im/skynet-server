@@ -44,7 +44,8 @@ namespace Skynet.Server.Network.Handlers
             return new Enumerator(this);
         }
 
-        private struct Enumerator : IAsyncEnumerator<Packet>
+        // DO NOT USE STRUCTS - mutations will not work with async code
+        private class Enumerator : IAsyncEnumerator<Packet>
         {
             private readonly CreateChannelEnumerable enumerable;
             private int index;
