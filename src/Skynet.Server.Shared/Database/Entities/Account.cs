@@ -6,7 +6,7 @@ namespace Skynet.Server.Database.Entities
     public class Account
     {
         public long AccountId { get; set; }
-        public byte[] KeyHash { get; set; }
+        public byte[] PasswordHash { get; set; }
         public DateTime CreationTime { get; set; }
         public DateTime DeletionTime { get; set; }
 
@@ -16,7 +16,6 @@ namespace Skynet.Server.Database.Entities
         public IEnumerable<BlockedAccount> Blockers { get; set; }
         public IEnumerable<Channel> OwnedChannels { get; set; }
         public IEnumerable<ChannelMember> ChannelMemberships { get; set; }
-        public IEnumerable<Message> SentMessages { get; set; }
         public IEnumerable<MailConfirmation> MailConfirmations { get; set; }
     }
 }

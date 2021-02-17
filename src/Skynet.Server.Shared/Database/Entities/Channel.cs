@@ -13,7 +13,9 @@ namespace Skynet.Server.Database.Entities
         public long? OwnerId { get; set; }
         public Account Owner { get; set; }
 
-        public IEnumerable<Message> Messages { get; set; }
+        public long? CounterpartId { get; set; }
+        public Account Counterpart { get; set; }
+
         public IEnumerable<BlockedConversation> Blockers { get; set; }
         public IEnumerable<ChannelMember> ChannelMembers { get; set; }
     }

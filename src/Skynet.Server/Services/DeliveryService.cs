@@ -56,6 +56,22 @@ namespace Skynet.Server.Services
             }
         }
 
+        public async Task StartSendToAccount(IAsyncEnumerable<Packet> packets, long accountId, IClient exclude)
+        {
+            long[] sessions = await database.Sessions.AsQueryable()
+                .Where(s => s.AccountId == accountId)
+                .Select(s => s.SessionId)
+                .ToArrayAsync().ConfigureAwait(false);
+
+            foreach (long sessionId in sessions)
+            {
+                if (connections.TryGet(sessionId, out IClient client) && !ReferenceEquals(client, exclude))
+                {
+                    _ = client.Send(packets);
+                }
+            }
+        }
+
         public async Task StartSendToChannel(Packet packet, long channelId, IClient exclude)
         {
             long[] sessions = await database.ChannelMembers.AsQueryable()
@@ -142,7 +158,7 @@ namespace Skynet.Server.Services
         #region channel and message restore
         public Task StartSyncChannels(IClient client, List<long> channelState, long lastMessageId)
         {
-            return ExecuteSync(
+            return StartSync(
                 client,
                 database => database.ChannelMembers.AsQueryable()
                 .Where(member => member.AccountId == client.AccountId)
@@ -158,7 +174,7 @@ namespace Skynet.Server.Services
         {
             // The JOIN with ChannelMembers prevents unauthorized access
 
-            return ExecuteSync(
+            return StartSync(
                 client,
                 database => database.ChannelMembers.AsQueryable()
                     .Where(member => member.AccountId == client.AccountId)
@@ -187,7 +203,7 @@ namespace Skynet.Server.Services
                 {
                     // The JOIN with ChannelMembers prevents unauthorized access
 
-                    operations.Add(ExecuteSync(
+                    operations.Add(StartSync(
                         client,
                         database => database.ChannelMembers.AsQueryable()
                             .Where(member => member.AccountId == client.AccountId)
@@ -202,39 +218,51 @@ namespace Skynet.Server.Services
             await Task.WhenAll(operations).ConfigureAwait(false);
         }
 
-        private async Task ExecuteSync(
+        /// <summary>
+        /// Starts a sync operation by enqueuing all packets and packet sources asynchronously. This method is thread safe.
+        /// </summary>
+        private async Task StartSync(
             IClient client,
             Func<DatabaseContext, IQueryable<Message>> queryBuilder,
             List<long> channelState = null,
             ushort maxCount = default)
         {
-            var start = packets.New<P0BSyncStarted>();
+            // Create an independent service scope right away to avoid concurrent access to the same DatabaseContext
+            using IServiceScope scope = serviceProvider.CreateScope();
+            var packets = scope.ServiceProvider.GetRequiredService<PacketService>();
+            var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<DeliveryService>>();
 
-            if (protocolOptions.Value.CountMessagesBeforeSync)
+            try
             {
-                IQueryable<Message> countQuery = queryBuilder(database);
-                if (maxCount != default)
-                    countQuery = countQuery.Take(maxCount);
+                var start = packets.New<P0BSyncStarted>();
 
-                start.MinCount = await countQuery.CountAsync().ConfigureAwait(false);
+                if (protocolOptions.Value.CountMessagesBeforeSync)
+                {
+                    IQueryable<Message> countQuery = queryBuilder(database);
+                    if (maxCount != default)
+                        countQuery = countQuery.Take(maxCount);
+
+                    start.MinCount = await countQuery.CountAsync().ConfigureAwait(false);
+                }
+                else
+                {
+                    start.MinCount = -1;
+                }
+
+                _ = client.Send(start);
+
+                if (channelState != null)
+                    await StartSyncChannels(client, channelState, database).ConfigureAwait(false);
             }
-            else
+            catch
             {
-                start.MinCount = -1;
+                scope.Dispose();
+                throw;
             }
-
-            _ = client.Send(start);
-
-            if (channelState != null)
-                await StartSyncChannels(client, channelState).ConfigureAwait(false);
 
             async void executeScoped()
             {
-                using IServiceScope scope = serviceProvider.CreateScope();
-                var packets = scope.ServiceProvider.GetRequiredService<PacketService>();
-                var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-                var logger = scope.ServiceProvider.GetRequiredService<ILogger<DeliveryService>>();
-
                 try
                 {
                     IQueryable<Message> query = queryBuilder(database).Include(m => m.Dependencies).OrderBy(m => m.MessageId);
@@ -244,38 +272,26 @@ namespace Skynet.Server.Services
                     Task send = client.Enqueue(query.AsAsyncEnumerable().Select(m => m.ToPacket(packets, client.AccountId)));
                     _ = client.Enqueue(packets.New<P0FSyncFinished>());
                     await send.ConfigureAwait(false);
-
-                    // Independent service scope is disposed after await returns
                 }
                 catch (Exception ex)
                 {
                     logger.LogCritical(ex, "An unexpected exception occurred while delivering messages to client {0}", client.SessionId.ToString("x8"));
+                }
+                finally
+                {
+                    scope.Dispose();
                 }
             }
 
             executeScoped();
         }
 
-        private async Task StartSyncChannels(IClient client, IReadOnlyList<long> currentState)
+        private async Task StartSyncChannels(IClient client, IReadOnlyList<long> currentState, DatabaseContext database)
         {
-            // This query returns all channels of the client's account and the counterpart's account ID for direct channels.
-            // We find all channels of the client and perform a LEFT JOIN on other direct channel.
-            // If we would get an other channel members, group channels and accound data channels would appear multiple times in the result set.
-
-            var query = from m in database.ChannelMembers.AsQueryable().Where(m => m.AccountId == client.AccountId)
-                        join c in database.Channels
-                            on m.ChannelId equals c.ChannelId
-                        join other in (
-                                from m in database.ChannelMembers.AsQueryable().Where(m => m.AccountId != client.AccountId)
-                                join c in database.Channels.AsQueryable().Where(c => c.ChannelType == ChannelType.Direct)
-                                    on m.ChannelId equals c.ChannelId
-                                select m
-                            )
-                            on c.ChannelId equals other.ChannelId into grouping
-                        from other in grouping.DefaultIfEmpty()
-                        select new { c.ChannelId, c.ChannelType, c.OwnerId, c.CreationTime, other.AccountId };
-
-            var channels = await query.ToArrayAsync().ConfigureAwait(false);
+            Channel[] channels = await database.ChannelMembers.AsQueryable()
+                .Where(m => m.AccountId == client.AccountId)
+                .Join(database.Channels, m => m.ChannelId, c => c.ChannelId, (m, c) => c)
+                .ToArrayAsync().ConfigureAwait(false);
 
             foreach (var channel in channels)
             {
@@ -288,7 +304,7 @@ namespace Skynet.Server.Services
                     packet.OwnerId = channel.OwnerId ?? 0;
                     packet.CreationTime = channel.CreationTime;
                     if (packet.ChannelType == ChannelType.Direct)
-                        packet.CounterpartId = channel.AccountId;
+                        packet.CounterpartId = channel.OwnerId == client.AccountId ? channel.CounterpartId.Value : channel.OwnerId.Value;
                     _ = client.Send(packet);
                 }
             }

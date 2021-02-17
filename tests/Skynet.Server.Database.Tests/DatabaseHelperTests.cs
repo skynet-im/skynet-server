@@ -83,6 +83,8 @@ namespace Skynet.Server.Tests
                     Session session = new Session()
                     {
                         AccountId = account.AccountId,
+                        SessionTokenHash = SkynetRandom.Bytes(32), // No real hashes needed here
+                        WebTokenHash = SkynetRandom.Bytes(32),
                         ApplicationIdentifier = "windows/SkynetServer.Database.Tests"
                     };
                     await database.AddSession(session).ConfigureAwait(false);

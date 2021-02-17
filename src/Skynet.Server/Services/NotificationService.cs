@@ -67,8 +67,8 @@ namespace Skynet.Server.Services
                     if (options.Value.DeleteSessionOnError)
                     {
                         // Prevent quick re-login after kick
-                        session.SessionToken = Array.Empty<byte>();
-                        database.Entry(session).Property(s => s.SessionToken).IsModified = true;
+                        session.SessionTokenHash = Array.Empty<byte>();
+                        database.Entry(session).Property(s => s.SessionTokenHash).IsModified = true;
                         await database.SaveChangesAsync().ConfigureAwait(false);
 
                         // Kick client if connected to avoid conflicting information in RAM vs DB

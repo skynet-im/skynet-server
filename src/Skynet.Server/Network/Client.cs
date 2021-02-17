@@ -99,6 +99,7 @@ namespace Skynet.Server.Network
         }
 
         public Task Send(Packet packet) => sendQueue.Enqueue(packet, false, priority: true);
+        public Task Send(IAsyncEnumerable<Packet> packets) => sendQueue.Enqueue(packets, false, priority: true);
         public Task Enqueue(Packet packet) => sendQueue.Enqueue(packet, false, priority: false);
         public Task Enqueue(ChannelMessage message) => sendQueue.Enqueue(message, true, priority: false);
         public Task Enqueue(IAsyncEnumerable<ChannelMessage> messages) => sendQueue.Enqueue(messages, true, priority: false);
@@ -159,9 +160,15 @@ namespace Skynet.Server.Network
                         logger.LogInformation("Session {0} lost connection", SessionId.ToString("x8"));
                     break;
                 }
+                catch (OperationCanceledException)
+                {
+                    await DisposeAsync(waitForHandling: false).ConfigureAwait(false);
+                    logger.LogInformation("Session {0} kicked by server", SessionId.ToString("x8"));
+                    break;
+                }
                 catch (Exception ex)
                 {
-                    await DisposeAsync(waitForHandling: false);
+                    await DisposeAsync(waitForHandling: false).ConfigureAwait(false);
                     logger.LogCritical(ex, "Unexpected exception occurred while receiving a packet from session {0}", SessionId.ToString("x8"));
                     break;
                 }
@@ -186,12 +193,6 @@ namespace Skynet.Server.Network
                 finally
                 {
                     content.Return(false);
-                }
-
-                if (ct.IsCancellationRequested)
-                {
-                    await DisposeAsync(waitForHandling: false);
-                    break;
                 }
             }
 

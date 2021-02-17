@@ -42,6 +42,11 @@ namespace Skynet.Server.Tests.Fakes
             return OnSendPacket?.Invoke(packet) ?? Task.CompletedTask;
         }
 
+        public Task Send(IAsyncEnumerable<Packet> packets)
+        {
+            return Task.CompletedTask;
+        }
+
         public Task Enqueue(Packet packet)
         {
             return Task.CompletedTask;

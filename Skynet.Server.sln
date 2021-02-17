@@ -19,11 +19,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Skynet.Server.Shared", "src
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Skynet.Server.Web", "src\Skynet.Server.Web\Skynet.Server.Web.csproj", "{320D2430-F663-46FE-8108-E2F2AE51A25B}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{267569CE-CC4E-49D5-ACDA-C8287418F1E3}"
-	ProjectSection(SolutionItems) = preProject
-		tools\database.ps1 = tools\database.ps1
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{3252B458-BDDD-4BD8-9277-BD253264D4BC}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Skynet.Server.Shared.Tests", "tests\Skynet.Server.Shared.Tests\Skynet.Server.Shared.Tests.csproj", "{8C5F66CA-EEE8-4223-AE44-601B076CC167}"
