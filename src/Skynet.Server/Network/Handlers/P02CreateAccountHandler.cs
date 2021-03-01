@@ -8,6 +8,7 @@ using Skynet.Server.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace Skynet.Server.Network.Handlers
@@ -30,9 +31,12 @@ namespace Skynet.Server.Network.Handlers
                 response.StatusCode = CreateAccountStatus.InvalidAccountName;
             else
             {
+                using var csp = SHA256.Create();
+                byte[] passwordHash = csp.ComputeHash(packet.KeyHash);
+
                 // As of RFC 5321 the local-part of an email address should not be case-sensitive.
                 (var newAccount, var confirmation, bool success) = 
-                    await Database.AddAccount(packet.AccountName.ToLowerInvariant(), packet.KeyHash).ConfigureAwait(false);
+                    await Database.AddAccount(packet.AccountName.ToLowerInvariant(), passwordHash).ConfigureAwait(false);
                 if (!success)
                     response.StatusCode = CreateAccountStatus.AccountNameTaken;
                 else

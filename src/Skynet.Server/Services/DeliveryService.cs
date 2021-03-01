@@ -228,7 +228,8 @@ namespace Skynet.Server.Services
             ushort maxCount = default)
         {
             // Create an independent service scope right away to avoid concurrent access to the same DatabaseContext
-            using IServiceScope scope = serviceProvider.CreateScope();
+            // No using-blocks here because this scope is accessed from an async void and disposed manually!
+            IServiceScope scope = serviceProvider.CreateScope();
             var packets = scope.ServiceProvider.GetRequiredService<PacketService>();
             var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<DeliveryService>>();
