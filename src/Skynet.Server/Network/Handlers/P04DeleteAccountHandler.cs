@@ -6,6 +6,7 @@ using Skynet.Server.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace Skynet.Server.Network.Handlers
@@ -23,17 +24,36 @@ namespace Skynet.Server.Network.Handlers
         {
             var response = Packets.New<P05DeleteAccountResponse>();
 
+            byte[] passwordHash;
+            using (var csp = SHA256.Create())
+                passwordHash = csp.ComputeHash(packet.KeyHash);
+
+            // EF Core converts the C# == operator to = in SQL which compares the contents of byte arrays
             Account account = await Database.Accounts.AsTracking()
-                .SingleOrDefaultAsync(a => a.AccountId == Client.AccountId && a.KeyHash == packet.KeyHash).ConfigureAwait(false);
+                .SingleOrDefaultAsync(a => a.AccountId == Client.AccountId && a.PasswordHash == passwordHash).ConfigureAwait(false);
             if (account == null)
             {
                 response.StatusCode = DeleteAccountStatus.InvalidCredentials;
-                _ = Client.Send(response);
+                await Client.Send(response).ConfigureAwait(false);
                 return;
             }
 
-            // Delete mail confirmations and sessions
             account.DeletionTime = DateTime.Now;
+            try
+            {
+                await Database.SaveChangesAsync().ConfigureAwait(false);
+            }
+            catch (DbUpdateConcurrencyException) // Account is being deleted by a another handler
+            {
+                // We can safely send a response to the client because the second handler is waiting for this one to return
+                response.StatusCode = DeleteAccountStatus.Success;
+                await Client.Send(response).ConfigureAwait(false);
+                await Client.DisposeAsync(waitForHandling: false).ConfigureAwait(false);
+            }
+
+
+            // Delete mail confirmations and sessions
+            // This will prevent clients from logging in with the deleted account
             MailConfirmation[] mailConfirmations = await Database.MailConfirmations.AsQueryable()
                 .Where(c => c.AccountId == Client.AccountId)
                 .ToArrayAsync().ConfigureAwait(false);
@@ -44,8 +64,8 @@ namespace Skynet.Server.Network.Handlers
             Database.Sessions.RemoveRange(sessions);
             await Database.SaveChangesAsync().ConfigureAwait(false);
 
+
             // Kick all sessions
-            // TODO: Use a concurrency token on Account.DeletionTime to avoid concurrent account deletions which will lead to dead locks
             var tasks = new List<Task>();
             foreach (Session session in sessions)
             {
@@ -56,16 +76,19 @@ namespace Skynet.Server.Network.Handlers
             }
             await Task.WhenAll(tasks).ConfigureAwait(false);
 
-            // Finish handling and close last connection
-            response.StatusCode = DeleteAccountStatus.Success;
-            await Client.Send(response).ConfigureAwait(false);
-            await Client.DisposeAsync(true, false, true).ConfigureAwait(false);
 
+            // Do all remaining database operations
             ChannelMember[] memberships = await Database.ChannelMembers.AsQueryable()
                 .Where(m => m.AccountId == Client.AccountId)
                 .ToArrayAsync().ConfigureAwait(false);
             Database.ChannelMembers.RemoveRange(memberships);
             await Database.SaveChangesAsync().ConfigureAwait(false);
+
+
+            // Finish handling and close last connection
+            response.StatusCode = DeleteAccountStatus.Success;
+            await Client.Send(response).ConfigureAwait(false);
+            await Client.DisposeAsync(waitForHandling: false).ConfigureAwait(false);
         }
     }
 }

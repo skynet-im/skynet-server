@@ -27,15 +27,16 @@ namespace Skynet.Server.Database
             var account = modelBuilder.Entity<Account>();
             account.HasKey(a => a.AccountId);
             account.Property(a => a.AccountId).ValueGeneratedNever();
-            account.Property(a => a.KeyHash).IsRequired();
+            account.Property(a => a.PasswordHash).IsRequired();
             account.Property(a => a.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            account.Property(a => a.DeletionTime).IsConcurrencyToken();
 
             var session = modelBuilder.Entity<Session>();
             session.HasKey(s => s.SessionId);
-            session.HasAlternateKey(s => s.WebToken);
+            session.HasAlternateKey(s => s.WebTokenHash);
             session.Property(s => s.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             session.Property(s => s.SessionId).ValueGeneratedNever();
-            session.Property(s => s.SessionToken).IsRequired();
+            session.Property(s => s.SessionTokenHash).IsRequired();
             session.Property(s => s.ApplicationIdentifier).IsRequired();
             session.HasOne(s => s.Account).WithMany(a => a.Sessions).HasForeignKey(s => s.AccountId);
 
@@ -45,6 +46,7 @@ namespace Skynet.Server.Database
             channel.Property(c => c.ChannelType).HasConversion<byte>();
             channel.Property(c => c.CreationTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             channel.HasOne(c => c.Owner).WithMany(a => a.OwnedChannels).HasForeignKey(c => c.OwnerId);
+            channel.HasOne(c => c.Counterpart).WithMany().HasForeignKey(c => c.CounterpartId);
 
             var channelMember = modelBuilder.Entity<ChannelMember>();
             channelMember.HasKey(m => new { m.ChannelId, m.AccountId });
@@ -63,8 +65,8 @@ namespace Skynet.Server.Database
 
             var message = modelBuilder.Entity<Message>();
             message.HasKey(m => m.MessageId);
-            message.HasOne(m => m.Channel).WithMany(c => c.Messages).HasForeignKey(m => m.ChannelId);
-            message.HasOne(m => m.Sender).WithMany(a => a.SentMessages).HasForeignKey(m => m.SenderId).IsRequired(false);
+            message.HasOne(m => m.Channel).WithMany().HasForeignKey(m => m.ChannelId);
+            message.HasOne(m => m.Sender).WithMany().HasForeignKey(m => m.SenderId).IsRequired(false);
             message.Property(m => m.MessageId).ValueGeneratedOnAdd();
             message.Property(m => m.DispatchTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             message.Property(m => m.MessageFlags).HasConversion<byte>();
@@ -83,9 +85,9 @@ namespace Skynet.Server.Database
         }
 
         #region insertion helpers
-        public async Task<(Account, MailConfirmation, bool)> AddAccount(string mailAddress, byte[] keyHash)
+        public async Task<(Account, MailConfirmation, bool)> AddAccount(string mailAddress, byte[] passwordHash)
         {
-            Account account = new Account { KeyHash = keyHash };
+            Account account = new Account { PasswordHash = passwordHash };
             MailConfirmation confirmation = new MailConfirmation { Account = account, MailAddress = mailAddress };
 
             bool saved = false;
@@ -123,8 +125,6 @@ namespace Skynet.Server.Database
                 {
                     long id = SkynetRandom.Id();
                     session.SessionId = id;
-                    session.SessionToken = SkynetRandom.Bytes(32);
-                    session.WebToken = SkynetRandom.String(30);
                     Sessions.Add(session);
                     await SaveChangesAsync().ConfigureAwait(false);
                     saved = true;

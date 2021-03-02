@@ -57,7 +57,6 @@ namespace Skynet.Server.Utilities
                 }
                 else
                 {
-                    // TODO: Provide an API to pass a CancellationToken here
                     IAsyncEnumerator<TItem> enumerator = queueItem.Items.GetAsyncEnumerator();
                     bool next = await enumerator.MoveNextAsync().ConfigureAwait(false);
                     if (!next)

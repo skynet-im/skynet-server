@@ -67,7 +67,7 @@ namespace Skynet.Server.Tests.Services
             var packet = packets.New<P0ACreateChannel>();
 
             Assert.IsTrue(connections.TryGet(1, out IClient exclude), "Client disappeared from ConnectionsService");
-            await delivery.SendToAccount(packet, alice, exclude).ConfigureAwait(false);
+            await delivery.StartSendToAccount(packet, alice, exclude).ConfigureAwait(false);
 
             Assert.IsFalse(sent[1]);
             Assert.IsFalse(sent[2]);
@@ -92,7 +92,7 @@ namespace Skynet.Server.Tests.Services
             var packet = packets.New<P0ACreateChannel>();
 
             Assert.IsTrue(connections.TryGet(1, out IClient exclude), "Client disappeared from ConnectionsService");
-            await delivery.SendToChannel(packet, 1, exclude).ConfigureAwait(false);
+            await delivery.StartSendToChannel(packet, 1, exclude).ConfigureAwait(false);
 
             Assert.IsFalse(sent[1]);
             Assert.IsFalse(sent[2]);
@@ -108,13 +108,13 @@ namespace Skynet.Server.Tests.Services
         [TestMethod]
         public async Task TestStartSyncChannels()
         {
-            database.Channels.Add(new Channel { ChannelId = 1, ChannelType = ChannelType.Loopback });
+            database.Channels.Add(new Channel { ChannelId = 1, ChannelType = ChannelType.Loopback, OwnerId = alice });
             database.ChannelMembers.Add(new ChannelMember { ChannelId = 1, AccountId = alice });
-            database.Channels.Add(new Channel { ChannelId = 2, ChannelType = ChannelType.AccountData });
+            database.Channels.Add(new Channel { ChannelId = 2, ChannelType = ChannelType.AccountData, OwnerId = alice });
             database.ChannelMembers.Add(new ChannelMember { ChannelId = 2, AccountId = alice });
             database.ChannelMembers.Add(new ChannelMember { ChannelId = 2, AccountId = bob });
             database.ChannelMembers.Add(new ChannelMember { ChannelId = 2, AccountId = charlie });
-            database.Channels.Add(new Channel { ChannelId = 3, ChannelType = ChannelType.Direct });
+            database.Channels.Add(new Channel { ChannelId = 3, ChannelType = ChannelType.Direct, OwnerId = alice, CounterpartId = bob });
             database.ChannelMembers.Add(new ChannelMember { ChannelId = 3, AccountId = alice });
             database.ChannelMembers.Add(new ChannelMember { ChannelId = 3, AccountId = bob });
             await database.SaveChangesAsync().ConfigureAwait(false);
@@ -136,7 +136,7 @@ namespace Skynet.Server.Tests.Services
                 }
             };
 
-            await StartSyncChannels(delivery, client, existing).ConfigureAwait(false);
+            await StartSyncChannels(delivery, client, existing, database).ConfigureAwait(false);
 
             Assert.AreEqual(2, create.Count);
             Assert.AreEqual((2, 0), create[0]);
@@ -154,7 +154,13 @@ namespace Skynet.Server.Tests.Services
 
             foreach (var (accountId, sessionId, connected) in sessions)
             {
-                database.Sessions.Add(new Session { AccountId = accountId, SessionId = sessionId, WebToken = SkynetRandom.String(30) });
+                database.Sessions.Add(new Session
+                {
+                    AccountId = accountId,
+                    SessionId = sessionId,
+                    SessionTokenHash = SkynetRandom.Bytes(32),
+                    WebTokenHash = SkynetRandom.Bytes(32)
+                });
                 sent.Add(sessionId, false);
 
                 if (connected)
@@ -177,10 +183,10 @@ namespace Skynet.Server.Tests.Services
             return sent;
         }
 
-        internal static Task StartSyncChannels(DeliveryService instance, IClient client, IReadOnlyList<long> currentState)
+        internal static Task StartSyncChannels(DeliveryService instance, IClient client, IReadOnlyList<long> currentState, DatabaseContext database)
         {
             MethodInfo method = instance.GetType().GetMethod("StartSyncChannels", BindingFlags.Instance | BindingFlags.NonPublic);
-            return method.Invoke(instance, new object[] { client, currentState }) as Task;
+            return method.Invoke(instance, new object[] { client, currentState, database }) as Task;
         }
     }
 }

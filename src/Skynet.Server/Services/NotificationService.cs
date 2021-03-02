@@ -67,8 +67,8 @@ namespace Skynet.Server.Services
                     if (options.Value.DeleteSessionOnError)
                     {
                         // Prevent quick re-login after kick
-                        session.SessionToken = Array.Empty<byte>();
-                        database.Entry(session).Property(s => s.SessionToken).IsModified = true;
+                        session.SessionTokenHash = Array.Empty<byte>();
+                        database.Entry(session).Property(s => s.SessionTokenHash).IsModified = true;
                         await database.SaveChangesAsync().ConfigureAwait(false);
 
                         // Kick client if connected to avoid conflicting information in RAM vs DB
@@ -80,7 +80,7 @@ namespace Skynet.Server.Services
                         await database.SaveChangesAsync().ConfigureAwait(false);
 
                         Message deviceList = await injector.CreateDeviceList(session.AccountId).ConfigureAwait(false);
-                        _ = await delivery.SendMessage(deviceList, null).ConfigureAwait(false);
+                        await delivery.StartSendMessage(deviceList, null).ConfigureAwait(false);
                     }
                 }
             }
